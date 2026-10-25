@@ -2,7 +2,13 @@
 
 All notable changes to this repository. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
-## 2026-10-22 (latest)
+## 2026-10-24 (latest)
+
+### Changed — process diagram rebuilt
+
+- `docs/diagrams/process-flow.*` and `homepage/diagram/` rebuilt and re-pinned to the current main; `--check` is OK again.
+
+## 2026-10-22
 
 ### Fixed — `debate-mode` frontmatter parses as YAML
 
