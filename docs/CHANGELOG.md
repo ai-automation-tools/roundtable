@@ -2,7 +2,13 @@
 
 All notable changes to this repository. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
-## 2026-10-22 (latest)
+## 2026-10-26 (latest)
+
+### Fixed — the homepage's sample debates no longer link to conversations the mirror lacks
+
+- The *Sample debates* tile linked #14, #5, #6, #10 and #3, which exist locally but were never synced to the hosted mirror, so all five answered 404 on roundtable-demo (site checks, 2026-10-26). `src/web/render/home.py` now shows only the samples this deploy holds (`existing_conversation_ids()` in `src/web/db.py`) and drops the tile when it holds none. `tests/test_homepage.py` pins both cases.
+
+## 2026-10-22
 
 ### Added — a podcast launches with one command: `debate.ps1 -Format podcast`
 

@@ -277,6 +277,20 @@ def list_featured_debates(limit: int = 4) -> list[dict[str, Any]]:
         return out
 
 
+def existing_conversation_ids(ids: list[int]) -> set[int]:
+    """Which of ``ids`` are rows on this deploy. The hosted mirror holds only
+    the conversations synced to it, so a hard-coded id can exist locally and
+    404 there."""
+    if not ids:
+        return set()
+    with _connect() as conn:
+        rows = conn.execute(
+            f"SELECT id FROM conversations WHERE id IN ({','.join('?' * len(ids))})",
+            tuple(ids),
+        ).fetchall()
+    return {r[0] for r in rows}
+
+
 def get_conversation(cid: int) -> dict[str, Any] | None:
     with _connect() as conn:
         c = conn.execute(
