@@ -467,13 +467,14 @@ _RES_PROMPTS: tuple[tuple[str, str, str], ...] = (
 )
 # Sample debates are deep-links into THIS deploy's archive (internal, "→").
 # Only the ones this deploy holds are shown: the hosted mirror carries just the
-# conversations synced to it, and #3-#14 are not among them.
+# conversations synced to it. Pick samples from the public set, never an id in
+# config/sync-exclude.json (those stay local-only by choice).
 _RES_SAMPLES: tuple[tuple[str, str, str], ...] = (
-    ("/conversations/14", "How credible is Bob Lazar?", "debate"),
-    ("/conversations/5", "The Fermi paradox", "debate"),
-    ("/conversations/6", "Simulation theory", "debate"),
-    ("/conversations/10", "Brain ↔ CPU interface", "debate"),
-    ("/conversations/3", "Future of tech jobs", "claude-code · codex"),
+    ("/conversations/11", "AI agents vs. junior engineers", "debate"),
+    ("/conversations/28", "Social media under 16", "debate"),
+    ("/conversations/30", "Licensing advanced AI", "debate"),
+    ("/conversations/36", "Pop culture's creativity crisis", "debate"),
+    ("/conversations/64", "Sports betting: America's new addiction", "debate"),
 )
 _RES_STACK: tuple[tuple[str, str, str], ...] = (
     ("https://modelcontextprotocol.io", "Model Context Protocol", "modelcontextprotocol.io"),

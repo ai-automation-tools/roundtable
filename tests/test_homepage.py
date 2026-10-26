@@ -110,17 +110,32 @@ def test_sample_debates_link_only_conversations_this_deploy_has():
     conn.execute(
         "INSERT INTO conversations (id, topic, participants, mode, max_turns, "
         "status, created_at, updated_at) VALUES "
-        "(14, 'How credible is Bob Lazar?', '[\"claude-code\",\"codex\"]', 'turns', 8, "
-        "'complete', '2026-01-01', '2026-01-01')"
+        "(11, 'Will AI coding agents make junior engineering roles obsolete by 2030?', "
+        "'[\"claude-code\",\"gemini\"]', 'turns', 8, 'complete', '2026-01-01', '2026-01-01')"
     )
     try:
         html = home._render_homepage_res_groups()
         assert "Sample debates" in html
-        assert "/conversations/14" in html
-        assert "/conversations/5\"" not in html
+        assert "/conversations/11" in html
+        assert "/conversations/28\"" not in html
     finally:
-        conn.execute("DELETE FROM conversations WHERE id = 14")
+        conn.execute("DELETE FROM conversations WHERE id = 11")
         conn.close()
+
+
+def test_sample_debates_are_never_local_only():
+    """A sample must be one the public mirror may hold: an id in
+    config/sync-exclude.json is kept local-only on purpose. That file is
+    operator-only (gitignored), so CI has nothing to check against."""
+    import json
+
+    path = Path(__file__).resolve().parent.parent / "config" / "sync-exclude.json"
+    if not path.exists():
+        print("skip: no config/sync-exclude.json on this machine")
+        return
+    excluded = set(json.loads(path.read_text(encoding="utf-8"))["conversation_ids"])
+    samples = {int(h.rsplit("/", 1)[1]) for h, _, _ in home._RES_SAMPLES}
+    assert not samples & excluded, f"local-only ids featured: {sorted(samples & excluded)}"
 
 
 def test_spotlight_tracker_is_wired():
