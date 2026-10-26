@@ -89,15 +89,38 @@ def test_resources_tiles_are_data_driven():
     """The five project tiles render through _res_tile like the generated ones,
     with the links the old hand-written markup carried."""
     html = home._render_homepage_res_groups()
-    assert html.count('class="res-tile spot"') == 11
+    # The empty test DB holds none of the sample debates, so that tile is dropped.
+    assert html.count('class="res-tile spot"') == 10
     for href in (
         "https://github.com/ai-automation-tools/roundtable/blob/main/docs/ROADMAP.md",
         "https://prompts.mikesailab.com/?library=public&section=agents",
-        "/conversations/14",
         "https://www.sqlite.org/wal.html",
         "https://github.com/michaelschecht",
     ):
         assert href in html, href
+
+
+def test_sample_debates_link_only_conversations_this_deploy_has():
+    """The hosted mirror holds only synced conversations; a sample it lacks
+    must not be linked (it 404s for every visitor)."""
+    import sqlite3
+
+    assert "Sample debates" not in home._render_homepage_res_groups()
+    conn = sqlite3.connect(os.environ["AGENT_CHAT_DB"], isolation_level=None)
+    conn.execute(
+        "INSERT INTO conversations (id, topic, participants, mode, max_turns, "
+        "status, created_at, updated_at) VALUES "
+        "(14, 'How credible is Bob Lazar?', '[\"claude-code\",\"codex\"]', 'turns', 8, "
+        "'complete', '2026-01-01', '2026-01-01')"
+    )
+    try:
+        html = home._render_homepage_res_groups()
+        assert "Sample debates" in html
+        assert "/conversations/14" in html
+        assert "/conversations/5\"" not in html
+    finally:
+        conn.execute("DELETE FROM conversations WHERE id = 14")
+        conn.close()
 
 
 def test_spotlight_tracker_is_wired():
