@@ -1083,8 +1083,8 @@ def _render_conversation_main(data: dict[str, Any],
         (function() {{
           const cid = {cid};
           let lastId = {last_id};
-          const PERSONAS = {json.dumps(persona_names)};
-          const AGENT_VISUALS = {json.dumps(agent_visuals)};
+          const PERSONAS = {json.dumps(persona_names).replace("<", "\\u003c")};
+          const AGENT_VISUALS = {json.dumps(agent_visuals).replace("<", "\\u003c")};
           const transcript = document.getElementById('transcript');
           const pill = document.getElementById('cv-pill');
           const turnBadge = document.getElementById('turn-badge');
