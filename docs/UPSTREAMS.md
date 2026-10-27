@@ -12,8 +12,8 @@ source. `—` means never checked.
 
 | Upstream | What the code assumes | Code | Check at | Last checked |
 |:---|:---|:---|:---|:---|
-| **Model Context Protocol spec** | stdio transport per CLI process; tools declared with JSON Schema; nothing written to stdout except JSON-RPC. Current revision is **2026-07-28** (stateless, no `initialize` handshake, `server/discover`); the server speaks it via `mcp` 2.x and still serves the 2025 `initialize` handshake to older clients; both are pinned by `tests/test_mcp_stdio.py` | `src/agent_chat_mcp.py` | modelcontextprotocol.io/specification/versioning and the changelog per spec revision | 2026-10-15 |
-| **`mcp` Python SDK (`MCPServer`)** | Pinned `mcp==2.3.0` with `mcp-types==2.3.0` (`from mcp.server.mcpserver import MCPServer`; the 1.x `FastMCP` import raises on 2.x); `@mcp.tool()` decorators that return the function unchanged (the tests call tools directly); Pydantic v2 models | `src/agent_chat_mcp.py`, `requirements.txt` | github.com/modelcontextprotocol/python-sdk/releases | 2026-10-15 |
+| **Model Context Protocol spec** | stdio transport per CLI process; tools declared with JSON Schema; nothing written to stdout except JSON-RPC. Current revision is **2026-07-28** (stateless, no `initialize` handshake, `server/discover`); the server speaks it via `mcp` 2.x and still serves the 2025 `initialize` handshake to older clients; both are pinned by `tests/test_mcp_stdio.py` | `src/agent_chat_mcp.py` | modelcontextprotocol.io/specification/versioning and the changelog per spec revision | 2026-10-27 |
+| **`mcp` Python SDK (`MCPServer`)** | Pinned `mcp==2.3.0` with `mcp-types==2.3.0` (`from mcp.server.mcpserver import MCPServer`; the 1.x `FastMCP` import raises on 2.x); `@mcp.tool()` decorators that return the function unchanged (the tests call tools directly); Pydantic v2 models | `src/agent_chat_mcp.py`, `requirements.txt` | github.com/modelcontextprotocol/python-sdk/releases | 2026-10-27 |
 
 ## Supported CLIs
 
@@ -23,17 +23,16 @@ any of the three must keep the other two, and `tests/test_availability.py` / `te
 
 | Upstream | What the code assumes | Doc | Check at | Last checked |
 |:---|:---|:---|:---|:---|
-| **Claude Code** (`claude`) | Project `.mcp.json` or user-scope `~/.claude.json` `mcpServers`; prompt as a positional arg; `--dangerously-skip-permissions` | `claude.md` | code.claude.com/docs and the Claude Code changelog (github.com/anthropics/claude-code, `CHANGELOG.md`) | 2026-10-13 |
-| **Codex CLI** (`codex`) | `[mcp_servers.roundtable]` in `~/.codex/config.toml` or a trusted repo's `.codex/config.toml`; `--yolo` | `codex.md` | github.com/openai/codex/releases; MCP docs now at learn.chatgpt.com/docs/extend/mcp?surface=cli | 2026-10-13 |
-| **Gemini CLI** (`gemini`) | `mcpServers` in its `settings.json` | `gemini.md` | github.com/google-gemini/gemini-cli/releases; geminicli.com/docs/tools/mcp-server/ (says Antigravity CLI replaced Gemini CLI for unpaid and Google One users on 2026-06-18) | 2026-10-13 |
-| **Antigravity** (`agy`) | Project `mcpServers` in `.agents/mcp_config.json`; `-i <prompt>`; `--dangerously-skip-permissions`; `agy mcp add` manages global scope only (as of v1.1.16) | `antigravity.md` | antigravity.google/docs/getting-started?tab=cli (the `/docs/cli` page redirects there) | 2026-10-13 |
-| **OpenCode** (`opencode run`) | Auto-loads `opencode.json` from the launch dir; `--auto` skips permissions | `opencode.md` | opencode.ai/docs/mcp-servers/, opencode.ai/docs/cli/ and github.com/anomalyco/opencode/releases (`sst/opencode` redirects there) | 2026-10-13 |
+| **Claude Code** (`claude`) | Project `.mcp.json` or user-scope `~/.claude.json` `mcpServers`; prompt as a positional arg; `--dangerously-skip-permissions` | `claude.md` | code.claude.com/docs and the Claude Code changelog (github.com/anthropics/claude-code, `CHANGELOG.md`) | 2026-10-27 |
+| **Codex CLI** (`codex`) | `[mcp_servers.roundtable]` in `~/.codex/config.toml` or a trusted repo's `.codex/config.toml`; `--yolo` | `codex.md` | github.com/openai/codex/releases; MCP docs now at learn.chatgpt.com/docs/extend/mcp?surface=cli | 2026-10-27 |
+| **Antigravity** (`agy`) | Project `mcpServers` in `.agents/mcp_config.json`; `-i <prompt>`; `--dangerously-skip-permissions`; `agy mcp add` manages global scope only (as of v1.1.16) | `antigravity.md` | antigravity.google/docs/getting-started?tab=cli (the `/docs/cli` page redirects there) | 2026-10-27 |
+| **OpenCode** (`opencode run`) | Auto-loads `opencode.json` from the launch dir; `--auto` skips permissions | `opencode.md` | opencode.ai/docs/mcp-servers/, opencode.ai/docs/cli/ and github.com/anomalyco/opencode/releases (`sst/opencode` redirects there) | 2026-10-27 |
 
 ## Web UI, hosting, extension
 
 | Upstream | What the code assumes | Where | Check at | Last checked |
 |:---|:---|:---|:---|:---|
-| **Starlette, sse-starlette, uvicorn, Pydantic** | Exact pins in `requirements.txt` (Starlette 1.x) | `src/web_ui.py`, `src/web/` | PyPI release pages. Flag breaking majors and security advisories only | 2026-10-13 |
-| **Python** | 3.11+ locally (floor raised 2026-10-21: 3.10 hit EOL 2026-10-01 and `starlette` 1.8.0 requires 3.11); `python:3.14-slim` in the Docker image; 3.12 in CI | `Dockerfile`, `AGENTS.md`, `.github/workflows/ci.yml` | devguide.python.org/versions (EOL dates) | 2026-10-21 |
-| **Fly.io** | `fly.toml` keys (`[http_service]`, `auto_stop_machines = "stop"`, `[[vm]] size = "shared-cpu-1x"`, `[mounts]`); manual `fly deploy` | `fly.toml` | docs.fly.io/reference/configuration (fly.io/docs/... 301s there) and community.fly.io "Fresh Produce" | 2026-10-13 |
-| **Chrome / Firefox extensions** | Manifest V3 in both `manifest.json` and `manifest.firefox.json` | `extension/` | developer.chrome.com/docs/extensions/whatsnew; extensionworkshop.com | 2026-10-13 |
+| **Starlette, sse-starlette, uvicorn, Pydantic** | Exact pins in `requirements.txt` (Starlette 1.x) | `src/web_ui.py`, `src/web/` | PyPI release pages. Flag breaking majors and security advisories only | 2026-10-27 |
+| **Python** | 3.11+ locally (floor raised 2026-10-21: 3.10 hit EOL 2026-10-01 and `starlette` 1.8.0 requires 3.11); `python:3.14-slim` in the Docker image; 3.12 in CI | `Dockerfile`, `AGENTS.md`, `.github/workflows/ci.yml` | devguide.python.org/versions (EOL dates) | 2026-10-27 |
+| **Fly.io** | `fly.toml` keys (`[http_service]`, `auto_stop_machines = "stop"`, `[[vm]] size = "shared-cpu-1x"`, `[mounts]`); manual `fly deploy` | `fly.toml` | docs.fly.io/reference/configuration (fly.io/docs/... 301s there) and community.fly.io "Fresh Produce" | 2026-10-27 |
+| **Chrome / Firefox extensions** | Manifest V3 in both `manifest.json` and `manifest.firefox.json` | `extension/` | developer.chrome.com/docs/extensions/whatsnew; extensionworkshop.com | 2026-10-27 |
