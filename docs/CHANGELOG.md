@@ -4,6 +4,10 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 ## 2026-10-26 (latest)
 
+### Added — README links to Houston
+
+- A tip under *Quick start* points to [Houston](https://github.com/ai-automation-tools/houston), the Windows app that holds a browser and PowerShell tabs in one window, for running the web UI and each seat's CLI side by side.
+
 ### Fixed — the homepage's sample debates no longer link to conversations the mirror lacks
 
 - The *Sample debates* tile linked #14, #5, #6, #10 and #3, which exist locally but were never synced to the hosted mirror, so all five answered 404 on roundtable-demo (site checks, 2026-10-26). `src/web/render/home.py` now shows only the samples this deploy holds (`existing_conversation_ids()` in `src/web/db.py`) and drops the tile when it holds none. `tests/test_homepage.py` pins both cases.
