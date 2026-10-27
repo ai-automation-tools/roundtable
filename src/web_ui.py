@@ -141,8 +141,10 @@ from web.db import (  # noqa: E402,F401
 )
 from web.security import (  # noqa: E402,F401
     BasicAuthMiddleware,
+    CrossSiteWriteGuard,
     ExtensionCorsMiddleware,
     ReadOnlyMiddleware,
+    SecurityHeadersMiddleware,
     _build_middleware,
     _env_truthy,
     _is_public_readonly,

@@ -176,6 +176,58 @@ def _cors_headers(origin: str) -> dict[str, str]:
     }
 
 
+# ---------------------------------------------------------------------------
+# Cross-site write guard + security headers — always on
+# ---------------------------------------------------------------------------
+
+_EXTENSION_SCHEMES = ("chrome-extension://", "moz-extension://")
+
+
+class CrossSiteWriteGuard(BaseHTTPMiddleware):
+    """Refuse a browser mutation sent from another site (CSRF).
+
+    ``request.json()`` doesn't check Content-Type, so any page you browse
+    could fire a ``no-cors`` POST at the local instance and, through
+    /api/settings/delivery or /api/orchestrate, end up running commands.
+    Browsers always send ``Origin`` on a cross-origin POST, so a non-safe
+    request whose Origin isn't this host (or one of the browser extensions)
+    is answered 403. No Origin at all (curl, the MCP server, the sidecar)
+    passes: that is not a browser being tricked. ``X-Forwarded-Host`` counts
+    as this host too (a reverse proxy such as ``tailscale serve``); a
+    ``no-cors`` page can't set that header.
+    """
+
+    async def dispatch(self, request: Request, call_next):
+        origin = request.headers.get("origin")
+        hosts = {request.headers.get("host"), request.headers.get("x-forwarded-host")}
+        if (
+            request.method not in _SAFE_METHODS
+            and origin is not None
+            and not origin.startswith(_EXTENSION_SCHEMES)
+            and origin.partition("://")[2] not in hosts
+        ):
+            return JSONResponse(
+                {"error": "cross-site request refused"}, status_code=403
+            )
+        return await call_next(request)
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Baseline response headers. ``setdefault`` so a route's own CSP wins
+    (avatars set one). HSTS only when the request arrived over HTTPS."""
+
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        h = response.headers
+        h.setdefault("X-Content-Type-Options", "nosniff")
+        h.setdefault("X-Frame-Options", "DENY")
+        h.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        h.setdefault("Content-Security-Policy", "frame-ancestors 'none'")
+        if request.headers.get("x-forwarded-proto", request.url.scheme) == "https":
+            h.setdefault("Strict-Transport-Security", "max-age=31536000")
+        return response
+
+
 def _build_middleware() -> list[Middleware]:
     """Assemble the middleware stack from env-var feature flags.
 
@@ -194,7 +246,11 @@ def _build_middleware() -> list[Middleware]:
     that so a browser preflight (no Authorization header, by spec) isn't
     challenged into failing.
     """
-    stack: list[Middleware] = [Middleware(ExtensionCorsMiddleware)]
+    stack: list[Middleware] = [
+        Middleware(SecurityHeadersMiddleware),
+        Middleware(ExtensionCorsMiddleware),
+        Middleware(CrossSiteWriteGuard),
+    ]
     password = os.environ.get("AGENT_CHAT_BASIC_AUTH_PASSWORD")
     if password:
         user = os.environ.get("AGENT_CHAT_BASIC_AUTH_USER", "admin")

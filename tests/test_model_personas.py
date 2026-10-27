@@ -254,6 +254,20 @@ def test_retired_agent_id_still_renders() -> None:
     assert "gemini" in msg
 
 
+def test_a_persona_name_cannot_close_the_page_script() -> None:
+    """Persona names land in an inline <script>; one holding "</script>" (say,
+    from an imported card) must not end it early and run its own markup."""
+    _fresh_db()
+    from web.render.conversations import _render_conversation_main
+
+    evil = "</script><script>alert(1)</script>"
+    conv = _conv(["codex"], {"codex": {"persona_name": evil}})
+    conv["status"] = "completed"
+    html = _render_conversation_main({"conversation": conv, "messages": []}, [], False)
+    assert evil not in html
+    assert r"\u003c/script>\u003cscript>alert(1)" in html
+
+
 def test_cast_panel_degrades_when_no_cards_exist() -> None:
     """A DB with no AI-Models rows must not crash or invent a cast."""
     _fresh_db()  # deliberately not seeded

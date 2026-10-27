@@ -14,6 +14,13 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 - A tip under *Quick start* points to [Houston](https://github.com/ai-automation-tools/houston), the Windows app that holds a browser and PowerShell tabs in one window, for running the web UI and each seat's CLI side by side.
 
+### Security — cross-site writes refused, baseline headers, persona names escaped (security sweep)
+
+- A browser POST whose `Origin` isn't this host (or a browser extension) now gets 403 (`CrossSiteWriteGuard` in `src/web/security.py`). Before, any page you browsed could fire a no-CORS POST at the local instance. Requests with no `Origin` (curl, MCP, the sidecar) are unchanged.
+- Every response carries `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy` and `frame-ancestors 'none'`, plus HSTS over HTTPS (`SecurityHeadersMiddleware`). A route's own CSP still wins.
+- Persona names and agent visuals are escaped before going into the conversation page's inline script.
+- CI: `ci.yml` gets `permissions: contents: read`, and the pydantic-pin workflow passes `head_ref` through an env var instead of inlining it in `run:`. `.gitleaksignore` suppresses one docs placeholder.
+
 ### Fixed — the homepage's sample debates no longer link to conversations the mirror lacks
 
 - The *Sample debates* tile linked #14, #5, #6, #10 and #3, which exist locally but were never synced to the hosted mirror, so all five answered 404 on roundtable-demo (site checks, 2026-10-26). `src/web/render/home.py` now shows only the samples this deploy holds (`existing_conversation_ids()` in `src/web/db.py`) and drops the tile when it holds none. `tests/test_homepage.py` pins both cases.

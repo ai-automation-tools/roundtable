@@ -48,9 +48,10 @@ jobs:
         if: steps.align.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          HEAD_REF: ${{ github.head_ref }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -am "Pin pydantic_core ${{ steps.align.outputs.need }} to match pydantic"
           git push
-          gh workflow run ci.yml --ref "${{ github.head_ref }}"
+          gh workflow run ci.yml --ref "$HEAD_REF"
