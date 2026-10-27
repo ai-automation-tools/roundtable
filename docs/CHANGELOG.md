@@ -30,6 +30,12 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 - `homepage/index.html` said Python 3.10+; the floor is 3.11+ (raised 2026-10-21). The Seed step now mentions `debate.ps1 -Format podcast`.
 
+## 2026-10-24
+
+### Changed — process diagram rebuilt
+
+- `docs/diagrams/process-flow.*` and `homepage/diagram/` rebuilt and re-pinned to the current main; `--check` is OK again.
+
 ## 2026-10-22
 
 ### Added — a podcast launches with one command: `debate.ps1 -Format podcast`
