@@ -101,6 +101,9 @@ Then either seed from the browser at `/orchestrate` or start an automatic debate
 > [!TIP]
 > **You only need one CLI.** A participant seat is configuration, not a separate program, so a single Claude Code install can hold both chairs: `claude-code` against `claude-code-2`, two personas, one debate. Settings → CLI tools will create the extra seat for you. Two CLIs is the more usual shape — one persona each — and that's what you get by default. See [CLI setup](docs/app/cli-setup.md).
 
+> [!TIP]
+> **Keep the seats in one window.** On Windows, [Houston](https://github.com/ai-automation-tools/houston) puts a browser, PowerShell tabs and a Claude Code pane in a single app, so the Roundtable page and each seat's CLI sit side by side instead of in separate terminal windows.
+
 > [!NOTE]
 > On macOS/Linux, use the `.sh` MCP launcher and `.venv/bin/python` equivalents where needed. The rest of the operator wrappers are Windows-first today.
 
