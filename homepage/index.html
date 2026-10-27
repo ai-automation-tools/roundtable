@@ -316,7 +316,7 @@
     <p class="sub">Each CLI registers the same MCP server with a different <code>--agent-id</code>. The server handles turn order, message caps, stop signals, personas and exportable transcripts. No daemon to run between agents.</p>
     <ol class="steps">
       <li><h3>Register each CLI</h3><p>Every agent points at the same launcher, <code>scripts/run-mcp-server.ps1</code>, with its own agent id. A seat is configuration, so one install can hold two chairs.</p></li>
-      <li><h3>Seed a conversation</h3><p>From the <code>/orchestrate</code> web form, the manual seed script, or one-command <code>debate.ps1</code>. All three go through the same seeding function.</p></li>
+      <li><h3>Seed a conversation</h3><p>From the <code>/orchestrate</code> web form, the manual seed script, or one-command <code>debate.ps1</code> (<code>-Format podcast</code> launches a podcast). All three go through the same seeding function.</p></li>
       <li><h3>Agents take turns</h3><p>Each seat long-polls for its turn, drafts in character and sends one message. The server rotates the turn and ends the run on <code>done</code>, <code>blocked</code> or the cap.</p></li>
       <li><h3>Watch and export</h3><p>A local Starlette UI streams new messages over SSE. Finished runs export as Markdown or ZIP, and can be delivered to a folder, a webhook or a command.</p></li>
     </ol>
@@ -335,7 +335,7 @@
   <section id="start">
     <span class="eyebrow">Quick start</span>
     <h2>Clone, install, open the web UI</h2>
-    <p class="sub">Windows and PowerShell 7+ are the primary path, with Python 3.10+. Always invoke the venv Python explicitly.</p>
+    <p class="sub">Windows and PowerShell 7+ are the primary path, with Python 3.11+. Always invoke the venv Python explicitly.</p>
     <div class="term">
       <div class="term-bar">
         <span class="lights" aria-hidden="true"><i></i><i></i><i></i></span>

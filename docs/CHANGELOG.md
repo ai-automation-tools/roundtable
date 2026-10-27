@@ -9,6 +9,10 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 - The *Sample debates* tile linked #14, #5, #6, #10 and #3, which exist locally but were never synced to the hosted mirror, so all five answered 404 on roundtable-demo (site checks, 2026-10-26). `src/web/render/home.py` now shows only the samples this deploy holds (`existing_conversation_ids()` in `src/web/db.py`) and drops the tile when it holds none. `tests/test_homepage.py` pins both cases.
 - Those five are local-only by choice (`config/sync-exclude.json`, curated 2026-09-16), so the tile now features five public debates instead: #11 (AI agents vs. junior engineers), #28 (social media under 16), #30 (licensing advanced AI), #36 (pop culture's creativity crisis) and #64 (sports betting). A new test fails if a sample is ever an excluded id; it skips where the operator-only exclude file isn't present, as in CI.
 
+### Docs — the homepage names the Python floor and the podcast launcher
+
+- `homepage/index.html` said Python 3.10+; the floor is 3.11+ (raised 2026-10-21). The Seed step now mentions `debate.ps1 -Format podcast`.
+
 ## 2026-10-22
 
 ### Added — a podcast launches with one command: `debate.ps1 -Format podcast`
