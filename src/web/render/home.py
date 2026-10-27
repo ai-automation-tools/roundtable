@@ -25,7 +25,7 @@ from orchestrator import personas as personas_registry
 
 from web.assets import HOME_CSS, LIGHT_CSS, THEME_BOOT_JS
 from web.avatars import avatar_url
-from web.db import list_featured_debates
+from web.db import existing_conversation_ids, list_featured_debates
 from web.render.common import (
     FONTS_HEAD,
     REGISTRY_URL,
@@ -466,12 +466,15 @@ _RES_PROMPTS: tuple[tuple[str, str, str], ...] = (
     (f"{_REPO}/blob/main/prompts/Kickoff/kickoff.md", "Canonical kickoff template", "prompts/Kickoff/kickoff.md"),
 )
 # Sample debates are deep-links into THIS deploy's archive (internal, "→").
+# Only the ones this deploy holds are shown: the hosted mirror carries just the
+# conversations synced to it. Pick samples from the public set, never an id in
+# config/sync-exclude.json (those stay local-only by choice).
 _RES_SAMPLES: tuple[tuple[str, str, str], ...] = (
-    ("/conversations/14", "How credible is Bob Lazar?", "debate"),
-    ("/conversations/5", "The Fermi paradox", "debate"),
-    ("/conversations/6", "Simulation theory", "debate"),
-    ("/conversations/10", "Brain ↔ CPU interface", "debate"),
-    ("/conversations/3", "Future of tech jobs", "claude-code · codex"),
+    ("/conversations/11", "AI agents vs. junior engineers", "debate"),
+    ("/conversations/28", "Social media under 16", "debate"),
+    ("/conversations/30", "Licensing advanced AI", "debate"),
+    ("/conversations/36", "Pop culture's creativity crisis", "debate"),
+    ("/conversations/64", "Sports betting: America's new addiction", "debate"),
 )
 _RES_STACK: tuple[tuple[str, str, str], ...] = (
     ("https://modelcontextprotocol.io", "Model Context Protocol", "modelcontextprotocol.io"),
@@ -536,6 +539,15 @@ def _render_homepage_res_extra_tiles() -> str:
     return clis + mcp + skills + personas + extension + setup
 
 
+def _render_homepage_samples() -> str:
+    """The 'Sample debates' tile, limited to conversations this deploy has.
+    No tile at all when it has none of them."""
+    have = existing_conversation_ids([int(h.rsplit("/", 1)[1]) for h, _, _ in _RES_SAMPLES])
+    links = [_res_link(h, l, s, external=False, glyph="→")
+             for h, l, s in _RES_SAMPLES if int(h.rsplit("/", 1)[1]) in have]
+    return _res_tile("Sample debates", links) if links else ""
+
+
 def _render_homepage_res_groups() -> str:
     """Link tiles under the 'Resources' section.
 
@@ -549,8 +561,7 @@ def _render_homepage_res_groups() -> str:
     return (
         _res_tile("This project", [_res_link(h, l, s) for h, l, s in _RES_PROJECT])
         + _res_tile("Prompt library", [_res_link(h, l, s) for h, l, s in _RES_PROMPTS])
-        + _res_tile("Sample debates",
-                    [_res_link(h, l, s, external=False, glyph="→") for h, l, s in _RES_SAMPLES])
+        + _render_homepage_samples()
         + _res_tile("Stack & protocols", [_res_link(h, l, s) for h, l, s in _RES_STACK])
         + _res_tile("Author", [_res_link(h, l, s) for h, l, s in _RES_AUTHOR])
         + _render_homepage_res_extra_tiles()
