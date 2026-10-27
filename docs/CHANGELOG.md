@@ -2,7 +2,13 @@
 
 All notable changes to this repository. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
-## 2026-10-26 (latest)
+## 2026-10-27 (latest)
+
+### Fixed — the upstream worklist no longer lists the removed Gemini CLI
+
+- `docs/UPSTREAMS.md` dropped its Gemini CLI row (the seat was removed on 2026-10-22) and every row's *Last checked* moved to 2026-10-27. No upstream change needed a code fix this fortnight.
+
+## 2026-10-26
 
 ### Added — README links to Houston
 
