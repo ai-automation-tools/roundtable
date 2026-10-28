@@ -137,13 +137,19 @@ def _build_with_env(**env) -> list:
 def test_build_middleware_default_is_cors_only():
     # Both gates off, but the AgentBattleground CORS layer is unconditional —
     # it only ever acts on /api/battleground/* with a chrome-extension origin.
-    assert [m.cls for m in _build_with_env()] == [web_ui.ExtensionCorsMiddleware]
+    assert [m.cls for m in _build_with_env()] == [
+        web_ui.SecurityHeadersMiddleware,
+        web_ui.ExtensionCorsMiddleware,
+        web_ui.CrossSiteWriteGuard,
+    ]
 
 
 def test_build_middleware_readonly_only():
     stack = _build_with_env(AGENT_CHAT_PUBLIC_READONLY="1")
     assert [m.cls for m in stack] == [
+        web_ui.SecurityHeadersMiddleware,
         web_ui.ExtensionCorsMiddleware,
+        web_ui.CrossSiteWriteGuard,
         web_ui.ReadOnlyMiddleware,
     ]
 
@@ -151,7 +157,9 @@ def test_build_middleware_readonly_only():
 def test_build_middleware_basic_auth_only():
     stack = _build_with_env(AGENT_CHAT_BASIC_AUTH_PASSWORD="secret")
     assert [m.cls for m in stack] == [
+        web_ui.SecurityHeadersMiddleware,
         web_ui.ExtensionCorsMiddleware,
+        web_ui.CrossSiteWriteGuard,
         web_ui.BasicAuthMiddleware,
     ]
 
@@ -165,10 +173,57 @@ def test_build_middleware_both_auth_outermost():
     # before the read-only check runs — and CORS outside even that, so a
     # browser preflight (no Authorization header, by spec) isn't challenged.
     assert [m.cls for m in stack] == [
+        web_ui.SecurityHeadersMiddleware,
         web_ui.ExtensionCorsMiddleware,
+        web_ui.CrossSiteWriteGuard,
         web_ui.BasicAuthMiddleware,
         web_ui.ReadOnlyMiddleware,
     ]
+
+
+def _guarded_client() -> TestClient:
+    """The always-on layers (headers + cross-site write guard) around stand-ins."""
+
+    async def mutate(request):
+        return JSONResponse({"mutated": True})
+
+    app = Starlette(
+        routes=[Route("/api/settings/delivery", mutate, methods=["GET", "POST"])],
+        middleware=[
+            Middleware(web_ui.SecurityHeadersMiddleware),
+            Middleware(web_ui.CrossSiteWriteGuard),
+        ],
+    )
+    return TestClient(app, base_url="http://127.0.0.1:8765")
+
+
+def test_cross_site_post_is_refused():
+    r = _guarded_client().post("/api/settings/delivery", headers={"Origin": "https://evil.example"})
+    assert r.status_code == 403, r.status_code
+    r = _guarded_client().post("/api/settings/delivery", headers={"Origin": "null"})
+    assert r.status_code == 403, r.status_code
+
+
+def test_same_origin_extension_and_originless_posts_pass():
+    c = _guarded_client()
+    for headers in (
+        {"Origin": "http://127.0.0.1:8765"},
+        {"Origin": "chrome-extension://abcdef"},
+        {"Origin": "https://box.tailnet.ts.net", "X-Forwarded-Host": "box.tailnet.ts.net"},
+        {},
+    ):
+        r = c.post("/api/settings/delivery", headers=headers)
+        assert r.status_code == 200, (headers, r.status_code)
+
+
+def test_security_headers_are_set():
+    r = _guarded_client().get("/api/settings/delivery")
+    assert r.headers["x-content-type-options"] == "nosniff"
+    assert r.headers["x-frame-options"] == "DENY"
+    assert "frame-ancestors 'none'" in r.headers["content-security-policy"]
+    assert "strict-transport-security" not in r.headers  # plain http
+    r = _guarded_client().get("/api/settings/delivery", headers={"X-Forwarded-Proto": "https"})
+    assert "max-age=" in r.headers["strict-transport-security"]
 
 
 # ---------------------------------------------------------------------------

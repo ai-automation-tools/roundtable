@@ -2,16 +2,39 @@
 
 All notable changes to this repository. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
-## 2026-10-26 (latest)
+## 2026-10-27 (latest)
+
+### Fixed — the upstream worklist no longer lists the removed Gemini CLI
+
+- `docs/UPSTREAMS.md` dropped its Gemini CLI row (the seat was removed on 2026-10-22) and every row's *Last checked* moved to 2026-10-27. No upstream change needed a code fix this fortnight.
+
+## 2026-10-26
 
 ### Added — README links to Houston
 
 - A tip under *Quick start* points to [Houston](https://github.com/ai-automation-tools/houston), the Windows app that holds a browser and PowerShell tabs in one window, for running the web UI and each seat's CLI side by side.
 
+### Security — cross-site writes refused, baseline headers, persona names escaped (security sweep)
+
+- A browser POST whose `Origin` isn't this host (or a browser extension) now gets 403 (`CrossSiteWriteGuard` in `src/web/security.py`). Before, any page you browsed could fire a no-CORS POST at the local instance. Requests with no `Origin` (curl, MCP, the sidecar) are unchanged.
+- Every response carries `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy` and `frame-ancestors 'none'`, plus HSTS over HTTPS (`SecurityHeadersMiddleware`). A route's own CSP still wins.
+- Persona names and agent visuals are escaped before going into the conversation page's inline script.
+- CI: `ci.yml` gets `permissions: contents: read`, and the pydantic-pin workflow passes `head_ref` through an env var instead of inlining it in `run:`. `.gitleaksignore` suppresses one docs placeholder.
+
 ### Fixed — the homepage's sample debates no longer link to conversations the mirror lacks
 
 - The *Sample debates* tile linked #14, #5, #6, #10 and #3, which exist locally but were never synced to the hosted mirror, so all five answered 404 on roundtable-demo (site checks, 2026-10-26). `src/web/render/home.py` now shows only the samples this deploy holds (`existing_conversation_ids()` in `src/web/db.py`) and drops the tile when it holds none. `tests/test_homepage.py` pins both cases.
 - Those five are local-only by choice (`config/sync-exclude.json`, curated 2026-09-16), so the tile now features five public debates instead: #11 (AI agents vs. junior engineers), #28 (social media under 16), #30 (licensing advanced AI), #36 (pop culture's creativity crisis) and #64 (sports betting). A new test fails if a sample is ever an excluded id; it skips where the operator-only exclude file isn't present, as in CI.
+
+### Docs — the homepage names the Python floor and the podcast launcher
+
+- `homepage/index.html` said Python 3.10+; the floor is 3.11+ (raised 2026-10-21). The Seed step now mentions `debate.ps1 -Format podcast`.
+
+## 2026-10-24
+
+### Changed — process diagram rebuilt
+
+- `docs/diagrams/process-flow.*` and `homepage/diagram/` rebuilt and re-pinned to the current main; `--check` is OK again.
 
 ## 2026-10-22
 
