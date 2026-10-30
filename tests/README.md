@@ -1,13 +1,13 @@
 <h1 align="center">🧪 Tests</h1>
 
 <p align="center">
-  <em>Nineteen suites, no pinned test dependency. Every file is pytest-compatible<br>
+  <em>Twenty-two suites; only the browser one needs a test dependency. Every file is pytest-compatible<br>
   <b>and</b> standalone-runnable, against an isolated temp database.</em>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Suites-19-10b981?style=for-the-badge&labelColor=09090b" alt="19 suites">
-  <img src="https://img.shields.io/badge/Test_deps-none_pinned-71717a?style=for-the-badge&labelColor=09090b" alt="no pinned test deps">
+  <img src="https://img.shields.io/badge/Suites-22-10b981?style=for-the-badge&labelColor=09090b" alt="22 suites">
+  <img src="https://img.shields.io/badge/Test_deps-CI--only-71717a?style=for-the-badge&labelColor=09090b" alt="CI-only test deps">
   <img src="https://img.shields.io/badge/CI-GitHub_Actions-2088FF?style=for-the-badge&labelColor=09090b&logo=githubactions&logoColor=white" alt="GitHub Actions">
 </p>
 
@@ -26,6 +26,15 @@
 The dual-mode design is deliberate: it keeps `requirements.txt` free of a test
 dependency while still letting CI run the whole tree. The [`/smoke-test`](../.claude/commands/smoke-test.md)
 command walks the full manual checklist on top of these.
+
+The one exception is `test_orchestrate_browser.py`, which runs `/orchestrate`'s
+script in a real Chromium. Its Playwright pin lives in `requirements-dev.txt`, CI
+installs it, and the suite prints `SKIP` without it. To run it locally:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+.\.venv\Scripts\python.exe -m playwright install chromium
+```
 
 ## 📋 The suites
 
@@ -47,6 +56,7 @@ command walks the full manual checklist on top of these.
 | [**`test_delivery.py`**](test_delivery.py) | Delivery sinks **and the stall watchdog** (detection thresholds, notify-once-and-re-arm, the `stalled` payload, opt-in-like-every-event, dry-run mode, and greps of the module + the health-check script to keep it read-only and agent-safe). The load-bearing one: **the folder sink's output is compared byte-for-byte against the real `render_export_zip()`**, so "unzipped == the zip" survives any future export change (and catches Windows text-mode CRLF rewriting). Plus: off unless configured, malformed config treated as absent, `complete`-only default events, a failing sink taking neither the conversation nor the next sink down, and that **all three completion paths call `deliver()`**. |
 | [**`test_db_sync_watermarks.py`**](test_db_sync_watermarks.py) | The sidecar's two cursors, and the rule that **each runs on exactly one clock**. The push cursor used to fold in the mirror's `server_time`, so a local edit stamped behind it was never pushed and never would be — the watermark only grows. Headline case stamps an edit behind a year-2099 `server_time` and asserts the next tick ships it. Also pins the properties that made the old guard look reasonable: the pull cursor still advancing to `server_time`, a hosted-side delete still propagating, and the echo of a just-pulled row being **self-terminating** rather than ping-pong. Plus the `--force-push` rewind. |
 | [**`test_orchestrate_form.py`**](test_orchestrate_form.py) | The `/orchestrate` form's **inline browser JS**, by string invariants — the half no other suite could see. Every `getElementById` and root-scoped `[name=…]` lookup in the script resolves against the rendered page (or is a documented conditional control that is null-guarded everywhere), every `.class` selector exists in the markup or in the chair-row template the script builds, no bulk query runs at document scope, and a class the script bulk-hides lives only inside the container that owns it — the invariant broken when `updatePersonaRows()` caught the moderator's rows and shipped the host seat picker invisible. **It does not run the JS**: re-check the page in a browser before trusting a green run. |
+| [**`test_orchestrate_browser.py`**](test_orchestrate_browser.py) | The same form's JS **actually run**, in Playwright's headless Chromium with no server (`page.route` serves the page and captures `POST /api/orchestrate`): two chairs on one tool derive `tool` / `tool-2`, the podcast host picker stays visible, a sixth seat on one tool is refused before any POST, a format switch clamps the chair list, and a launch posts the derived ids plus a custom persona card. Covers the chair engine only. **Skips without Playwright** (`requirements-dev.txt`, CI-only). |
 | [**`test_inspect_tail.py`**](test_inspect_tail.py) | The `inspect_conversations tail` completion guard. |
 | [**`test_homepage.py`**](test_homepage.py) | The homepage renders self-contained (no CDN, so it works offline), in the shared topbar / rail / source bar, with the `#resources` anchor every page's rail links to. |
 | [**`test_site_homepage.py`**](test_site_homepage.py) | The static product homepage in `homepage/` (not the web UI's home): the demo, repo, org, cookie, changelog and roadmap links it exists for, the source bar first, every `blob/main/` link pointing at a file that exists, and `404.html` forwarding deep links to the `-demo` host. |
