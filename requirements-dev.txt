@@ -1,0 +1,9 @@
+# CI-only test dependencies. requirements.txt stays the runtime set, and every
+# suite still runs on it alone: tests/test_orchestrate_browser.py skips cleanly
+# without these. Pinned exactly, like requirements.txt (playwright + its deps).
+#   .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+#   .\.venv\Scripts\python.exe -m playwright install chromium
+-r requirements.txt
+greenlet==3.5.6
+playwright==1.64.1
+pyee==14.0.0

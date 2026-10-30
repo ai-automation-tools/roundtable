@@ -46,6 +46,11 @@ jobs:
       - name: Install pinned dependencies
         run: python -m pip install --upgrade pip && python -m pip install -r requirements.txt
 
+      # CI-only: tests/test_orchestrate_browser.py drives /orchestrate's JS in a
+      # real Chromium. Locally it skips unless you install these yourself.
+      - name: Install browser-test dependencies
+        run: python -m pip install -r requirements-dev.txt && python -m playwright install chromium
+
       - name: Import smoke test
         run: |
           python -c "import sys; sys.path.insert(0, 'src'); import agent_chat_mcp, web_ui, inspect_conversations, start_conversation; from orchestrator import seeding, preflight, personas; print('imports OK')"
