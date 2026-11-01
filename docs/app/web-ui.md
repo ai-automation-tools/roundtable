@@ -691,7 +691,7 @@ responses render in the red `.orch-error` panel. The submit button reflects
 state: `Running preflight…` → `Run preflight + start conversation`.
 
 > [!WARNING]
-> **None of this JS is ever executed by a test.** The suites assert on rendered
+> **Most of this JS is never executed by a test.** The suites assert on rendered
 > HTML strings, so markup that is present and correct passes even when a
 > selector hides it a frame later — which is exactly how the host seat picker
 > shipped invisible (`updatePersonaRows()` collected every `.orch-persona-row`,
@@ -707,8 +707,15 @@ state: `Running preflight…` → `Run preflight + start conversation`.
 > query runs at document scope, and a class the script bulk-hides appears
 > nowhere outside the container that owns it (`_BULK_HIDDEN_CLASSES`). Rename an
 > id, a `name=` or a row-template class on one side only and a test fails.
-> Behaviour — derived seat ids, the per-tool cap, format clamping, the
-> custom-card flow — is still on you and the browser.
+> Behaviour is pinned for the chair engine only, by
+> [`tests/test_orchestrate_browser.py`](../../tests/test_orchestrate_browser.py),
+> which loads the page into Playwright's headless Chromium (no server: `page.route`
+> serves it and captures `POST /api/orchestrate`): two chairs on one tool derive
+> `tool` and `tool-2`, the host picker is visible for a podcast, a sixth seat on
+> one tool is refused before any POST, a format switch clamps the chair list, and
+> a custom card rides the payload. Playwright is CI-only (`requirements-dev.txt`)
+> and the suite skips without it, so a bare-venv run exercises none of this.
+> Presets, extra seats, the recap and the toggles are still on you and the browser.
 
 ### Handler (`POST /api/orchestrate`)
 
