@@ -2,7 +2,14 @@
 
 All notable changes to this repository. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
-## 2026-10-27 (latest)
+## 2026-10-29 (latest)
+
+### Added — `/orchestrate`'s chair engine is tested in a real browser
+
+- New `tests/test_orchestrate_browser.py` loads the `/orchestrate` page into Playwright's headless Chromium and drives it: two chairs on one tool derive `tool` and `tool-2`, the podcast host picker is visible (the 2026-09 bug hid it), a sixth seat on one tool is refused before anything is posted, switching format clamps the chair list, and a launch posts the derived seat ids plus a custom persona card. No server runs; the test serves the page and captures the POST itself.
+- Playwright is CI-only. It is pinned in a new `requirements-dev.txt` (which pulls in `requirements.txt`), CI installs it and Chromium, and the suite prints `SKIP` on a venv without it, so `requirements.txt` and every other suite are unchanged. To run it locally: `pip install -r requirements-dev.txt`, then `python -m playwright install chromium`.
+
+## 2026-10-27
 
 ### Fixed — the upstream worklist no longer lists the removed Gemini CLI
 
