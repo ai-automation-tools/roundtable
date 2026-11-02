@@ -62,6 +62,7 @@ roundtable/
 │   ├── test_model_personas.py    #   AI-Models cards, reserved-group casting guard, Cast fallback
 │   ├── test_site_homepage.py     #   homepage/ keeps its required links + the 404 redirect
 │   ├── test_orchestrate_form.py  #   /orchestrate inline JS ↔ markup, by string invariants
+│   ├── test_orchestrate_browser.py # /orchestrate JS run in headless Chromium (skips without Playwright)
 │   └── test_inspect_tail.py      #   inspect `tail` completion guard (regression)
 ├── scripts/
 │   ├── README.md ★               # Script index, grouped by job (wire / run / serve / publish)
@@ -153,6 +154,7 @@ roundtable/
 ├── .github/workflows/ci.yml      # CI on push/PR: deps · import/compile · validate configs · tests
 ├── .claude/                      # Claude Code config (agents/ + commands/ + skills/ tracked)
 ├── requirements.txt              # Pinned: mcp, pydantic, starlette, markdown-it-py, …
+├── requirements-dev.txt          # CI-only test pins on top: Playwright for the browser suite
 ├── Dockerfile · fly.toml         # The hosted mirror (web UI only)
 └── .gitignore · .dockerignore
 ```
