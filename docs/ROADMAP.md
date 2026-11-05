@@ -16,7 +16,7 @@ The Roundtable roadmap routine (`Agent-Chat Weekly Roadmap`, Thursday 23:00) wor
 
 Items are records, not scratch: an item is never deleted, and work that only partly landed stays `- [ ]` with a dated `**(YYYY-MM-DD)** …` progress note appended to its line. Each open item says its type in italics after the title.
 
-Markers: `- [ ]` open, `- [-]` claimed by a run in progress, `- [x]` done, `- [!]` blocked (the reason follows on the line). `` `small` `` marks an item a check verifies; `🔒 Needs Mike` marks one only Mike can do.
+Markers: `- [ ]` open, `- [-]` claimed by a run in progress, `- [x]` done, `- [!]` blocked (the reason follows on the line). `` `small` `` marks an item a check verifies; `🔒 Needs owner` marks one only the owner can do.
 
 ## 🔨 Phase 1: Build the server, the web UI and the formats (done 2026-09-14)
 
