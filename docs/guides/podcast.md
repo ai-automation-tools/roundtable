@@ -111,7 +111,7 @@ interviewer, which is often what you want when the guests are the draw.
 
 A debate topic is a yes/no claim, and a guest handed one can only agree or
 disagree. Podcasts get their own library,
-[`Podcast-Topics.md`](../chat-topics/Podcast-Topics.md): 40 open questions
+[`Podcast-Topics.md`](../chat-topics/Podcast-Topics.md): 50 open questions
 (*what*, *how*, *why*) with a suggested guest count on each.
 `debate.ps1 -Format podcast` draws from it on its own and checks a topic off
 once it's used; for the terminal or the form, copy a line into `--topic` or the

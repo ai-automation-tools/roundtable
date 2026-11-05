@@ -1,4 +1,16 @@
-# 100 Debate Topics: Pop Culture, Science, and Technology (2026 Edition)
+# 120 Debate Topics: Pop Culture, Science, and Technology (2026 Edition)
+
+A debate topic is a **proposition**: a yes/no claim two or more sides can take
+and defend. That's the opposite of the other two libraries in this folder: a
+podcast needs an open question a guest can answer at length
+([`Podcast-Topics.md`](Podcast-Topics.md)), and a collaboration needs a task
+the room can finish ([`Collaboration-Topics.md`](Collaboration-Topics.md)).
+
+Format: a numbered `N. Title` line followed by a `- Debaters: N` line (2–5).
+`scripts\debate.ps1` picks an unused topic from this file at random and appends
+` ✅ <!--used DATE conv#ID-->` to its title line once it has seeded it. Delete
+the marker to put a topic back in the pool. Add new topics at the end with the
+next number. The parser doesn't care about numbering, but people do.
 
 ## Artificial Intelligence
 
@@ -319,3 +331,67 @@
 
 100. What technology developed today will most dramatically change life by 2050?
      - Debaters: 3
+
+## Creators, Tools & the AI Maker Economy
+
+101. Will AI-built games outnumber human-made games on major stores within five years?
+     - Debaters: 2
+
+102. Should game storefronts require disclosure when a game was mostly AI-generated?
+     - Debaters: 3
+
+103. Does lowering the barrier to making something make the average result better?
+     - Debaters: 3
+
+104. Should prompts be copyrightable?
+     - Debaters: 2
+
+105. Is "vibe coding" a real engineering skill?
+     - Debaters: 2
+
+106. Will one-person companies replace the traditional startup team?
+     - Debaters: 3
+
+107. Should platforms cap how much AI-generated content a single account can publish?
+     - Debaters: 3
+
+108. Is curation becoming more valuable than creation?
+     - Debaters: 2
+
+109. Should software engineers need a professional license like doctors and lawyers?
+     - Debaters: 3
+
+110. Will app stores survive when anyone can generate a custom app on demand?
+     - Debaters: 2
+
+## Everyday Life & Ethics
+
+111. Is tipping culture out of control?
+     - Debaters: 2
+
+112. Should the four-day work week become the legal standard?
+     - Debaters: 3
+
+113. Are pets better company than most people?
+     - Debaters: 2
+
+114. Should zoos exist in the 21st century?
+     - Debaters: 3
+
+115. Is homework worth keeping in primary school?
+     - Debaters: 2
+
+116. Should voting be mandatory?
+     - Debaters: 3
+
+117. Is a college degree still worth the cost?
+     - Debaters: 3
+
+118. Should billionaires exist?
+     - Debaters: 3
+
+119. Is it ethical to eat meat if lab-grown alternatives are equally good?
+     - Debaters: 3
+
+120. Should daylight saving time be abolished?
+     - Debaters: 2
