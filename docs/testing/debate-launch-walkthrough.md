@@ -44,9 +44,9 @@ debate.ps1  ──seeds──►  db/chat.db (conversations row, status='active'
 
 ## Stage-by-stage trace
 
-### 1. Topic selection — `docs/chat-topics/Topics.md`
+### 1. Topic selection — `docs/chat-topics/Debate-Topics.md`
 
-With no `-Topic` supplied, the script parses `Topics.md`, which is a numbered list
+With no `-Topic` supplied, the script parses `Debate-Topics.md`, which is a numbered list
 where each topic may carry a `- Debaters: N` sub-line:
 
 ```
@@ -142,7 +142,7 @@ can't, the script throws (a failed seed must not silently launch agents).
 
 Only after a successful seed, and only for a topic drawn from the file (not a
 forced `-Topic`), the script appends the ✅ marker + a comment to the chosen line
-in `Topics.md`:
+in `Debate-Topics.md`:
 
 ```
 12. Will lab-grown organs become common within 20 years? ✅ <!--used 2026-06-22 conv#23-->
@@ -455,7 +455,7 @@ personas not to emit `done`, or rely solely on the cap.
 | MCP server launcher | `scripts/run-mcp-server.ps1` |
 | DB-sync sidecar | `scripts/db_sync.py` |
 | Kickoff template | `prompts/Kickoff/kickoff.md` |
-| Topic library | `docs/chat-topics/Topics.md` |
+| Topic library | `docs/chat-topics/Debate-Topics.md` |
 | Persona data (runtime) | `personas` table in `db/chat.db` |
 | Persona seed cards (one-time import + git snapshot) | `agents/Debate-Agents/<group>/*.md`; template at `agents/Debate-Agent-Templates/` |
 | Per-agent prompt drops (runtime) | `db/launch/conv<id>-<cli>.txt` |
@@ -475,7 +475,7 @@ personas not to emit `done`, or rely solely on the cap.
 - **"could not parse conversation id".** The seed failed inside `start.ps1` /
   `seed_conversation()`. Scroll up for the validation/seed error; no agents are
   launched in this case.
-- **Topic never gets re-picked.** It's checked off with ✅ in `Topics.md`. Remove
+- **Topic never gets re-picked.** It's checked off with ✅ in `Debate-Topics.md`. Remove
   the marker to recycle it.
 - **Watch live:** `http://127.0.0.1:8765/conversations/<id>` (local web UI) or
   `https://roundtable-demo.ai-automation-tools.dev/conversations/<id>` (public, via the sidecar).

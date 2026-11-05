@@ -153,6 +153,30 @@ function Get-AvailableCliIds {
 }
 
 # --------------------------------------------------------------------------
+# Assert-SeatFolders — throw when a seat past the first has no config folder.
+#
+# Every launch path must call this before seeding. Without the folder the CLI
+# starts in a directory that doesn't exist, falls back to the tool's user-scope
+# MCP entry and joins as SEAT 1 — so a guest silently posts as the host. That is
+# what happened to conversation #65 (2026-11-05), launched with an explicit
+# -Cli list, which used to skip the check Get-PlannedSeats runs.
+# --------------------------------------------------------------------------
+function Assert-SeatFolders {
+    param(
+        [Parameter(Mandatory)] [string[]] $Seats,
+        [Parameter(Mandatory)] [string]   $RepoRoot
+    )
+    foreach ($seat in $Seats) {
+        $spec = Resolve-AgentSeat -AgentId $seat -RepoRoot $RepoRoot
+        if ($spec.Seat -ge 2 -and -not (Test-Path -LiteralPath (Join-Path $RepoRoot $spec.Dir))) {
+            throw ("seat '$seat' has no config folder ($($spec.Dir)). Create it with: " +
+                   ".\.venv\Scripts\python.exe scripts\setup\add_agent_seat.py --cli $($spec.Cli) --seat $($spec.Seat)" +
+                   "  (or use the 'Create the missing seat folders' button on http://127.0.0.1:8765/setup)")
+        }
+    }
+}
+
+# --------------------------------------------------------------------------
 # Get-PlannedSeats — deal $Count participant seats round-robin over $CliIds.
 #
 # Mirrors availability.plan_seats(): one seat per tool first, then a second on
@@ -184,14 +208,7 @@ function Get-PlannedSeats {
         }
         $index++
     }
-    foreach ($seat in $seats) {
-        $spec = Resolve-AgentSeat -AgentId $seat -RepoRoot $RepoRoot
-        if ($spec.Seat -ge 2 -and -not (Test-Path -LiteralPath (Join-Path $RepoRoot $spec.Dir))) {
-            throw ("seat '$seat' has no config folder ($($spec.Dir)). Create it with: " +
-                   ".\.venv\Scripts\python.exe scripts\setup\add_agent_seat.py --cli $($spec.Cli) --seat $($spec.Seat)" +
-                   "  (or use the 'Create the missing seat folders' button on http://127.0.0.1:8765/setup)")
-        }
-    }
+    Assert-SeatFolders -Seats $seats -RepoRoot $RepoRoot
     return $seats
 }
 

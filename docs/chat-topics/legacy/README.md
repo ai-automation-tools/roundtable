@@ -19,7 +19,7 @@
 
 > [!NOTE]
 > For topics you actually intend to run, use
-> [**`../Topics.md`**](../Topics.md) — it's the curated, de-duplicated, and
+> [**`../Debate-Topics.md`**](../Debate-Topics.md) — it's the curated, de-duplicated, and
 > check-off-tracked library these two fed into.
 
 ---

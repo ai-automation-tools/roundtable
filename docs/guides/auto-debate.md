@@ -21,6 +21,9 @@ does the whole thing for you.
 
 # The same, as a podcast: a host plus the topic's guests, from Podcast-Topics.md
 .\scripts\debate.ps1 -Format podcast -SkipPermissions
+
+# A collaboration: a task from Collaboration-Topics.md, its seat count and preset, no personas
+.\scripts\debate.ps1 -Format collaborate -SkipPermissions
 ```
 
 `-SkipPermissions` is what makes it truly hands-off — without it, Claude Code
@@ -51,8 +54,8 @@ Same as a manual run — see [`start-new-chat.md` Prerequisites](start-new-chat.
 
 ## What it does, step by step
 
-1. **Pick a topic** at random from `docs/chat-topics/Topics.md` (the
-   100-topic library). Already-used topics — those carrying a ✅ marker —
+1. **Pick a topic** at random from `docs/chat-topics/Debate-Topics.md` (the
+   120-topic library). Already-used topics — those carrying a ✅ marker —
    are skipped. Override with `-Topic "..."` to force a specific one.
 2. **Decide the debater count** from that topic's `- Debaters: N` line, then
    **deal that many seats over the CLIs you actually have.**
@@ -91,7 +94,7 @@ Same as a manual run — see [`start-new-chat.md` Prerequisites](start-new-chat.
 4. **Seed** via `scripts/start.ps1 --preset debate` (so the DB-sync
    sidecar comes up too) and capture the new conversation id.
 5. **Check the topic off** — on a successful seed, append a marker to the
-   topic's line in `Topics.md` so it won't be picked again:
+   topic's line in `Debate-Topics.md` so it won't be picked again:
    ```
    1. Should AI-generated content be clearly labeled everywhere online? ✅ <!--used 2026-06-16 conv#42-->
    ```
@@ -155,6 +158,8 @@ topic: Has social media made people less happy overall?
 | Flag | Effect |
 |:---|:---|
 | `-Format debate\|podcast` | `debate` (default) or `podcast`. A podcast seats a **host** first — the `--first` speaker and the `--host` — then the guests; draws topics from `docs/chat-topics/Podcast-Topics.md` (its `Guests:` line sets the guest count); casts the host from the `Debate-Hosts` group, falling back to any castable persona when that group is empty, as `/orchestrate` does; and seeds with `--type podcast --preset podcast`. With `-Format podcast`, `-Agents`, `-Personalities` and `-DefaultAgents` count **guests** (1–4), and a `-Cli` list leads with the host. See [the podcast guide](podcast.md). |
+| `-Format collaborate` | A collaboration. Without `-Topic` it draws an unused task from `docs/chat-topics/Collaboration-Topics.md`; the task's `Seats:` line is the **total** seat count (2–5, facilitator included) and its `Preset:` line the sub-type. The first seat is the facilitator, assigned by seat order exactly as `start_conversation.py` does. **No personas** are cast unless `-Personalities` (one per seat) or `-Group` asks for them. Seeds with `--type collaborate --preset <preset>`. See [the collaboration guide](collaborate.md). |
+| `-Preset <name>` | `-Format collaborate` only. Override the sub-type (`brainstorm`, `plan`, `decide`, `solve`, `code-review`, `audit`, `design`, `validate`, `collaborate`). Default: the task's `Preset:` line, else `collaborate`. |
 | `-HostPersona <name>` | `-Format podcast` only. Force the host's persona (slug or display name, any group) instead of a random draw. |
 | `-DryRun` | Do everything except seed + open windows. Prints the topic, persona→CLI mapping, prompt-file paths, and the exact launch command per agent. Writes nothing. **Run this first.** |
 | `-SkipPermissions` | Append each CLI's skip-approval flag so the run is fully hands-off. |
@@ -165,7 +170,7 @@ topic: Has social media made people less happy overall?
 | `-Personalities a,b[,c]` | Force personas by slug or display name (e.g. `crypto-chad` or `"Crypto Chad"`; a trailing `.md` is tolerated), resolved through the persona registry. Count must match the agent count. |
 | `-Group <name>` | **Optional** filter — restrict the random draw to one `"group"` value in the DB `personas` table (e.g. `-Group "Fictional Characters"`). **Omitted (default): draw from ALL groups.** Auto-discovered; casting reads the DB, not the folder. See [Changing the persona pool](#changing-the-persona-pool). |
 | `-MaxTurns N` | Per-agent message cap. Default: the preset's — `8` for `debate`, `10` for `podcast`. |
-| `-TopicsGlob <glob>` | Topic-library file(s), relative to repo root. Default `docs/chat-topics/Topics.md`, or `docs/chat-topics/Podcast-Topics.md` with `-Format podcast`. |
+| `-TopicsGlob <glob>` | Topic-library file(s), relative to repo root. Default `docs/chat-topics/Debate-Topics.md`, `docs/chat-topics/Podcast-Topics.md` with `-Format podcast`, or `docs/chat-topics/Collaboration-Topics.md` with `-Format collaborate`. |
 | `-ForceSidecar` | Forwarded to `start.ps1` as `-Force` (kill + relaunch the DB-sync sidecar). |
 
 ### Examples
@@ -212,7 +217,7 @@ By default the random cast is drawn from **every** persona group in the DB
 ## Managing the topic list
 
 - **Un-check one topic:** delete the trailing ` ✅ <!--...-->` from its line
-  in `docs/chat-topics/Topics.md`.
+  in `docs/chat-topics/Debate-Topics.md`.
 - **Reset everything:** find-and-replace the ✅ marker away across the file.
 - **All topics used:** the script aborts with a clear message — recycle by
   removing markers, or add new `N. Title` + `- Debaters: N` entries.
@@ -227,7 +232,7 @@ By default the random cast is drawn from **every** persona group in the DB
 |:---|:---|:---|
 | A CLI window opens then errors on the launch command | That CLI's flag/initial-prompt syntax changed | Edit the `$Clis` table at the top of `scripts/debate.ps1` |
 | "could not parse conversation id" | `start.ps1` seed failed (e.g. >1 sidecar running without `-Force`) | Re-run with `-ForceSidecar`, or check the `start.ps1` output above the error |
-| "all N topics ... are marked used" | The list is exhausted | Remove ✅ markers in `Topics.md` to recycle |
+| "all N topics ... are marked used" | The list is exhausted | Remove ✅ markers in `Debate-Topics.md` to recycle |
 | Claude keeps prompting for tool approval | Ran without `-SkipPermissions` | Add `-SkipPermissions` |
 | Window opens in the wrong folder / MCP server missing | CLI launched outside its `agents/CLIs/<name>_agent1/` folder | The script `cd`s for you; confirm the folder + its MCP config still exist |
 | Agent breaks character | Persona injection is a launch-time prompt, not enforced | Lower `-MaxTurns`, or pick stronger-voiced personas from `Debate-Agents/Unique-Personas` |

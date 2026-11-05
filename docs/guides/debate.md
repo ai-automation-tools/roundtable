@@ -45,7 +45,7 @@ All three write the same conversation row through the same
 ### The shortest one that works
 
 ```powershell
-# Picks a topic from the 100-topic library, casts random personas,
+# Picks a topic from the 120-topic library, casts random personas,
 # seeds, and launches every CLI hands-off.
 .\scripts\debate.ps1 -SkipPermissions
 ```

@@ -141,8 +141,9 @@ roundtable/
 │   ├── cli-mcp-config/ ★         # MCP registration — project + global, per CLI
 │   │   └── per-cli/ ★            #   Deep dives: claude · codex · antigravity · opencode
 │   ├── chat-topics/ ★            # Curated topic libraries
-│   │   ├── Topics.md             #   100 debate topics, ✅-checked-off as used
-│   │   ├── Podcast-Topics.md     #   40 podcast interview subjects, with guest counts
+│   │   ├── Debate-Topics.md      #   120 debate propositions, ✅-checked-off as used
+│   │   ├── Podcast-Topics.md     #   50 podcast interview subjects, with guest counts
+│   │   ├── Collaboration-Topics.md # 40 collaboration tasks, each with seats + preset
 │   │   └── legacy/ ★             #   Earlier 50-Topics-GPT / 50-Topics-Grok sets
 │   ├── setup/INITIAL_SETUP.md    # Bootstrap reproduction (git, venv, agent wiring) — single doc
 │   ├── testing/                  # debate-launch-walkthrough.md — single doc
@@ -171,7 +172,7 @@ README.md  (root — front door)
    │      ├─► docs/app/README.md         ─► the 9 app docs
    │      ├─► docs/diagrams/README.md    ─► process-flow.html (+ .png, .json)
    │      ├─► docs/cli-mcp-config/README.md ─► per-cli/README.md ─► the 6 CLI guides
-   │      └─► docs/chat-topics/README.md ─► Topics.md · Podcast-Topics.md · legacy/README.md
+   │      └─► docs/chat-topics/README.md ─► Debate-Topics.md · Podcast-Topics.md · Collaboration-Topics.md · legacy/README.md
    ├─► src/README.md · scripts/README.md · tests/README.md
    ├─► skills/README.md · prompts/README.md · extension/README.md
    └─► agents/README.md · images/README.md
