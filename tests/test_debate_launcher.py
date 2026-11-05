@@ -1,4 +1,4 @@
-r"""Tests for ``scripts/debate.ps1 -Format podcast`` — the one-command podcast launcher.
+r"""Tests for ``scripts/debate.ps1 -Format podcast|collaborate`` — the one-command launcher's non-debate formats.
 
 The launcher is PowerShell, so these cases run the real script with ``-DryRun``
 (it casts, plans seats and prints the seed command, but seeds nothing and opens
@@ -154,6 +154,72 @@ def test_the_printed_podcast_flags_seed_a_podcast() -> None:
         con.close()
     assert (conv_type, preset) == ("podcast", "podcast")
     assert json.loads(roles) == {"claude-code": "host", "antigravity": "guest", "codex": "guest"}
+
+
+def test_explicit_cli_list_refuses_a_seat_with_no_folder() -> None:
+    # Seat 5 of a tool is never created by setup or by a test, so its folder is
+    # absent on every machine. Before 2026-11-05 -Cli skipped this check and the
+    # CLI joined as seat 1 (conversation #65).
+    r = _run("-Topic", "x", "-Cli", "codex-5")   # -File passes "a,b" as ONE string
+    assert r.returncode != 0
+    out = r.stdout + r.stderr
+    assert "seat 'codex-5' has no config folder" in out, out
+    assert "add_agent_seat.py --cli codex --seat 5" in out, out
+    assert "would seed" not in out, out
+
+
+# --- -Format collaborate -----------------------------------------------------
+
+def test_collaborate_draws_a_task_its_seats_and_its_preset() -> None:
+    r = _run("-Format", "collaborate")
+    assert r.returncode == 0, r.stdout + r.stderr
+    seats = int(re.search(r"topic requests (\d+) seats", r.stdout).group(1))
+    preset = re.search(r"\[debate\] Preset: (\S+)", r.stdout).group(1)
+    seed = _seed_line(r.stdout)
+    participants = re.search(r"--participants (\S+)", seed).group(1)
+    assert len(participants.split(",")) == seats, (seats, participants)   # facilitator included
+    assert f"--preset {preset}" in seed and "--type collaborate" in seed, seed
+    # No personas unless asked: no card, no personas file.
+    assert "--participant-personas-file" not in seed, seed
+    assert re.search(r"claude-code\s+<- \(no persona\) \[facilitator\]", r.stdout), r.stdout
+    title = re.search(r"Topic \(random of .*?\): (.+)", r.stdout).group(1).strip()
+    library = (_ROOT / "docs" / "chat-topics" / "Collaboration-Topics.md").read_text(encoding="utf-8")
+    assert title in library, title
+
+
+def test_collaborate_preset_flag_wins_and_group_casts_personas() -> None:
+    r = _run("-Format", "collaborate", "-Topic", "Plan a picnic", "-Preset", "plan",
+             "-Agents", "2", "-Group", "Launcher-Test")
+    assert r.returncode == 0, r.stdout + r.stderr
+    seed = _seed_line(r.stdout)
+    assert "--preset plan" in seed and "--type collaborate" in seed, seed
+    assert "--participant-personas-file" in seed, seed
+    assert re.search(r"claude-code\s+<- Test Guest \d \[facilitator\]", r.stdout), r.stdout
+
+
+def test_preset_is_collaborate_only() -> None:
+    r = _run("-Topic", "x", "-Preset", "plan")
+    assert r.returncode != 0
+    assert "-Preset only applies" in (r.stdout + r.stderr), r.stdout + r.stderr
+
+
+def test_the_printed_collaborate_flags_seed_a_collaboration() -> None:
+    db = Path(_env()["AGENT_CHAT_DB"])
+    subprocess.run(
+        [str(_VENV_PY), str(_ROOT / "src" / "start_conversation.py"), "--db-path", str(db),
+         "--preset", "decide", "--topic", "Decide on a picnic spot.",
+         "--participants", "claude-code,antigravity,codex", "--first", "claude-code",
+         "--type", "collaborate"],
+        env=_env(), check=True, capture_output=True)
+    con = sqlite3.connect(db)
+    try:
+        conv_type, preset, roles = con.execute(
+            "SELECT conv_type, preset, participant_roles FROM conversations "
+            "ORDER BY id DESC LIMIT 1").fetchone()
+    finally:
+        con.close()
+    assert (conv_type, preset) == ("collaborate", "decide")
+    assert json.loads(roles)["claude-code"] == "facilitator", roles
 
 
 # ---------------------------------------------------------------------------

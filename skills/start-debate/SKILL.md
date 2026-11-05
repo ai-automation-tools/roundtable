@@ -42,7 +42,16 @@ One command picks a topic, **casts random personas, seeds the conversation, and 
 
 ### A podcast instead of a debate: `-Format podcast`
 
-The same script launches a podcast. `-Format podcast` puts a **host** in seat one — it opens, asks, and never argues a side — and the guests after it. It picks topics from `docs/chat-topics/Podcast-Topics.md` (open interview questions, each with a `Guests: N` line), casts the host at random from the `Debate-Hosts` group (any castable persona if that group is empty) unless `-HostPersona` names one, and seeds with `--type podcast --preset podcast`. With it, `-Agents` / `-Personalities` count **guests** (1–4; the host is one more seat), and a `-Cli` list leads with the host. Each agent reads its seat's instructions from `get_kickoff()`'s `role_brief`, so nothing else changes. Collaborations have no one-command launcher; use the web form or `start.ps1 --type collaborate`.
+The same script launches a podcast. `-Format podcast` puts a **host** in seat one — it opens, asks, and never argues a side — and the guests after it. It picks topics from `docs/chat-topics/Podcast-Topics.md` (open interview questions, each with a `Guests: N` line), casts the host at random from the `Debate-Hosts` group (any castable persona if that group is empty) unless `-HostPersona` names one, and seeds with `--type podcast --preset podcast`. With it, `-Agents` / `-Personalities` count **guests** (1–4; the host is one more seat), and a `-Cli` list leads with the host. Each agent reads its seat's instructions from `get_kickoff()`'s `role_brief`, so nothing else changes. 
+
+### A collaboration: `-Format collaborate`
+
+`-Format collaborate` launches a working session instead. With no `-Topic` it draws an unused **task** from `docs/chat-topics/Collaboration-Topics.md`; the task's `Seats: N` line is the **total** seat count (2–5, facilitator included) and its `Preset:` line the sub-type (`-Preset` overrides it). The first seat is the facilitator. **No personas are cast** unless the operator asks: `-Personalities` (one per seat) or `-Group`. It seeds with `--type collaborate --preset <preset>`.
+
+```powershell
+.\scripts\debate.ps1 -Format collaborate -DryRun
+.\scripts\debate.ps1 -Format collaborate -Topic "Plan our Q1 launch" -Preset plan -Agents 3 -SkipPermissions
+```
 
 ```powershell
 .\scripts\debate.ps1 -Format podcast -DryRun
@@ -74,9 +83,10 @@ Personas are cast **randomly** unless `-Personalities` forces them. There are en
 | Flag | Effect |
 |---|---|
 | `-DryRun` | Preview only — print topic, cast, and launch commands; open nothing. **Run this first.** |
-| `-Format debate\|podcast` | `debate` (default) or `podcast` — a host plus 1–4 guests, see above. |
+| `-Format debate\|podcast\|collaborate` | `debate` (default), `podcast` (a host plus 1–4 guests) or `collaborate` (2–5 seats, first one facilitates, no personas by default), see above. |
+| `-Preset <name>` | `-Format collaborate` only: the sub-type (`plan`, `decide`, `design`, …). Default: the task's `Preset:` line. |
 | `-HostPersona <name>` | Podcast only: force the host's persona. |
-| `-Topic "…"` | Force the topic. Omit for a random unused topic from `docs/chat-topics/Topics.md` (`Podcast-Topics.md` for a podcast). |
+| `-Topic "…"` | Force the topic. Omit for a random unused topic from `docs/chat-topics/Debate-Topics.md` (`Podcast-Topics.md` for a podcast, `Collaboration-Topics.md` for a collaboration). |
 | `-Group "<name>"` | Restrict the random persona draw to one group. Default: all castable groups (every group except reserved ones). |
 | `-Agents 2\|3\|4\|5` | Debater count. Seats are dealt over the CLIs the operator actually has — see below. |
 | `-Cli a,b[,c…]` | Force the exact seat set **and** order (e.g. `claude-code,opencode`); first = opener. Bypasses the availability check. Accepts numbered seats (`codex-2`). |

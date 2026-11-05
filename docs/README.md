@@ -58,7 +58,7 @@ Each folder below has its own index listing the documents inside it.
 | [**💻 app/**](app/README.md) | How it works: web UI, personas, kickoff prompts, delivery, AgentBattleground internals, and the export-format contract. |
 | [**🧭 diagrams/**](diagrams/README.md) | The multi-agent process flow the [homepage](https://roundtable.ai-automation-tools.dev/#how) shows: seed → kickoff → turn loop → commit → SSE, watchdog and delivery. Interactive, every node linked to its code, and drift-checked in CI. |
 | [**🔌 cli-mcp-config/**](cli-mcp-config/README.md) | Registering the `roundtable` MCP server — the consolidated project-vs-global reference, plus a [deep dive per CLI](cli-mcp-config/per-cli/README.md). |
-| [**💬 chat-topics/**](chat-topics/README.md) | Curated topic libraries — 100 debate propositions, 40 podcast interview subjects (open questions, with a guest count each), and the archived originals. |
+| [**💬 chat-topics/**](chat-topics/README.md) | Curated topic libraries, one per conversation type: 120 debate propositions, 50 podcast interview subjects (open questions, with a guest count each), 40 collaboration tasks (each with a seat count and preset), and the archived originals. |
 | [**⚙️ setup/**](setup/INITIAL_SETUP.md) | One-time bootstrap reproduction: git, venv, agent wiring. *(single document)* |
 | [**🧪 testing/**](testing/debate-launch-walkthrough.md) | Tracing an auto-debate launch end to end — spawners, base64 args, persona selection. *(single document)* |
 
