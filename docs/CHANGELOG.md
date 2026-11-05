@@ -2,7 +2,18 @@
 
 All notable changes to this repository. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
-## 2026-10-29 (latest)
+## 2026-11-05 (latest)
+
+### Changed — one topic library per conversation type
+
+- `docs/chat-topics/Topics.md` is renamed **`Debate-Topics.md`**, so each library's name says which type it serves. `scripts/debate.ps1` now defaults to it (still overridable with `-TopicsGlob`); the start-debate skill, the debate/auto-debate guides, the launch walkthrough and the prompt library point at the new name. ✅ markers carried over unchanged.
+- New **`Collaboration-Topics.md`**: 40 tasks for a collaboration, five per sub-type (`brainstorm`, `plan`, `decide`, `solve`, `design`, `validate`, `audit`, open `collaborate`). Each has a `- Seats: N` line (2–5, facilitator included) and the `- Preset:` it was written for.
+- More topics: the debate library grows from 100 to 120 (*Creators, Tools & the AI Maker Economy* and *Everyday Life & Ethics*), and the podcast library from 40 to 50 (*Making Things in the Age of AI* and *Sport, Play & Competition*). The debate file gains a header explaining its format and how the ✅ marker works.
+- **`scripts/debate.ps1 -Format collaborate`**: the one-command launcher now covers collaborations. With no `-Topic` it picks an unused task from `Collaboration-Topics.md` and takes its seat count and preset; the first seat facilitates. New `-Preset` flag overrides the sub-type. No personas are cast unless `-Personalities` or `-Group` asks, so no personas file is written or passed to the seed. Debate and podcast launches are unchanged. Closes the collaboration half of the Roadmap row's sub-item (d) and the matching open question.
+- **Fixed: `debate.ps1 -Cli` now refuses a seat with no config folder**, before seeding, and prints the `add_agent_seat.py` command that creates it. The check used to run only when the launcher planned the seats itself, so an explicit `-Cli claude-code,claude-code-2,claude-code-3` with no seat-3 folder launched that CLI anyway; it fell back to the user-scope MCP entry and joined as `claude-code` (seat 1), able to post as the host (conversation #65). The check is now one function, `Assert-SeatFolders` in `scripts/lib/spawn-agents.ps1`, used by both paths.
+- `docs/chat-topics/README.md` lists all three libraries side by side (type, line shape, what picks from it) with a launch example for each. New `tests/test_topic_libraries.py` pins the debate and collaboration shapes, checks every `- Preset:` names a real collaborate preset, and checks the launcher points at `Debate-Topics.md`.
+
+## 2026-10-29
 
 ### Added — `/orchestrate`'s chair engine is tested in a real browser
 

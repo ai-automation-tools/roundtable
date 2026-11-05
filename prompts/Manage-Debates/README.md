@@ -32,7 +32,7 @@ UI on port `8765`.
         ├─ 👀 watch   ── inspect_conversations.py list / show / tail · web UI
         ├─ 🛑 stop    ── inspect_conversations.py stop · web UI Stop/Delete
         ├─ 📤 export  ── /api/conversations/<id>/export.md · export.zip
-        ├─ 🎙️ cast    ── personas.py list / get · docs/chat-topics/Topics.md
+        ├─ 🎙️ cast    ── personas.py list / get · docs/chat-topics/Debate-Topics.md
         └─ 🩺 debug   ── preflight · db_sync sidecar · import smoke test
 ```
 

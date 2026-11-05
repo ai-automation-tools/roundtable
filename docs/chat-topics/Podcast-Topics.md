@@ -1,4 +1,4 @@
-# 40 Podcast Topics: Interview Subjects, Not Propositions (2026 Edition)
+# 50 Podcast Topics: Interview Subjects, Not Propositions (2026 Edition)
 
 A debate topic is a yes/no claim that two sides fight over. A podcast needs the
 opposite: a subject a host can open up and a guest can answer at length, in
@@ -10,7 +10,7 @@ always takes its own seat, so `- Guests: 2` means a three-seat run. A podcast
 allows 1–4 guests.
 
 Format: a numbered `N. Title` line followed by a `- Guests: N` line, the same
-shape as [`Topics.md`](Topics.md) with `Guests` in place of `Debaters`.
+shape as [`Debate-Topics.md`](Debate-Topics.md) with `Guests` in place of `Debaters`.
 `scripts\debate.ps1 -Format podcast` picks from this file and appends a ✅ to a
 topic's title line once it has seeded it. For a hand-seeded run, copy a line
 into `--topic` or the `/orchestrate` form.
@@ -150,3 +150,37 @@ into `--topic` or the `/orchestrate` form.
 
 40. What would you change first if you could redesign how people work?
     - Guests: 4
+
+## Making Things in the Age of AI
+
+41. What happens to video games when anybody can build and ship one in a weekend?
+    - Guests: 2
+
+42. What does a creative career look like when the tools can do most of the making?
+    - Guests: 2
+
+43. How do you find the good stuff when a thousand new apps, songs and games launch every hour?
+    - Guests: 3
+
+44. What did building your first project with an AI assistant teach you about your own taste?
+    - Guests: 1
+
+45. Which jobs around making software will matter more in ten years, not less?
+    - Guests: 2
+
+## Sport, Play & Competition
+
+46. What separates a great athlete from a merely talented one?
+    - Guests: 2
+
+47. How has data changed the way games are coached and played?
+    - Guests: 2
+
+48. What is it like to lose in front of millions of people?
+    - Guests: 1
+
+49. Why do people care so much about teams they will never play for?
+    - Guests: 3
+
+50. What does play do for adults that nothing else can?
+    - Guests: 2
