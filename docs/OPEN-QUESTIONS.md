@@ -6,12 +6,15 @@ Decisions the scheduled roadmap runs can't make on their own. Fill in an
 
 ## Open
 
+_None right now._
+
+## Answered
+
 ### `debate.ps1 -Format collaborate`: a task library, or a required `-Topic`? And cast personas or not?
 - Asked: 2026-10-29 by agent-chat-roadmap
 - Context: Roadmap row "Collaboration modes", sub-item (d), the last open part of the highest open item an unattended run can build. The podcast half shipped 2026-10-22 because `Podcast-Topics.md` gives each line a seat count. A collaboration's input is a task, not a proposition, and it usually runs without personas, so `debate.ps1`'s random topic + random cast pipeline doesn't fit as-is. Options: (1) `-Format collaborate` requires `-Topic` (the task) and `-Agents`, casts no personas unless `-Persona` is passed, and defaults the preset to `collaborate`'s default; (2) add a `docs/chat-topics/Collaborate-Tasks.md` library in the topic-file shape (`- Seats: N`, optional `- Preset:`) so it can pick at random like the other two formats. Recommendation: (1). It's smaller, a random task is rarely what an operator wants, and (2) can be added later without changing the flag.
-- Answer:
-
-## Answered
+- Answer: (2) A task library, picked at random when the operator doesn't pass `-Topic`. (Mike, 2026-11-05)
+- Built: 2026-11-05 — `docs/chat-topics/Collaboration-Topics.md` (`- Seats: N` total + `- Preset:`) and `debate.ps1 -Format collaborate` (+ `-Preset`). No personas unless `-Personalities` or `-Group` asks; the first seat facilitates.
 
 ### Add Playwright as a test dependency so `/orchestrate`'s JS actually runs in a test?
 - Asked: 2026-10-08 by agent-chat-roadmap

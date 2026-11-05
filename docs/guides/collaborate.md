@@ -136,6 +136,14 @@ shape of the closing `signal='result'` message, and changes nothing else —
 except `audit`, which also sets a visibility **protocol** (below). Leave
 it on `collaborate` and the room just follows your topic.
 
+> [!TIP]
+> Need a task? [`Collaboration-Topics.md`](../chat-topics/Collaboration-Topics.md)
+> has 40 ready-made ones, each tagged with the sub-type it was written for and a
+> seat count. `.\scripts\debate.ps1 -Format collaborate` picks one at random,
+> seats it, and launches every CLI in one go (no personas unless you pass
+> `-Personalities` or `-Group`; `-Topic` and `-Preset` override the draw). See
+> [the launcher guide](auto-debate.md).
+
 Two that deliberately are **not** here: *Prioritize* is `decide` with the
 options supplied, and *Spec* is `plan` with different headings. A sub-type earns
 its place by producing a different **artifact**, not by being about a different
