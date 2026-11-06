@@ -1,10 +1,8 @@
-<div align="center">
+<h1 align="center">🔔 Notifications</h1>
 
-# 🔔 Notifications
-
-**Be told when a run finishes, gets stuck, starts, or ships something**
-
-</div>
+<p align="center">
+  <strong>Be told when a run finishes, gets stuck, starts, or ships something</strong>
+</p>
 
 ---
 

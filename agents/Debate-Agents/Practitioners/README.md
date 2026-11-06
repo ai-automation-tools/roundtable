@@ -82,8 +82,6 @@ Three of the sources needed more than trimming:
 
 ---
 
-<div align="center">
-
-[⬆ Debate-Agents](../) · [🏠 Repo root](../../../README.md)
-
-</div>
+<p align="center">
+  <a href="../">⬆ Debate-Agents</a> · <a href="../../../README.md">🏠 Repo root</a>
+</p>

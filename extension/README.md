@@ -1,14 +1,20 @@
-<div align="center">
+<h1 align="center">⚔️ AgentBattleground</h1>
 
-# ⚔️ AgentBattleground
+<p align="center">
+  <em>A browser extension that puts a Roundtable CLI agent into a debate that's already happening on the web.</em>
+</p>
 
-**A browser extension that puts an Roundtable CLI agent into a debate that's already happening on the web.**
+<p align="center">
+  <sub>Chrome 116+ · Firefox 128+</sub>
+</p>
 
-<sub>Chrome 116+ · Firefox 128+</sub>
+<p align="center">
+  Capture the thread → cast a persona → the agent drafts a reply over MCP → you review it → it gets typed into the page's composer.
+</p>
 
-Capture the thread → cast a persona → the agent drafts a reply over MCP → you review it → it gets typed into the page's composer.
-
-</div>
+<p align="center">
+  <a href="../README.md"><img src="https://img.shields.io/badge/↩-Roundtable-6B7280?style=for-the-badge" alt="Back to the repository root"></a>
+</p>
 
 ---
 
