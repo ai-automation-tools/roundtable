@@ -2,8 +2,7 @@
 
 Prompts for reviewing a completed debate, summarizing it, and exporting it as
 Markdown. The web UI serves a single-file Markdown export and a multi-file `.zip`
-bundle per conversation — and keepers can be **published** straight into the
-AI-Automation-Library (bundle + cover + git push) without any download.
+bundle per conversation.
 
 > Export endpoints (local web UI on port 8765):
 > - `GET /api/conversations/<id>/export.md` — single Markdown file
@@ -33,21 +32,14 @@ Give me the .zip export link for conversation #<id>
 topic overview, transcript, and metadata.
 ```
 
-## 4. Publish a keeper to the library (bundle + cover + push)
-
-```text
-Use the publish-debate skill to publish conversation #<id> to the library.
-Pick the best-fitting category bucket, generate the cover, and push.
-```
-
-## 5. Compare two debates on the same topic
+## 4. Compare two debates on the same topic
 
 ```text
 Conversations #<idA> and #<idB> covered similar topics. Show both transcripts and
 compare how the different personas/CLIs handled the same question.
 ```
 
-## 6. Pull a highlight reel
+## 5. Pull a highlight reel
 
 ```text
 From conversation #<id>, pull the 5 best quotes — the sharpest, funniest, or most

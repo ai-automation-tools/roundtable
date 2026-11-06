@@ -1,25 +1,20 @@
 ---
 name: agent-chat-export-contract
-description: Use before changing anything about the Roundtable export bundle — src/orchestrator/export.py, the /export.md or /export.zip endpoints, scripts/publish_debate.py, the topic slug, persona filenames, or the transcript heading shape. The format is a frozen contract parsed by three external consumers, so a cosmetic rename silently breaks the library archive and the theater app. Triggered by "change the export", "export format", "publish a debate", "topic_slug", "bundle", "transcript.md".
+description: Use before changing anything about the Roundtable export bundle — src/orchestrator/export.py, the /export.md or /export.zip endpoints, the delivery folder sink, the topic slug, persona filenames, or the transcript heading shape. The format is a frozen contract parsed by whatever reads a download or a delivered folder, so a cosmetic rename silently breaks it. Triggered by "change the export", "export format", "topic_slug", "bundle", "transcript.md".
 ---
 
 # Roundtable export bundle — a frozen contract
 
 `src/orchestrator/export.py` is the **single source of truth** for bundle
-rendering. Three surfaces call it: the web downloads (`GET
-/api/conversations/{cid}/export.md`, `…/export.zip`) and
-`scripts/publish_debate.py`. Never reimplement rendering in `web_ui.py` or the
-publish script.
+rendering. Its callers: the web downloads (`GET
+/api/conversations/{cid}/export.md`, `…/export.zip`) and the delivery folder
+sink (`orchestrator/delivery.py`, which writes `bundle_files()` verbatim). Never
+reimplement rendering in `web_ui.py` or a sink.
 
-Its output is **parsed by external consumers that live in other repos**, so the
-format is effectively frozen. Read `docs/app/export-format.md` before changing
-any of it, and update the consumers in the same change:
-
-1. The **AI-Automation-Library** archive — `scripts/publish_debate.py` writes
-   `My-Library/Content/Agent-Debates/<Category>/<topic-slug>/`.
-2. The **library site walker**, which indexes those folders.
-3. The **debate-chat-theater** app, whose `build.mjs` parses the meta table, the
-   Cast section, the `## sender — timestamp` headings, and the persona cards.
+Its output is **parsed by whatever an operator points at a download or a
+delivered folder** — the meta table, the Cast section, the `## sender —
+timestamp` headings, and the persona cards — so the format is effectively
+frozen. Read `docs/app/export-format.md` before changing any of it.
 
 ## What is frozen
 
@@ -49,7 +44,7 @@ section) are usually safe; **renames break consumers**.
   `re.sub(r"[^a-z0-9]+", "-")` → `strip("-")` → truncate to 25 →
   `rstrip("-")`. Returns `""` when nothing is usable, and callers
   (`export_filename` / `export_zip_filename`) fall back to `conversation-<id>`.
-  **The 25 is load-bearing** — it's the archive's folder name.
+  **The 25 is load-bearing** — it names every download and delivered folder.
 - **Bundle contents** (`bundle_files()`) — `topic.md`, one
   `personas/<agent>[-<slug>].md` per participant, and `transcript.md`.
   `cover-image.png` is deliberately **not** in the bundle.
@@ -78,8 +73,8 @@ refers to `safe()`; the actual name is `safe_name()`.)
 1. Read `docs/app/export-format.md` first — it is the contract document.
 2. Prefer **additive**. A new optional row or section won't break a parser that
    looks for known labels.
-3. If you rename or reshape anything, update all three consumers in the same
-   change and say so explicitly in `docs/CHANGELOG.md`.
+3. If you rename or reshape anything, say so explicitly in `docs/CHANGELOG.md` —
+   folders already on disk keep the old shape.
 4. Re-render a real bundle and diff it against the previous output before
    committing — `GET /api/conversations/<cid>/export.md` on a finished
    conversation is the cheapest check.

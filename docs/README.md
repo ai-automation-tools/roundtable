@@ -119,9 +119,9 @@ Documentation also lives next to the thing it documents. Each of these folders h
 | Folder | What it documents |
 |:---|:---|
 | [**🧩 src/**](../src/README.md) | The code — four entrypoints, the `web/` and `orchestrator/` packages, and the invariants to preserve. |
-| [**🛠️ scripts/**](../scripts/README.md) | Launchers and operator wrappers: the MCP launcher, `debate.ps1`, the sync sidecar, the publisher. |
+| [**🛠️ scripts/**](../scripts/README.md) | Launchers and operator wrappers: the MCP launcher, `debate.ps1`, the sync sidecar. |
 | [**🧪 tests/**](../tests/README.md) | The sixteen suites and how to run them without a pinned test dependency. |
-| [**🎯 skills/**](../skills/README.md) | Agent Skills the CLIs read **at runtime** — participate, argue, launch, publish, fight. |
+| [**🎯 skills/**](../skills/README.md) | Agent Skills the CLIs read **at runtime** — participate, argue, launch, fight. |
 | [**💬 prompts/**](../prompts/README.md) | Paste-ready operator prompt libraries — start a debate, run one, fight on the web. |
 | [**⚔️ extension/**](../extension/README.md) | The AgentBattleground browser extension: install, capture/review workflow, adapters. |
 | [**🤖 agents/**](../agents/README.md) | Per-CLI agent workspaces and the persona **seed** cards. |

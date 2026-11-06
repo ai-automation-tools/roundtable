@@ -2,7 +2,18 @@
 
 All notable changes to this repository. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
-## 2026-11-05 (latest)
+## 2026-11-06 (latest)
+
+### Removed — the Debate Chat Theater integration and the publish-to-library pipeline
+
+The Debate Chat Theater on the AI-Automation-Library site is being decommissioned, so Roundtable no longer feeds it or links to it.
+
+- **Publish pipeline gone.** `scripts/publish_debate.py`, the runtime skill `skills/publish-debate/`, and the `prompts/Auto-Debate/Debate-And-Publish/` prompts are deleted. The *publish a keeper* prompt is cut from `Manage-Debates/Review-And-Export/`, `start-debate` now points at the Export MD / Export ZIP buttons after a run, and the skills, scripts, prompts, repo-layout and agent docs no longer mention publishing into `My-Library/Content/Agent-Debates/`. Re-run `scripts/setup/setup-skill-links.ps1` (or delete the dangling `publish-debate` junction) on any other clone.
+- **Theater links gone.** `THEATER_URL`, the *Theater* rail row, the *Debate Chat Theater* command-palette entry, *Watch in Theater ↗* on the homepage's Featured runs panel, the `.feat-theater` / `.btn-thea` styles and the `thea` icon are removed, as are the link on the static `homepage/` and the README's Companion sites row. The Persona Registry link stays.
+- **Export format unchanged.** `/export.md` and `/export.zip` render exactly as before. `docs/app/export-format.md` and the code comments now name the consumers that remain — the downloads and the delivery folder sink. The generated image and audio prompts no longer suggest an `Agent-Debates/<slug>/` folder.
+- Roadmap: *Contain `publish_debate.py --category`* and *Cross-links between the three debate properties* are marked dropped.
+
+## 2026-11-05
 
 ### Changed — one topic library per conversation type
 

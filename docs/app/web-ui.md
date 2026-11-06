@@ -163,7 +163,7 @@ what makes the top of the page read as one bar rather than two.
 | | |
 |:---|:---|
 | **Brand row** | The rail opens with the **mark + wordmark** (a link home, and the artwork the browser tab shows) and the collapse toggle beside it on the same row. Identity used to sit in the topbar's left corner; it belongs at the top of the navigation it labels, and the toggle rides with it because collapsing the rail is chrome for the rail, not one more destination. Collapsed (or ≤720px) the two **stack**, mark over toggle — 64px has no room for a row, and dropping the mark would have traded the brand away for the toggle's new home. The row's own `border-bottom` does the separating (negative inline margins run it the rail's full width), so there is no `rail-sep` under it. |
-| **Order** | **Two groups, always in this order.** *This app* (`_NAV_ITEMS`): Home · Conversations · Orchestrate · Personas · Browser extension · Battleground · Settings. **Settings is one row, not three** — it is a tab strip over the three per-machine config files, and a rail row per config file would have been three answers to one question (see [Settings](settings.md)). The two AgentBattleground rows sit together on purpose — the puzzle piece explains the feature, the crosshair operates it. Then a separator and a `Resources` heading, then *everything else* (`_RESOURCE_NAV_ITEMS`): Resources · Persona Registry ↗ · Theater ↗. Home leads the first group: the rail is a hierarchy, not a toolbar. The split exists because pages this server renders and links that leave for the AI-Automation-Library site are different kinds of thing, and one undifferentiated column made "Theater" look like a page of this app. |
+| **Order** | **Two groups, always in this order.** *This app* (`_NAV_ITEMS`): Home · Conversations · Orchestrate · Personas · Browser extension · Battleground · Settings. **Settings is one row, not three** — it is a tab strip over the three per-machine config files, and a rail row per config file would have been three answers to one question (see [Settings](settings.md)). The two AgentBattleground rows sit together on purpose — the puzzle piece explains the feature, the crosshair operates it. Then a separator and a `Resources` heading, then *everything else* (`_RESOURCE_NAV_ITEMS`): Resources · Persona Registry ↗. Home leads the first group: the rail is a hierarchy, not a toolbar. The split exists because pages this server renders and links that leave for the AI-Automation-Library site are different kinds of thing, and one undifferentiated column made an external link look like a page of this app. |
 | **Active** | Pass `active="<key>"`. Lights the row, sets `aria-current="page"`, and draws a marker on the rail's outer edge — a second, non-colour signal, so "you are here" survives forced-colors and colour-blindness. `-8px` lands it on the rail's edge in *both* states (the rail's `padding-inline` is 8px). |
 | **Colour** | **Labels are one colour, the icons are ten.** Every label is white (`--text`) at rest and lit alike; the colour lives in the glyph, where each destination owns a hue as HSL parts (`--nav-h`/`--nav-s`/`--nav-l`, set by the `btn-*` classes). Hover and the current row tint their background and the edge marker with that same hue. Text that changed colour per row read as decoration; a coloured glyph beside white text reads as an *identity* for the destination. |
 | **Labels** | Visible when expanded. Collapsed, the title moves to a hover tooltip (`data-tip`) — gated on `html.rail-collapsed`, since expanded it would be pure noise. The title is **always** on `aria-label` too, so nothing depends on hover or CSS to identify a destination. Tooltips are suppressed under `@media (hover: none)`, where they'd only fire on tap and stick. |
@@ -1053,8 +1053,7 @@ through `markdown-it-py`'s `highlight=` callback.
 
 > **The renderers live in `src/orchestrator/export.py`** (since 2026-07-10),
 > imported into `web_ui.py` under their old underscore names — the same
-> functions also power `scripts/publish_debate.py`, which writes these files
-> straight into the AI-Automation-Library archive. The output format is a
+> functions also power the delivery folder sink. The output format is a
 > **contract** with downstream parsers — see
 > [`export-format.md`](export-format.md) before changing any shape below.
 
@@ -1169,8 +1168,8 @@ right:-6px`) and each tip was only 264px wide. Don't put them back per-button.
 Both are filled in from the conversation row: topic, format, seat roles, the
 cast, and each persona's card. Details worth knowing before changing them:
 
-- **Filenames use `export.topic_slug()`** — the same 25-char slug that joins the
-  DB, the library archive, and the theater app. Do not add a second slug rule.
+- **Filenames use `export.topic_slug()`** — the same 25-char slug that names the
+  export bundle and every delivered folder. Do not add a second slug rule.
   The folder shape matches the library's podcast episodes, so a finished bundle
   drops in without translation.
 - **The audio prompt links the transcript rather than embedding it.** It tells
@@ -1582,12 +1581,11 @@ the same PR**, plus a CHANGELOG entry. The duplication is annotated with a
 | Tweak the conversations browser or reader | `web/render/conversations.py` (`_conversations_rail()` / `_render_conversations_overview()` / `_render_conversation_main()`), styled by `_CONV_CSS` in `web/assets.py` (+ `BASE_CSS` for `.msg` cards). |
 | Adjust Markdown rendering | `_md` instance + the `_link_open_renderer` rule in `web/render/common.py`. |
 | Swap syntax-highlighting theme or version | `HIGHLIGHT_JS_HEAD` in `web/assets.py` (CDN URLs + `.hljs` background override). Restart `web_ui.py` (or redeploy) — clients pick up the new CDN on next page load. |
-| Change the export format | `render_export_markdown()` in `src/orchestrator/export.py` — but read [`export-format.md`](export-format.md) first; the format is a contract with the library archive + theater app. |
+| Change the export format | `render_export_markdown()` in `src/orchestrator/export.py` — but read [`export-format.md`](export-format.md) first; the format is a contract with whatever parses the downloads and delivered folders. |
 | Touch SSE behavior | `api_stream()` in `web/api/conversations.py` + the inline JS in `_render_conversation_main()`. |
 | Force-stop semantics | `stop_conversation()` in `web/db.py` + `api_stop()` in `web/api/conversations.py`. Mirror in `inspect_conversations.cmd_stop`. |
 | Auth | `web/security.py` (`BasicAuthMiddleware` + `_build_middleware()`). |
 | Ingest | `ingest_payload()` in `web/db.py` + `api_ingest()` in `web/api/sync.py`. Client: `scripts/db_sync.py`. |
 | Favicon / brand | `_MARK_ART` in `web/assets.py` — edit it once and both the tab icon (`FAVICON_SVG` + the `favicon()` route in `web_ui.py`) and the topbar corner mark (`MARK_SVG`, inlined by `_topbar()`) change together. Mirror it into `images/AgentChat-Images/icons/dark/favicon-agents-06-panel-dark.svg`. |
 | Add a conversation topic logo / re-tune which one a topic gets | The `TOPICS` table in `web/topics.py` (keywords + glyph + gradient; order = tie-break priority). Add a case to `tests/test_topics.py`. No migration — existing rows re-classify on next page load. |
-| Theater link | `THEATER_URL` in `web/render/common.py` (icon rail via `_NAV_ITEMS`, homepage Featured-debates panel, command palette). |
-| Persona Registry link | `REGISTRY_URL` in `web/render/common.py` (icon rail via `_NAV_ITEMS`, command palette). Both reach it through `window.__AB_LINKS`, set in `_CMDK_HTML`. |
+| Persona Registry link | `REGISTRY_URL` in `web/render/common.py` (icon rail via `_RESOURCE_NAV_ITEMS`, command palette — which reaches it through `window.__AB_LINKS`, set in `_CMDK_HTML`). |

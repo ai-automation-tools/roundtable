@@ -70,12 +70,6 @@ def render_markdown(text: str) -> str:
     """
     return _md.render(text or "")
 
-# Debate Chat Theater — the public cinematic viewer for published debates,
-# hosted on the AI-Automation-Library site. Rebuilt from Content/Agent-Debates/
-# on every Site deploy; only debates published via scripts/publish_debate.py
-# appear there.
-THEATER_URL = "https://library.mikesailab.com/tools/debate-chat-theater/"
-
 # Persona Registry — the public catalogue of downloadable persona cards, also on
 # the AI-Automation-Library site. Cards pulled from there are imported into a
 # local instance through /personas ("Import cards").
@@ -108,13 +102,6 @@ _NAV_ICONS = {
     "pers": (
         '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>'
         '<path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'
-    ),
-    "thea": (
-        '<rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>'
-        '<line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/>'
-        '<line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/>'
-        '<line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/>'
-        '<line x1="17" y1="7" x2="22" y2="7"/>'
     ),
     "reg": (
         '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>'
@@ -174,9 +161,9 @@ def _nav_svg(name: str) -> str:
 #
 # The rail is deliberately in TWO tables. `_NAV_ITEMS` is this app — pages this
 # server renders and the operator acts on. `_RESOURCE_NAV_ITEMS` is everything
-# else: reference material and the two sibling properties on the
+# else: reference material and the Persona Registry on the
 # AI-Automation-Library site. They used to sit in one undifferentiated column,
-# which made "Theater" look like a page of this app. `_sidebar()` renders the
+# which made an external link look like a page of this app. `_sidebar()` renders the
 # second group under a labelled separator so the distinction is visible rather
 # than implied by the little ↗ marker alone.
 _NAV_ITEMS: tuple[tuple[str, str, str, str, str, bool], ...] = (
@@ -196,7 +183,6 @@ _NAV_ITEMS: tuple[tuple[str, str, str, str, str, bool], ...] = (
 _RESOURCE_NAV_ITEMS: tuple[tuple[str, str, str, str, str, bool], ...] = (
     ("resources", "Resources", "/#resources", "res", "btn-res", False),
     ("registry", "Persona Registry", REGISTRY_URL, "reg", "btn-reg", True),
-    ("theater", "Theater", THEATER_URL, "thea", "btn-thea", True),
 )
 
 _GH_MARK = (
@@ -265,7 +251,7 @@ _CMDK_HTML = f"""
     </div>
   </div>
 </div>
-<script>window.__AB_LINKS = {{"theater": "{THEATER_URL}", "registry": "{REGISTRY_URL}", "github": "{GITHUB_URL}"}};</script>
+<script>window.__AB_LINKS = {{"registry": "{REGISTRY_URL}", "github": "{GITHUB_URL}"}};</script>
 {SHELL_JS}
 """
 
