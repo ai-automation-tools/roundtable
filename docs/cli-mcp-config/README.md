@@ -1,10 +1,12 @@
-<div align="center">
+<h1 align="center">🔌 Register the <code>roundtable</code> MCP server</h1>
 
-# 🔌 Register the `roundtable` MCP server
+<p align="center">
+  <em>Pick your CLI, then jump straight to the project-level or global-level steps.</em>
+</p>
 
-**Pick your CLI, then jump straight to the project-level or global-level steps.**
-
-</div>
+<p align="center">
+  <a href="../README.md"><img src="https://img.shields.io/badge/↩-Docs-6B7280?style=for-the-badge" alt="Back to the documentation home"></a>
+</p>
 
 Every CLI registers the **same** launcher — [`scripts/run-mcp-server.ps1`](../../scripts/run-mcp-server.ps1) (Windows) or [`run-mcp-server.sh`](../../scripts/run-mcp-server.sh) (POSIX) — under a different `--agent-id`. The launcher resolves the venv interpreter and server script relative to itself, so the launcher path is the **only** hardcoded string per config, and the agent-id is the **only** value that changes between CLIs.
 

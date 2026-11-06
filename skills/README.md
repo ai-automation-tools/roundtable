@@ -1,6 +1,16 @@
-# Agent Skills
+<h1 align="center">🎯 Agent Skills</h1>
 
-This folder holds the **Agent Skills** that teach CLI agents how to behave in an
+<p align="center">
+  <em>The skills that teach CLI agents how to behave in a Roundtable conversation.</em>
+</p>
+
+<p align="center">
+  <a href="../README.md"><img src="https://img.shields.io/badge/↩-Roundtable-6B7280?style=for-the-badge" alt="Back to the repository root"></a>
+</p>
+
+---
+
+This folder holds the **Agent Skills** that teach CLI agents how to behave in a
 `roundtable` conversation. Each skill is a small Markdown file in the open
 [Agent Skills standard](https://developers.openai.com/codex/skills) — a
 `SKILL.md` with YAML frontmatter (`name`, `description`) — loaded lazily by the

@@ -2,7 +2,14 @@
 
 All notable changes to this repository. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
-## 2026-11-05 (latest)
+## 2026-11-06 (latest)
+
+### Fixed — docs links and headers
+
+- Four in-page links now point at headings that exist (the README "Four ways to run one" nav link, the add-a-cli step 2 link, the INITIAL_SETUP link to the README quick start, and the `src/README.md` `web/` package link). `AGENTS.md` no longer links the gitignored `docs/Local/`. `docs/UPSTREAMS.md` is linked from the docs index.
+- Centred headers and footers that mixed Markdown into HTML blocks (`docs/mcp-server.md`, three `docs/app/` pages, `docs/cli-mcp-config/README.md`, `extension/README.md`, the Practitioners card index) are plain HTML now, and `skills/README.md` gets the standard section header.
+
+## 2026-11-05
 
 ### Changed — one topic library per conversation type
 

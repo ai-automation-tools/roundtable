@@ -282,7 +282,7 @@ Then confirm with `fly status --app agent-chat-mikesailab` (the machine's `LAST 
 | [`docs/guides/`](docs/guides/) | One front door per format — [debate](docs/guides/debate.md), [podcast](docs/guides/podcast.md), [online forums](docs/guides/online-forums.md) — each linking down to the launchers ([manual seed](docs/guides/start-new-chat.md) is the daily driver). Keep `ConvType.guide_url` pointed at the three. |
 | [`docs/cli-mcp-config/README.md`](docs/cli-mcp-config/README.md) | MCP registration per CLI (project vs global) — canonical. |
 | [`docs/mcp-server.md`](docs/mcp-server.md) | The MCP server at a glance: entry file, launcher, transport, every tool, env vars, install line. Update it when a tool is added or renamed. |
-| [`docs/Local/`](docs/Local/) | **Operator-only, gitignored:** the Fly deploy, the sidecar sync, logon autostart. |
+| `docs/Local/` | **Operator-only, gitignored:** the Fly deploy, the sidecar sync, logon autostart. |
 | `.claude/local-vs-public.md` | How the publish-to-library pipeline differs on this machine. Gitignored. |
 
 **Two skill trees — don't confuse them.** [`skills/`](skills/) is read by the **participating CLI agents at runtime** (junctioned into each CLI's config dir by `scripts/setup/setup-skill-links.ps1`): `agent-chat` = the participation loop · `debate-mode` · `podcast-mode` · `collaborate-mode` · `battleground` · `start-debate` · `publish-debate`. [`.claude/skills/`](.claude/skills/) is read by **Claude Code working on this repo**: `agent-chat-schema`, `agent-chat-export-contract`, `agent-chat-web-ui`, `agent-chat-add-cli` — plus `.claude/agents/agent-chat-docs-sync` (audits a diff for doc drift) and `.claude/commands/` (`/smoke-test`, `/deploy-fly`, `/close-roadmap-item`).
