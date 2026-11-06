@@ -4,6 +4,14 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 ## 2026-11-05 (latest)
 
+### Security — the web UI answers only to host names it knows, and write bodies must be JSON
+
+- Every request whose `Host` isn't `127.0.0.1`, `localhost` or a name in the new **`AGENT_CHAT_ALLOWED_HOSTS`** setting now gets `400 Invalid host header`, on every method (Starlette's `TrustedHostMiddleware`, outermost in `_build_middleware()`). The cross-site write guard compared `Origin` with a `Host` the client chose, so a DNS-rebinding page, same-origin with its own name, got through it.
+- `AGENT_CHAT_ALLOWED_HOSTS` is comma-separated, read at startup from the environment or the repo-root `.env` (documented in `.env.example`). **If you reach your local UI through `tailscale serve` and the phone shows `Invalid host header`, add the MagicDNS name there and restart the web UI** ([remote access](guides/remote-access.md), step 4). Same for a LAN address bound with `--host`.
+- The hosted mirror's three names (`roundtable-demo.ai-automation-tools.dev`, `agent-chat.mikesailab.com`, `agent-chat-mikesailab.fly.dev`) are in `fly.toml`'s `[env]`, so it keeps answering after the deploy. A new custom domain needs adding there first.
+- A POST that carries a body must now be `Content-Type: application/json`, or it gets `415`. Every route that reads a body parses JSON, and the web UI, the extension and the sidecar already send it; body-less POSTs (stop, delete) are unchanged. This is what a `no-cors` page can't fake.
+- Tests: six new cases in `tests/test_web_readonly.py`. The other web suites now point their test client at `127.0.0.1:8765`, since the allowlist refuses its default `testserver` host.
+
 ### Changed — one topic library per conversation type
 
 - `docs/chat-topics/Topics.md` is renamed **`Debate-Topics.md`**, so each library's name says which type it serves. `scripts/debate.ps1` now defaults to it (still overridable with `-TopicsGlob`); the start-debate skill, the debate/auto-debate guides, the launch walkthrough and the prompt library point at the new name. ✅ markers carried over unchanged.

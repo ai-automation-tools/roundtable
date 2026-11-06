@@ -33,6 +33,8 @@ import tempfile
 from pathlib import Path
 
 from starlette.testclient import TestClient
+# The Host allowlist (web.security) refuses TestClient's default "testserver".
+LOCAL = "http://127.0.0.1:8765"
 
 _ROOT = Path(__file__).resolve().parent.parent
 _SRC = _ROOT / "src"
@@ -273,7 +275,7 @@ def _client(readonly: bool = False):
             importlib.reload(web_ui)
             web_ui.set_db_path(str(Path(d) / "chat.db"))
             web_ui.db_init()
-            yield TestClient(web_ui.app)
+            yield TestClient(web_ui.app, base_url=LOCAL)
         finally:
             os.environ.pop("AGENT_CHAT_PUBLIC_READONLY", None)
             if saved_ro is not None:
