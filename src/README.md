@@ -34,7 +34,7 @@ working — the tests import them.
 | Module | Owns |
 |:---|:---|
 | [**`db.py`**](web/db.py) | Connection handling, the `SCHEMA` mirror + `_MIGRATIONS`, every SQL helper, and `set_db_path()` (which also exports `$AGENT_CHAT_DB`). |
-| [**`security.py`**](web/security.py) | `BasicAuthMiddleware`, `ReadOnlyMiddleware`, and `_build_middleware()` — what makes the hosted mirror refuse browser mutations. |
+| [**`security.py`**](web/security.py) | `BasicAuthMiddleware`, `ReadOnlyMiddleware`, the always-on Host allowlist (`allowed_hosts()`, `AGENT_CHAT_ALLOWED_HOSTS`) and `CrossSiteWriteGuard`, and `_build_middleware()` — what makes the hosted mirror refuse browser mutations. |
 | [**`assets.py`**](web/assets.py) | CSS / JS / SVG constants (`BASE_CSS`, `HOME_CSS`, `_CONV_CSS`, `_PERSONAS_CSS`, favicon). |
 | [**`avatars.py`**](web/avatars.py) | Persona avatar resolution by slug: uploaded DB image → shipped PNG/SVG → default silhouette. Serves `GET /avatars/{slug}`. |
 | [**`topics.py`**](web/topics.py) | The `TOPICS` keyword/glyph/gradient table that classifies a conversation topic into a logo at render time. No schema, no backfill. |

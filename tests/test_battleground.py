@@ -28,6 +28,8 @@ import tempfile
 from pathlib import Path
 
 from starlette.testclient import TestClient
+# The Host allowlist (web.security) refuses TestClient's default "testserver".
+LOCAL = "http://127.0.0.1:8765"
 
 _SRC = Path(__file__).resolve().parent.parent / "src"
 if str(_SRC) not in sys.path:
@@ -53,7 +55,7 @@ class _Env:
     def __enter__(self) -> _Env:
         web_ui.set_db_path(self.db_path)
         web_ui.db_init()
-        self.client = TestClient(web_ui.app)
+        self.client = TestClient(web_ui.app, base_url=LOCAL)
         return self
 
     def __exit__(self, *exc) -> None:

@@ -4,6 +4,10 @@ Two independent gates, both off by default (local dev stays fully writable):
 ``AGENT_CHAT_BASIC_AUTH_PASSWORD`` (HTTP basic) and
 ``AGENT_CHAT_PUBLIC_READONLY`` (reject browser mutations — the hosted
 Fly-mirror posture).
+
+Always on: a ``Host`` allowlist (``127.0.0.1``, ``localhost`` and
+``AGENT_CHAT_ALLOWED_HOSTS``), the cross-site write guard, and the baseline
+security headers.
 """
 
 from __future__ import annotations
@@ -11,11 +15,54 @@ from __future__ import annotations
 import base64
 import os
 import secrets
+from pathlib import Path
 
 from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
+
+
+# ---------------------------------------------------------------------------
+# Host allowlist — always on
+# ---------------------------------------------------------------------------
+
+# The repo-root .env (gitignored; names in .env.example). Same file
+# scripts/db_sync.py reads. The real environment wins over it.
+_ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
+
+_LOOPBACK_HOSTS = ("127.0.0.1", "localhost")
+
+
+def _env_file_value(name: str, path: Path = _ENV_FILE) -> str:
+    """``name``'s value in a KEY=VALUE .env file; empty when absent."""
+    try:
+        lines = path.read_text(encoding="utf-8-sig").splitlines()
+    except OSError:
+        return ""
+    for line in lines:
+        key, sep, value = line.strip().removeprefix("export ").partition("=")
+        if sep and key.strip() == name:
+            return value.strip().strip("\"'")
+    return ""
+
+
+def allowed_hosts() -> list[str]:
+    """Host names this server answers to.
+
+    Loopback always, plus the comma-separated ``AGENT_CHAT_ALLOWED_HOSTS``
+    (environment first, then ``.env``): a ``tailscale serve`` MagicDNS name,
+    the hosted mirror's domains. Without this list the cross-site write guard
+    compares ``Origin`` against a ``Host`` the client chose, which is exactly
+    what a DNS-rebinding page controls. A bare ``*`` is dropped rather than
+    honoured — it would switch the check off.
+    """
+    raw = os.environ.get("AGENT_CHAT_ALLOWED_HOSTS") or _env_file_value(
+        "AGENT_CHAT_ALLOWED_HOSTS"
+    )
+    extra = [h.strip().lower() for h in raw.split(",")]
+    return [*_LOOPBACK_HOSTS, *(h for h in extra if h and h != "*")]
 
 
 # ---------------------------------------------------------------------------
@@ -194,20 +241,36 @@ class CrossSiteWriteGuard(BaseHTTPMiddleware):
     is answered 403. No Origin at all (curl, the MCP server, the sidecar)
     passes: that is not a browser being tricked. ``X-Forwarded-Host`` counts
     as this host too (a reverse proxy such as ``tailscale serve``); a
-    ``no-cors`` page can't set that header.
+    ``no-cors`` page can't set that header. ``Host`` itself is pinned by the
+    allowlist layer outside this one.
+
+    A mutation that carries a body must also say ``application/json``: every
+    route that reads one parses JSON, and the three content types a ``no-cors``
+    form or fetch may send (``text/plain``, form-encoded, multipart) are not
+    it. A body-less POST (stop, delete) has nothing to declare and passes.
     """
 
     async def dispatch(self, request: Request, call_next):
+        if request.method in _SAFE_METHODS:
+            return await call_next(request)
         origin = request.headers.get("origin")
         hosts = {request.headers.get("host"), request.headers.get("x-forwarded-host")}
         if (
-            request.method not in _SAFE_METHODS
-            and origin is not None
+            origin is not None
             and not origin.startswith(_EXTENSION_SCHEMES)
             and origin.partition("://")[2] not in hosts
         ):
             return JSONResponse(
                 {"error": "cross-site request refused"}, status_code=403
+            )
+        has_body = (
+            request.headers.get("content-length", "0") not in ("", "0")
+            or "transfer-encoding" in request.headers
+        )
+        media_type = request.headers.get("content-type", "").split(";")[0].strip().lower()
+        if has_body and media_type != "application/json":
+            return JSONResponse(
+                {"error": "request body must be application/json"}, status_code=415
             )
         return await call_next(request)
 
@@ -244,9 +307,12 @@ def _build_middleware() -> list[Middleware]:
     unauthenticated request is challenged before the read-only check runs) —
     except for the always-on extension CORS layer, which sits outside even
     that so a browser preflight (no Authorization header, by spec) isn't
-    challenged into failing.
+    challenged into failing. The Host allowlist is outermost of all, on every
+    method: a request for a host this server doesn't serve gets 400 before
+    anything else looks at it.
     """
     stack: list[Middleware] = [
+        Middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts(), www_redirect=False),
         Middleware(SecurityHeadersMiddleware),
         Middleware(ExtensionCorsMiddleware),
         Middleware(CrossSiteWriteGuard),
