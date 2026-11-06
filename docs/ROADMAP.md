@@ -16,7 +16,7 @@ The Roundtable roadmap routine (`Agent-Chat Weekly Roadmap`, Thursday 23:00) wor
 
 Items are records, not scratch: an item is never deleted, and work that only partly landed stays `- [ ]` with a dated `**(YYYY-MM-DD)** …` progress note appended to its line. Each open item says its type in italics after the title.
 
-Markers: `- [ ]` open, `- [-]` claimed by a run in progress, `- [x]` done, `- [!]` blocked (the reason follows on the line). `` `small` `` marks an item a check verifies; `🔒 Needs Mike` marks one only Mike can do.
+Markers: `- [ ]` open, `- [-]` claimed by a run in progress, `- [x]` done, `- [!]` blocked (the reason follows on the line). `` `small` `` marks an item a check verifies; `🔒 Needs owner` marks one only the owner can do.
 
 ## 🔨 Phase 1: Build the server, the web UI and the formats (done 2026-09-14)
 
@@ -132,6 +132,17 @@ Everything that shipped before the repo went public, newest first.
 ## After public release
 
 Nothing below blocks go-live.
+
+### 🛡️ Security hardening (owner's code audit, 2026-10-30; work these first)
+
+Found in the owner's own static audit, inside its rules of engagement. Each item is the fix and its test; build them in this order, one per run, before anything else on this roadmap.
+
+- [ ] **Allow only known Host headers** *(Security)* — **What:** add Starlette `TrustedHostMiddleware` (or an equivalent check) as the outermost middleware in `_build_middleware()`, applied to every method, allowing `127.0.0.1`, `localhost` and an operator-configured proxy name (for example the `tailscale serve` host, read from `.env`). Also require `Content-Type: application/json` on JSON routes. **Why:** the cross-site write guard trusts the `Host` header, which the client controls. **Done when:** a test request with a foreign `Host` gets 400 on GET and POST, the configured proxy name still works, and `.env.example` documents the new setting.
+- [ ] **Exempt only the configured extension, only on the bridge routes** *(Security)* — **What:** apply the browser-extension origin exemption only under `/api/battleground/` and only for the configured AgentBattleground extension id(s); make `AGENT_CHAT_BATTLEGROUND_TOKEN` required for the bridge rather than optional. **Why:** today every `chrome-extension://` origin is exempt on every route. **Done when:** a test POST to `/api/settings/delivery` with `Origin: chrome-extension://otherid` is refused, and the configured extension still reaches the bridge with its token.
+- [ ] **Default orchestrated agents to approvals on** *(Security)* — **What:** default the "skip tool approvals" box on `/orchestrate` to unchecked; when it is ticked, launch each CLI with a restricted tool allowlist (the `roundtable` MCP tools only, the pattern `scripts/setup/add_agent_seat.py` already writes for Claude Code seat 2+) instead of a blanket bypass, and warn on the form when a custom or imported persona is combined with it. **Why:** untrusted persona and topic text reaches agents that run with approvals skipped. **Done when:** the default is off in the form and its browser test, and a launched seat's command line carries the allowlist, not the bypass flag.
+- [ ] **Mask notification targets in `GET /api/notifications`** *(Security)* — **What:** return a masked value (`https://hooks.slack.com/…/****abcd`) plus a `has_target` flag; on save, an unchanged masked value keeps the stored one. **Why:** webhook URLs and tokens are returned in full to the client. **Done when:** with a dummy webhook configured, the GET response no longer contains it, and saving the form unchanged keeps the stored value.
+- [ ] `small` **Scope `wait_for_verdict` by-id reads to the caller's seat** *(Security)* — **What:** the by-id branch queries `WHERE id = ? AND agent_id = ?` with `AGENT_ID`, like the default branch. **Done when:** a test in `tests/test_battleground.py` where seat B asks for seat A's draft id gets "no draft found".
+- [ ] `small` **Contain `publish_debate.py --category` inside the library folder** *(Security)* — **What:** `resolved = (library_root / category).resolve()`; refuse unless `resolved.is_relative_to(library_root.resolve())`. **Done when:** `--category ../x` exits with an error and writes nothing, in a test.
 
 ### 🔴 High
 
