@@ -33,6 +33,8 @@ import zipfile
 from pathlib import Path
 
 from starlette.testclient import TestClient
+# The Host allowlist (web.security) refuses TestClient's default "testserver".
+LOCAL = "http://127.0.0.1:8765"
 
 _SRC = Path(__file__).resolve().parent.parent / "src"
 if str(_SRC) not in sys.path:
@@ -67,7 +69,7 @@ def _fresh_db() -> Path:
 def _client() -> TestClient:
     import web_ui
 
-    return TestClient(web_ui.app)
+    return TestClient(web_ui.app, base_url=LOCAL)
 
 
 def _zip(entries: dict[str, bytes]) -> str:

@@ -16,8 +16,8 @@
 Roundtable is local-first: the web UI binds `127.0.0.1:8765` and has no login.
 This guide does **not** change that. It puts the loopback port on your own
 [Tailscale](https://tailscale.com) network, so every device signed into your
-tailnet can open it and nothing else can. One command, nothing to rebuild, no
-config file to edit.
+tailnet can open it and nothing else can. One command, nothing to rebuild, and
+at most one line in `.env`.
 
 > [!IMPORTANT]
 > **The network is the login.** Whoever reaches this page can do everything the
@@ -95,6 +95,15 @@ reboots. `--http=` is deliberate — see the box below.
 
 **4. Open it on your phone**: `http://my-pc.tailnet-name.ts.net:8765`. Add it to
 the home screen. Done.
+
+If the phone shows **`Invalid host header`**, the web UI is refusing the
+tailnet name: it answers only to `127.0.0.1`, `localhost` and the names you
+list. Add the host part of the URL to the repo-root `.env` (copy
+[`.env.example`](../../.env.example) if you have none) and restart the web UI:
+
+```
+AGENT_CHAT_ALLOWED_HOSTS=my-pc.tailnet-name.ts.net
+```
 
 > [!IMPORTANT]
 > **Use `--http=`, not the short form.** `tailscale serve --bg 8765` implies TLS.
@@ -181,6 +190,7 @@ tailscale serve --http=8765 off
 | Works on the PC, not on the phone | Run `tailscale status` on the PC and read the phone's row. `offline` means the phone's Tailscale client has gone to sleep (Android suspends it after an update, reboot, or battery optimisation). Opening the Tailscale app once wakes it. A `curl` on the PC proves nothing — the PC is always on the tailnet. |
 | Nothing resolves on the phone | Both devices signed into the **same** tailnet? MagicDNS on in the admin console? Type the full `http://…:8765` — Chrome's HTTPS-first mode drops the scheme you didn't type. |
 | **404 page not found**, plain text | That is `tailscale serve` itself: no handler matched the **Host** header. It is what you get when you open the tailnet **IP** instead of the name. Use the MagicDNS name. |
+| **`Invalid host header`**, plain text, status 400 | That is the web UI, not Tailscale: the `Host` it received isn't on its allowlist. Put the MagicDNS name in `AGENT_CHAT_ALLOWED_HOSTS` in `.env` and restart the web UI (step 4). |
 | **502**, empty body | `serve` is fine; its upstream is down. `curl http://127.0.0.1:8765/` on the PC. If nothing answers, `.\scripts\startup-app.ps1` (or wait for the health check). |
 | `tailscale serve --bg 8765` hangs, no output | It's trying to provision a TLS cert on a tailnet without HTTPS. Kill it, use `--http=8765`, or enable certificates first. |
 | Worked for months, then stopped, nothing changed | Node key expiry — the 180-day default. `Self.KeyExpiry` in `tailscale status --json`. Re-authenticate, then disable expiry for the PC. |
