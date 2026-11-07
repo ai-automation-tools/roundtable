@@ -27,6 +27,7 @@ from web.assets import HOME_CSS, LIGHT_CSS, THEME_BOOT_JS
 from web.avatars import avatar_url
 from web.db import existing_conversation_ids, list_featured_debates
 from web.render.common import (
+    PUBLIC_REGISTRY_URL,
     FONTS_HEAD,
     _conv_cast_label,
     _conv_debater_casts,
@@ -871,7 +872,7 @@ def _render_homepage_personas() -> str:
     grid = '<div class="cast-grid">' + "".join(cards) + "</div>"
     cta = (
         '<div class="more-link">'
-        f'<a href="/personas">Browse all {total} characters &rarr;</a></div>'
+        f'<a href="{PUBLIC_REGISTRY_URL}" target="_blank" rel="noopener">Browse all {total} characters in the persona registry &#8599;</a></div>'
     )
     return tiles_html + grid + cta
 

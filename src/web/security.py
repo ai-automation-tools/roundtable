@@ -15,7 +15,7 @@ import secrets
 from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import JSONResponse, Response
+from starlette.responses import JSONResponse, RedirectResponse, Response
 
 
 # ---------------------------------------------------------------------------
@@ -228,6 +228,32 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 
+class RegistryHostMiddleware(BaseHTTPMiddleware):
+    """On the persona registry's own hostname, serve ONLY the registry.
+
+    The registry is a separate site that happens to share this deployment
+    (and so its database). ``/`` opens it; the explorer, its downloads and the
+    avatars it shows are served; every other path — the console, the app,
+    the API — redirects to the same path on the demo, so the registry host
+    never turns into a second copy of the app.
+    """
+
+    async def dispatch(self, request: Request, call_next):
+        from web.render.common import DEMO_URL, PUBLIC_REGISTRY_HOST
+
+        if request.url.hostname != PUBLIC_REGISTRY_HOST:
+            return await call_next(request)
+        path = request.url.path
+        if path == "/":
+            return RedirectResponse("/personas", status_code=302)
+        own = (path == "/personas" or path.startswith(("/personas/", "/avatars/"))
+               or path == "/favicon.svg") and not path.startswith("/personas/manage")
+        if own:
+            return await call_next(request)
+        q = f"?{request.url.query}" if request.url.query else ""
+        return RedirectResponse(f"{DEMO_URL}{path}{q}", status_code=302)
+
+
 def _build_middleware() -> list[Middleware]:
     """Assemble the middleware stack from env-var feature flags.
 
@@ -248,6 +274,7 @@ def _build_middleware() -> list[Middleware]:
     """
     stack: list[Middleware] = [
         Middleware(SecurityHeadersMiddleware),
+        Middleware(RegistryHostMiddleware),
         Middleware(ExtensionCorsMiddleware),
         Middleware(CrossSiteWriteGuard),
     ]
