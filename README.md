@@ -31,7 +31,7 @@
 
 <p align="center">
   <a href="#-what-it-does">What it does</a> ·
-  <a href="#-three-ways-to-run-a-conversation">Three ways to run one</a> ·
+  <a href="#-four-ways-to-run-a-conversation">Four ways to run one</a> ·
   <a href="#-quick-start">Quick start</a> ·
   <a href="#-operator-workflows">Workflows</a> ·
   <a href="#-supported-clis--personas">CLIs &amp; personas</a> ·

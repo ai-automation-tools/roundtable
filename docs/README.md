@@ -70,6 +70,7 @@ Each folder below has its own index listing the documents inside it.
 | [**Changelog**](CHANGELOG.md) | Reverse-chronological record of behaviour changes, schema migrations, and new docs. |
 | [**Repo layout**](repo-layout.md) | Annotated source tree for the whole repository. |
 | [**MCP server**](mcp-server.md) | The `roundtable` server at a glance: entry file, launcher, stdio transport, every tool, its environment variables, the install line. |
+| [**Upstreams**](UPSTREAMS.md) | Every external protocol, CLI, library and platform the app depends on, with the version in use and when it was last checked. |
 | [**Open questions**](OPEN-QUESTIONS.md) | Decisions the scheduled roadmap runs need from the maintainer. A filled-in answer is applied on the next run. |
 
 ---
