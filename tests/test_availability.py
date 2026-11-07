@@ -550,7 +550,8 @@ def test_personas_explorer_and_console_link_to_each_other():
         explorer = client.get("/personas").text
         console = client.get("/personas/manage").text
         assert 'href="/personas/manage"' in explorer
-        assert "Browse the cast" in console and 'href="/personas"' in console
+        from web.render.common import PUBLIC_REGISTRY_URL
+        assert f'href="{PUBLIC_REGISTRY_URL}"' in console
         for page in (explorer, console):
             assert "persona-registry" not in page
 
@@ -564,16 +565,26 @@ def test_sidebar_personas_opens_the_console_and_registry_has_its_own_row():
         rail = page[page.index('<nav class="siderail"'):page.index("</nav>")]
         assert 'href="/personas/manage"' in rail
         sep = rail.index('<span class="rail-glabel">')
-        assert rail.index('href="/personas"') > sep
+        assert rail.index(f'href="https://{PUBLIC_REGISTRY_HOST}"') > sep
         assert PUBLIC_REGISTRY_HOST in client.get("/personas/manage").text
 
 
-def test_registry_hostname_root_redirects_to_the_explorer():
-    from web.render.common import PUBLIC_REGISTRY_HOST
+def test_registry_is_a_standalone_site_on_its_own_host():
+    # The registry is a separate site: no app rail on its pages, and on its
+    # hostname only the explorer is served; everything else goes to the demo.
+    from web.render.common import DEMO_URL, PUBLIC_REGISTRY_HOST
+    h = {"host": PUBLIC_REGISTRY_HOST}
     with _client() as client:
-        r = client.get("/", headers={"host": PUBLIC_REGISTRY_HOST}, follow_redirects=False)
+        r = client.get("/", headers=h, follow_redirects=False)
         assert r.status_code == 302 and r.headers["location"] == "/personas"
+        page = client.get("/personas", headers=h)
+        assert page.status_code == 200 and 'class="siderail"' not in page.text
+        for path in ("/conversations", "/personas/manage", "/settings?tab=clis"):
+            r = client.get(path, headers=h, follow_redirects=False)
+            assert r.status_code == 302 and r.headers["location"] == DEMO_URL + path, path
+        # Other hosts are untouched.
         assert client.get("/", follow_redirects=False).status_code == 200
+        assert client.get("/conversations").status_code == 200
 
 
 # ---------------------------------------------------------------------------

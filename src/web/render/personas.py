@@ -119,9 +119,8 @@ def _render_personas_page() -> str:
         '</div>'
         '<div class="pm-rail-foot">'
         '<button type="button" class="btn btn-primary" id="pm-newgrp">+ New group</button>'
-        f'<p class="pm-hint pm-reg">Browse, read and download cards in the '
-        f'<a href="{REGISTRY_URL}">persona registry</a> &middot; public at '
-        f'<a href="{PUBLIC_REGISTRY_URL}" target="_blank" rel="noopener">{PUBLIC_REGISTRY_HOST}</a></p>'
+        f'<p class="pm-hint pm-reg">Find more personas in the persona registry: '
+        f'<a href="{PUBLIC_REGISTRY_URL}" target="_blank" rel="noopener">{PUBLIC_REGISTRY_HOST}&nbsp;&#8599;</a></p>'
         '</div></aside>'
     )
 
@@ -136,10 +135,10 @@ def _render_personas_page() -> str:
         '<option value="za">Name Z&ndash;A</option></select>'
         '<button type="button" class="btn btn-primary" id="pm-new">+ New</button>'
         '<button type="button" class="btn" id="pm-import-open">Import</button>'
-        # Back to the browse view — the explorer, which is also where a card
-        # and its avatar download as a .zip this console's Import reads back.
-        f'<a class="btn pm-registry" href="{REGISTRY_URL}" '
-        'title="Browse, read and download persona cards">Browse the cast</a>'
+        # Out to the persona registry (a separate site), which is also where a
+        # card and its avatar download as a .zip this console's Import reads back.
+        f'<a class="btn pm-registry" href="{REGISTRY_URL}" target="_blank" rel="noopener" '
+        'title="Browse, read and download persona cards">Persona registry &#8599;</a>'
         '<button type="button" class="btn pm-sel-toggle" id="pm-sel-toggle">Select</button>'
         '</div></header>'
         '<div class="pm-colhead"><span></span><span>Persona</span><span>Slug</span>'
@@ -205,10 +204,9 @@ def _render_personas_page() -> str:
         '<div class="pm-modal" id="pm-modal">'
         '<div class="pm-modal-card">'
         '<h3>Import personas</h3>'
-        f'<p class="pm-hint">Don\'t have cards to import? Any '
-        f'<a href="{REGISTRY_URL}">persona explorer</a> &mdash; this app\'s, or the '
-        'public demo\'s &mdash; downloads a card and its avatar as one '
-        '<code>.zip</code>; drop it here.</p>'
+        f'<p class="pm-hint">Don\'t have cards to import? The '
+        f'<a href="{REGISTRY_URL}" target="_blank" rel="noopener">persona registry</a> '
+        'downloads a card and its avatar as one <code>.zip</code>; drop it here.</p>'
         '<p class="pm-hint">Select one or more <code>.md</code> cards (seed-card '
         'frontmatter) and/or a <code>.zip</code> archive. The filename becomes the '
         'slug; title, tags, and category come from the frontmatter.</p>'

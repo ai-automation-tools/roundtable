@@ -23,7 +23,7 @@ from orchestrator.personas import Persona
 
 from web.assets import EXPLORER_CSS
 from web.avatars import avatar_url, raster_avatar
-from web.render.common import _layout, render_markdown
+from web.render.common import _registry_layout, render_markdown
 from web.security import _is_public_readonly
 
 # Where the 2:3 cover portraits live: {PERSONA_MEDIA_URL}/covers/<slug>.webp,
@@ -207,8 +207,7 @@ def render_explorer(params: dict[str, str]) -> str:
         f'{controls}<nav class="px-cloud" aria-label="Tags">{cloud}</nav>{active}{grid}'
         '</div>'
     )
-    return _layout("Agent Personas", "<strong>Agent Personas</strong>", body,
-                   head_extras=EXPLORER_CSS, active="registry")
+    return _registry_layout("Browse", "", body, head_extras=EXPLORER_CSS)
 
 
 def find_persona(slug: str, group: str = "") -> Persona | None:
@@ -284,5 +283,5 @@ def render_persona_detail(p: Persona) -> str:
         f'<div class="msg-body">{render_markdown(p.body)}</div></section>'
         '</div>'
     )
-    crumbs = f'<a href="/personas">Agent Personas</a> / <strong>{html.escape(p.name)}</strong>'
-    return _layout(p.name, crumbs, body, head_extras=EXPLORER_CSS, active="registry")
+    return _registry_layout(p.name, f"/ <strong>{html.escape(p.name)}</strong>", body,
+                            head_extras=EXPLORER_CSS)
