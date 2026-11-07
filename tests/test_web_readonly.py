@@ -139,6 +139,7 @@ def test_build_middleware_default_is_cors_only():
     # it only ever acts on /api/battleground/* with a chrome-extension origin.
     assert [m.cls for m in _build_with_env()] == [
         web_ui.SecurityHeadersMiddleware,
+        web_ui.RegistryHostMiddleware,
         web_ui.ExtensionCorsMiddleware,
         web_ui.CrossSiteWriteGuard,
     ]
@@ -148,6 +149,7 @@ def test_build_middleware_readonly_only():
     stack = _build_with_env(AGENT_CHAT_PUBLIC_READONLY="1")
     assert [m.cls for m in stack] == [
         web_ui.SecurityHeadersMiddleware,
+        web_ui.RegistryHostMiddleware,
         web_ui.ExtensionCorsMiddleware,
         web_ui.CrossSiteWriteGuard,
         web_ui.ReadOnlyMiddleware,
@@ -158,6 +160,7 @@ def test_build_middleware_basic_auth_only():
     stack = _build_with_env(AGENT_CHAT_BASIC_AUTH_PASSWORD="secret")
     assert [m.cls for m in stack] == [
         web_ui.SecurityHeadersMiddleware,
+        web_ui.RegistryHostMiddleware,
         web_ui.ExtensionCorsMiddleware,
         web_ui.CrossSiteWriteGuard,
         web_ui.BasicAuthMiddleware,
@@ -174,6 +177,7 @@ def test_build_middleware_both_auth_outermost():
     # browser preflight (no Authorization header, by spec) isn't challenged.
     assert [m.cls for m in stack] == [
         web_ui.SecurityHeadersMiddleware,
+        web_ui.RegistryHostMiddleware,
         web_ui.ExtensionCorsMiddleware,
         web_ui.CrossSiteWriteGuard,
         web_ui.BasicAuthMiddleware,
