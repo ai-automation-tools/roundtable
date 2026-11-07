@@ -21,7 +21,7 @@ read-only MCP tools, so an agent can browse the cast and adopt a character
 > disk today. See [Storage & sync](#storage--sync) below.
 
 > [!TIP]
-> **Just want to add a persona?** [`../guides/add-a-persona.md`](../guides/add-a-persona.md) is the how-to — the `/personas` editor, the import modal, and how your card gets cast. This
+> **Just want to add a persona?** [`../guides/add-a-persona.md`](../guides/add-a-persona.md) is the how-to — the `/personas/manage` editor, the import modal, and how your card gets cast. **Just want to look?** `/personas` is the read-only explorer (on the [demo](https://roundtable-demo.ai-automation-tools.dev/personas) too). This
 > document is the reference behind it.
 
 Pairs with [`scripts/debate.ps1`](../guides/auto-debate.md) (which injects a
@@ -146,7 +146,7 @@ One card per supported CLI (`preflight.SUPPORTED_CLIS`: `claude-code`, `codex`,
 lookup is just `get_persona(agent_id, group="AI-Models")`. Defined in
 [`src/orchestrator/model_personas.py`](../../src/orchestrator/model_personas.py)
 and created on web-UI boot by `ensure_model_personas()` — **create-if-missing**,
-so edits made on `/personas` survive a restart, and deleting a card restores the
+so edits made on `/personas/manage` survive a restart, and deleting a card restores the
 stock version on the next boot.
 
 They exist to give the reader page a Cast panel for conversations that recorded
@@ -285,7 +285,7 @@ personas.get_persona("crypto-chad")             # by slug
 personas.get_persona("Crypto Chad")             # …or display name (same Persona)
 personas.get_persona("codex", group=personas.AI_MODELS_GROUP)  # a CLI's default card
 
-# write layer (used by the /personas web UI — works local + hosted)
+# write layer (used by the /personas/manage web UI — works local + hosted)
 personas.create_persona(name="New Bot", body="…", group="Unique-Personas", tags=["x"])
 personas.update_persona("new-bot", body="…", group="Debate-Hosts")  # group= moves it
 personas.delete_persona("new-bot")
@@ -320,7 +320,7 @@ personas.get_avatar("new-bot")                  # ("image/png", b"\x89PNG…") |
   one row from a single **raw Markdown card** (frontmatter + body). The slug comes
   from `filename`'s stem when given, else the frontmatter title; `overwrite=True`
   replaces a colliding `(group, slug)` instead of raising. This backs the
-  `/personas` "Import personas from Markdown files" tool and the
+  `/personas/manage` "Import personas from Markdown files" tool and the
   `POST /api/personas/import` endpoint. Card parsing is shared with the on-disk
   loader via the `parse_card_text()` helper, so an imported card and a seeded card
   are parsed identically.
@@ -350,7 +350,7 @@ sync instead). `import_personas_from_files()` is the Python entry point.
 > **new** DB groups (`Random-Debate-Personas`, `Celebrities`, `Sports`, …)
 > *alongside* the existing `Unique-Personas` rows — it does not rename or replace
 > the live group. If you want the new cards in the live roster under the existing
-> group name, import them into `Unique-Personas` from the `/personas` Markdown-import
+> group name, import them into `Unique-Personas` from the `/personas/manage` Markdown-import
 > tool (which lets you pick the target group) rather than bulk-importing the folders.
 
 ### Non-Python callers — the JSON CLI
@@ -463,7 +463,7 @@ synced, so an avatar uploaded locally reaches the hosted mirror on the next tick
 file written into the image's tree would do neither. Shipped art still needs a
 commit + redeploy, as before.
 
-Two ways to attach one, both on `/personas`:
+Two ways to attach one, both on `/personas/manage`:
 
 | Where | How |
 |:---|:---|
@@ -592,6 +592,8 @@ rather than relying on the name to carry it.
 | The single-card import helper | `import_persona_card()` / `parse_card_text()` in `src/orchestrator/personas.py` |
 | The MCP tool definitions | `list_personas` / `get_persona` in `src/agent_chat_mcp.py` |
 | How personas sync local↔mirror | `PERSONA_COLUMNS` / `apply_pull()` in [`scripts/db_sync.py`](../../scripts/db_sync.py) |
-| Manage personas in a browser (add/edit, inline group creation, tag chips, Markdown import) | `GET /personas` (see [`web-ui.md`](web-ui.md)) |
+| Browse the cast, read a card, download it (`.md` / `.zip`) — read-only, works on the demo | `GET /personas` (see [`web-ui.md`](web-ui.md#persona-explorer-get-personas)) |
+| The card writer the downloads use (inverse of `parse_card_text()`) | `card_text()` in `src/orchestrator/personas.py` |
+| Manage personas in a browser (add/edit, inline group creation, tag chips, Markdown import) | `GET /personas/manage` (see [`web-ui.md`](web-ui.md)) |
 | Random per-CLI assignment at launch | [`scripts/debate.ps1`](../guides/auto-debate.md) |
 | How to argue in character | [`skills/debate-mode/SKILL.md`](../../skills/debate-mode/SKILL.md) |

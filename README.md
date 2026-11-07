@@ -35,7 +35,7 @@
   <a href="#-quick-start">Quick start</a> ·
   <a href="#-operator-workflows">Workflows</a> ·
   <a href="#-supported-clis--personas">CLIs &amp; personas</a> ·
-  <a href="#-companion-site">Companion site</a> ·
+  <a href="#-hosted-demo">Hosted demo</a> ·
   <a href="#-documentation-map">Docs</a>
 </p>
 
@@ -173,9 +173,9 @@ Personas are rows in the database, not files, so adding one takes no code change
 | **`AI-Models`** *(reserved)* | One card per supported CLI — *"you are Claude Code"*. Backs the Cast panel when a run recorded no personas, and is excluded from random casting. |
 | **`Practitioners`** | Work-role cards built for collaborations — the seats that argue about a design rather than about politics. |
 | **`Random-Debate-Personas`** · **`Debate-Hosts`** | The general debate cast, plus the moderators and podcast hosts that run a room without taking a side. |
-| **`Celebrities`** · **`Comedians`** · **`Fictional Characters`** · **`Musicians`** · **`Podcasters`** · **`Political Figures`** | Character cards imported from the [Persona Registry](https://library.mikesailab.com/tools/persona-registry/). |
+| **`Celebrities`** · **`Comedians`** · **`Fictional Characters`** · **`Musicians`** · **`Podcasters`** · **`Political Figures`** | Character cards — browse them in the [persona explorer](https://roundtable-demo.ai-automation-tools.dev/personas). |
 
-Groups are free-form — one exists as soon as a card lands in it, so your own roster needs no registration. Browse the live set at [`/personas`](https://roundtable-demo.ai-automation-tools.dev/personas), or the public catalogue at the [**Persona Registry**](https://library.mikesailab.com/tools/persona-registry/).
+Groups are free-form — one exists as soon as a card lands in it, so your own roster needs no registration. Browse the live set in the **persona explorer** at [`/personas`](https://roundtable-demo.ai-automation-tools.dev/personas) — search, filter by group, category or tag, read a card exactly as the model reads it, and download any persona as a `.zip` that re-imports into your own copy. Adding and editing happen on `/personas/manage`.
 
 ➡️ **[Add your own persona](docs/guides/add-a-persona.md)** — write one in the browser, import Markdown cards and avatars, or drop in a whole zip.
 
@@ -198,13 +198,13 @@ The app is branded **Agent Battleground** in-browser and runs locally at `http:/
 
 The hosted mirror at [roundtable-demo.ai-automation-tools.dev](https://roundtable-demo.ai-automation-tools.dev) runs the same app in read-only mode: it shows real conversations and says so on every page, but nothing there can be changed or launched.
 
-## 🌐 Companion site
+## 🌐 Hosted demo
 
-One published site sits downstream of this repo. It isn't needed to run Roundtable locally — it is where the personas end up.
+A read-only copy of the web UI runs in public. It isn't needed to run Roundtable locally — it is where you can look before you clone.
 
 | Site | What it is |
 |:---|:---|
-| [**Persona Registry**](https://library.mikesailab.com/tools/persona-registry/) | Browsable catalog of the debate personas — character cards, avatars, and cover art, with per-persona downloads you can import into your own `/personas` registry. |
+| [**Persona explorer**](https://roundtable-demo.ai-automation-tools.dev/personas) | The cast on the hosted demo — character cards, avatars and cover art, with per-persona downloads you can import into your own `/personas/manage`. In-app since 2026-11-06 (it replaced the Persona Registry on the AI-Automation-Library site). |
 
 ## 📚 Documentation map
 

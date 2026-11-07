@@ -70,10 +70,10 @@ def render_markdown(text: str) -> str:
     """
     return _md.render(text or "")
 
-# Persona Registry — the public catalogue of downloadable persona cards, also on
-# the AI-Automation-Library site. Cards pulled from there are imported into a
-# local instance through /personas ("Import cards").
-REGISTRY_URL = "https://library.mikesailab.com/tools/persona-registry/"
+# The persona explorer — browse, read and download persona cards. In-app since
+# 2026-11-06; it replaced the static Persona Registry on the AI-Automation-Library
+# site. Downloaded cards go back in through /personas/manage ("Import").
+REGISTRY_URL = "/personas"
 
 # Repo home — the topbar's far-right GitHub button and a palette entry.
 GITHUB_URL = "https://github.com/ai-automation-tools/roundtable"
@@ -161,8 +161,7 @@ def _nav_svg(name: str) -> str:
 #
 # The rail is deliberately in TWO tables. `_NAV_ITEMS` is this app — pages this
 # server renders and the operator acts on. `_RESOURCE_NAV_ITEMS` is everything
-# else: reference material and the Persona Registry on the
-# AI-Automation-Library site. They used to sit in one undifferentiated column,
+# else: reference material and off-site links. They used to sit in one undifferentiated column,
 # which made an external link look like a page of this app. `_sidebar()` renders the
 # second group under a labelled separator so the distinction is visible rather
 # than implied by the little ↗ marker alone.
@@ -182,7 +181,6 @@ _NAV_ITEMS: tuple[tuple[str, str, str, str, str, bool], ...] = (
 # is why it used to be passed in through `extra_nav`.
 _RESOURCE_NAV_ITEMS: tuple[tuple[str, str, str, str, str, bool], ...] = (
     ("resources", "Resources", "/#resources", "res", "btn-res", False),
-    ("registry", "Persona Registry", REGISTRY_URL, "reg", "btn-reg", True),
 )
 
 _GH_MARK = (
@@ -251,7 +249,7 @@ _CMDK_HTML = f"""
     </div>
   </div>
 </div>
-<script>window.__AB_LINKS = {{"registry": "{REGISTRY_URL}", "github": "{GITHUB_URL}"}};</script>
+<script>window.__AB_LINKS = {{"github": "{GITHUB_URL}"}};</script>
 {SHELL_JS}
 """
 

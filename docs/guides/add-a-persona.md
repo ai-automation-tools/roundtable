@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Where-%2Fpersonas-10b981?style=for-the-badge&labelColor=09090b" alt="The /personas page">
+  <img src="https://img.shields.io/badge/Where-%2Fpersonas%2Fmanage-10b981?style=for-the-badge&labelColor=09090b" alt="The /personas/manage page">
   <img src="https://img.shields.io/badge/Code_change-none-0284c7?style=for-the-badge&labelColor=09090b" alt="No code change">
   <img src="https://img.shields.io/badge/Restart-not_needed-8b5cf6?style=for-the-badge&labelColor=09090b" alt="No restart">
 </p>
@@ -32,7 +32,9 @@ sidecar](../../scripts/README.md), the new card syncs to the hosted copy on its 
 ## 🖊️ Option 1 — write one in the browser
 
 Start the local app (`scripts\startup-app.ps1`, or `.\.venv\Scripts\python.exe
-src\web_ui.py`) and open **<http://127.0.0.1:8765/personas>**.
+src\web_ui.py`) and open **<http://127.0.0.1:8765/personas/manage>**
+(`/personas` itself is the read-only explorer; its **Manage personas** button
+leads here).
 
 1. **`+ New`** opens the editor panel.
 2. Fill in:
@@ -73,7 +75,7 @@ It is a starter set, not a schema.
 
 ## 📥 Option 2 — import cards you already have
 
-**`Import`** on `/personas` takes loose `.md` files, images, and `.zip`
+**`Import`** on `/personas/manage` takes loose `.md` files, images, and `.zip`
 archives in one go.
 
 | You have | Drop in |
@@ -120,9 +122,12 @@ frontmatter; the roster summary comes from the `## Purpose` line.
 
 ### Where to find cards
 
-The [**Persona Registry**](https://library.mikesailab.com/tools/persona-registry/)
-is a public catalogue in this format — download a card and its avatar, then drop
-both into the import modal. The `Import` modal links to it directly.
+The **persona explorer** at `/personas` — yours, or the public one on the
+[hosted demo](https://roundtable-demo.ai-automation-tools.dev/personas) — hands
+out any persona as a `.zip` of card + avatar in exactly the layout the import
+modal reads, so the picture comes along. Download, then drop the `.zip` into
+`Import`. (It replaced the Persona Registry on the AI-Automation-Library site,
+retired 2026-11-06.)
 
 This repo also ships 62 seed cards under
 [`agents/Debate-Agents/`](../../agents/Debate-Agents/). They are a **one-time

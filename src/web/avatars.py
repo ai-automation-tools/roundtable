@@ -129,6 +129,24 @@ def avatar_url(slug: str) -> str:
     return f"/avatars/{slug}?v={v}" if v else f"/avatars/{slug}"
 
 
+def raster_avatar(slug: str) -> tuple[str, bytes] | None:
+    """``(mime, bytes)`` of the persona's own raster avatar — the uploaded one,
+    else shipped ``<slug>-avatar.png`` — or None.
+
+    The explorer's downloads use this rather than :func:`avatar_response`: the
+    silhouette and the CLI brand SVGs aren't the persona's art, and the
+    importer refuses SVG anyway, so a zip carrying one wouldn't re-import."""
+    if not _SLUG_RE.match(slug or ""):
+        return None
+    stored = personas_registry.get_avatar(slug)
+    if stored is not None:
+        return stored
+    f = AVATARS_DIR / f"{slug}-avatar.png"
+    if f.is_file():
+        return "image/png", f.read_bytes()
+    return None
+
+
 def _default_response() -> Response:
     f = AVATARS_DIR / "default-avatar.svg"
     if f.is_file():

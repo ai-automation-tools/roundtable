@@ -18,7 +18,8 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 from orchestrator import personas as personas_registry
-from web.avatars import invalidate_index
+from web.avatars import invalidate_index, raster_avatar
+from web.render.persona_explorer import find_persona
 
 
 def _parse_tags(value: Any) -> list[str]:
@@ -408,6 +409,55 @@ async def api_persona_bulk_delete(request: Request) -> Response:
     return JSONResponse({
         "ok": True, "deleted": deleted, "not_found": not_found, "errors": errors,
     })
+
+
+_AVATAR_EXT = {"image/png": "png", "image/jpeg": "jpg", "image/gif": "gif", "image/webp": "webp"}
+
+
+def _explorer_persona(request: Request) -> personas_registry.Persona | None:
+    return find_persona(request.path_params["slug"],
+                        request.query_params.get("group", ""))
+
+
+def _not_found() -> Response:
+    return Response("persona not found\n", status_code=404, media_type="text/plain")
+
+
+async def persona_card_download(request: Request) -> Response:
+    """GET /personas/{slug}/card.md — the card as a seed-format .md, the same
+    shape /api/personas/import reads back."""
+    p = _explorer_persona(request)
+    if p is None:
+        return _not_found()
+    return Response(
+        personas_registry.card_text(p), media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{p.slug}.md"'},
+    )
+
+
+def bundle_zip(p: personas_registry.Persona) -> bytes:
+    """``<slug>/<slug>.md`` + ``<slug>/<slug>-avatar.<ext>`` — the per-persona
+    folder layout ``_pair_avatars`` rule 1 pairs, so the zip re-imports with
+    its picture. No avatar entry when the persona has no raster art of its own."""
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr(f"{p.slug}/{p.slug}.md", personas_registry.card_text(p))
+        art = raster_avatar(p.slug)
+        if art:
+            ext = _AVATAR_EXT.get(art[0], "png")
+            zf.writestr(f"{p.slug}/{p.slug}-avatar.{ext}", art[1])
+    return buf.getvalue()
+
+
+async def persona_bundle_download(request: Request) -> Response:
+    """GET /personas/{slug}/bundle.zip — card + avatar, ready for Import."""
+    p = _explorer_persona(request)
+    if p is None:
+        return _not_found()
+    return Response(
+        bundle_zip(p), media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{p.slug}.zip"'},
+    )
 
 
 async def api_persona_delete(request: Request) -> Response:
