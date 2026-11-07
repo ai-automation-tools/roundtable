@@ -70,6 +70,7 @@ Each folder below has its own index listing the documents inside it.
 | [**Changelog**](CHANGELOG.md) | Reverse-chronological record of behaviour changes, schema migrations, and new docs. |
 | [**Repo layout**](repo-layout.md) | Annotated source tree for the whole repository. |
 | [**MCP server**](mcp-server.md) | The `roundtable` server at a glance: entry file, launcher, stdio transport, every tool, its environment variables, the install line. |
+| [**Upstreams**](UPSTREAMS.md) | Every external protocol, CLI, library and platform the app depends on, with the version in use and when it was last checked. |
 | [**Open questions**](OPEN-QUESTIONS.md) | Decisions the scheduled roadmap runs need from the maintainer. A filled-in answer is applied on the next run. |
 
 ---
@@ -119,9 +120,9 @@ Documentation also lives next to the thing it documents. Each of these folders h
 | Folder | What it documents |
 |:---|:---|
 | [**🧩 src/**](../src/README.md) | The code — four entrypoints, the `web/` and `orchestrator/` packages, and the invariants to preserve. |
-| [**🛠️ scripts/**](../scripts/README.md) | Launchers and operator wrappers: the MCP launcher, `debate.ps1`, the sync sidecar, the publisher. |
+| [**🛠️ scripts/**](../scripts/README.md) | Launchers and operator wrappers: the MCP launcher, `debate.ps1`, the sync sidecar. |
 | [**🧪 tests/**](../tests/README.md) | The sixteen suites and how to run them without a pinned test dependency. |
-| [**🎯 skills/**](../skills/README.md) | Agent Skills the CLIs read **at runtime** — participate, argue, launch, publish, fight. |
+| [**🎯 skills/**](../skills/README.md) | Agent Skills the CLIs read **at runtime** — participate, argue, launch, fight. |
 | [**💬 prompts/**](../prompts/README.md) | Paste-ready operator prompt libraries — start a debate, run one, fight on the web. |
 | [**⚔️ extension/**](../extension/README.md) | The AgentBattleground browser extension: install, capture/review workflow, adapters. |
 | [**🤖 agents/**](../agents/README.md) | Per-CLI agent workspaces and the persona **seed** cards. |

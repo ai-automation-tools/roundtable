@@ -20,7 +20,7 @@ Each is an `argparse` CLI. Always invoke the venv interpreter explicitly.
 | Module | What it is | Run it |
 |:---|:---|:---|
 | [**`agent_chat_mcp.py`**](agent_chat_mcp.py) | **The MCP server.** `MCPServer` (`mcp` 2.x SDK) + `sqlite3`. Registers every tool an agent calls — `get_kickoff`, `wait_for_turn`, `send_message`, the persona tools, and the four AgentBattleground arena tools. Holds the canonical `SCHEMA`. | Registered per CLI via [`scripts/run-mcp-server.ps1`](../scripts/run-mcp-server.ps1) |
-| [**`web_ui.py`**](web_ui.py) | **Web-UI entrypoint only** — page routes, the route table, app assembly, `main()`. Implementation lives in [`web/`](#-webpackage). Binds `127.0.0.1:8765`. | `.\.venv\Scripts\python.exe src\web_ui.py` |
+| [**`web_ui.py`**](web_ui.py) | **Web-UI entrypoint only** — page routes, the route table, app assembly, `main()`. Implementation lives in [`web/`](#-web-package). Binds `127.0.0.1:8765`. | `.\.venv\Scripts\python.exe src\web_ui.py` |
 | [**`start_conversation.py`**](start_conversation.py) | Thin `argparse` wrapper around `orchestrator.seeding` — seeds a conversation out of band. Declares no schema of its own. | `.\.venv\Scripts\python.exe src\start_conversation.py --topic "..."` |
 | [**`inspect_conversations.py`**](inspect_conversations.py) | Operator CLI: `list` / `show` / `tail` / `stop` / `deliver` / `watch`. Read-mostly; only SELECT, a stop UPDATE, and delivery's local bookkeeping. | `.\.venv\Scripts\python.exe src\inspect_conversations.py list` |
 | [**`presets.py`**](presets.py) | The named presets that shape a seeded kickoff — tone, mode, `max_turns`, and for a collaboration the deliverable's shape. Also the **sub-type axis**: `conv_type` is the room's structure, a preset is what it produces. | imported |
@@ -38,7 +38,7 @@ working — the tests import them.
 | [**`assets.py`**](web/assets.py) | CSS / JS / SVG constants (`BASE_CSS`, `HOME_CSS`, `_CONV_CSS`, `_PERSONAS_CSS`, favicon). |
 | [**`avatars.py`**](web/avatars.py) | Persona avatar resolution by slug: uploaded DB image → shipped PNG/SVG → default silhouette. Serves `GET /avatars/{slug}`. |
 | [**`topics.py`**](web/topics.py) | The `TOPICS` keyword/glyph/gradient table that classifies a conversation topic into a logo at render time. No schema, no backfill. |
-| [**`render/`**](web/render/) | Per-page HTML — `common` (shell, markdown, icons, the hosted demo strip), `home`, `conversations` (two-pane inbox), `orchestrate`, `personas`, `setup` (which CLIs you have), `extension` (the AgentBattleground explainer), `battleground` (the arena console — list, thread, drafts, verdicts; renders only, its buttons call the existing bridge routes). |
+| [**`render/`**](web/render/) | Per-page HTML — `common` (shell, markdown, icons, the hosted demo strip), `home`, `conversations` (two-pane inbox), `orchestrate`, `personas` (the `/personas/manage` console), `persona_explorer` (the read-only `/personas` cast grid + detail pages), `setup` (which CLIs you have), `extension` (the AgentBattleground explainer), `battleground` (the arena console — list, thread, drafts, verdicts; renders only, its buttons call the existing bridge routes). |
 | [**`api/`**](web/api/) | `/api/*` handlers — `conversations` (incl. the SSE stream), `sync` (ingest/since), `orchestrate`, `personas`, `setup` (CLI availability + seat creation), `notifications` (arms one delivery sink), `delivery_settings` (the folder + command sinks), `battleground` (the extension bridge). |
 
 ## 🎬 `orchestrator/` package
@@ -50,7 +50,7 @@ working — the tests import them.
 | [**`availability.py`**](orchestrator/availability.py) | Which CLI tools *this machine* has — detection (binary on `PATH` + preflight) versus the operator's declaration in `config/available-clis.json`, plus `plan_seats()`. The reason one CLI is enough. |
 | [**`personas.py`**](orchestrator/personas.py) | The DB-backed persona registry: groups, CRUD, import, and a JSON CLI. Holds the `personas`-table DDL mirror. |
 | [**`model_personas.py`**](orchestrator/model_personas.py) | The built-in `AI-Models` cards (one per supported CLI) used as the Cast fallback when a conversation recorded no personas. |
-| [**`export.py`**](orchestrator/export.py) | Export-bundle renderers — **single source of truth** for `/export.md`, `/export.zip`, and `scripts/publish_debate.py`. |
+| [**`export.py`**](orchestrator/export.py) | Export-bundle renderers — **single source of truth** for `/export.md`, `/export.zip`, and the delivery folder sink. |
 | [**`watchdog.py`**](orchestrator/watchdog.py) | Notices an active conversation that has gone quiet and fires delivery's `stalled` event — once per stall, keyed on the last message id so a new message re-arms it. Read-only and **never touches an agent**: a stalled run needs a human to click something in a CLI window, not a watchdog that ends it. |
 | [**`delivery.py`**](orchestrator/delivery.py) | Push a finished conversation out — folder / webhook / command sinks, fired from the three places a conversation can end **plus `started` at seed time**. The webhook sink is also what `/notifications` arms. Renders nothing itself: the folder sink writes `export.bundle_files()` verbatim. Off unless `config/delivery.json` says otherwise, and **never raises** — a dead sink costs an artifact, not a turn. |
 

@@ -57,10 +57,14 @@ endpoint used by the optional mirror sidecar, and the auth model.
 | `GET` | `/extension` | **AgentBattleground explainer.** What the browser extension is, the draft-never-post invariant, supported sites, Chrome/Firefox install steps, and (locally) a live check of `/api/battleground/healthz` so the operator can see whether the extension will reach this server. Renders on both deploys — it's an explainer, not a control surface. Distinct from `/battleground`, which is the arena *console* — this page is the pitch, that one is the controls. |
 | `GET` | `/battleground` | **Arena console.** Every AgentBattleground arena captured on this machine, newest first: site, title, cast, assigned agent, post count, draft count and a **pending** badge. `?status=open\|closed` narrows it (an unrecognised value shows everything rather than 400ing — it's a URL an operator types). **On the hosted mirror** it renders a local-only explainer, because the two arena tables are excluded from the sidecar sync and a list there would be empty forever. See [AgentBattleground](battleground.md). |
 | `GET` | `/battleground/{aid}` | **One arena**: the captured thread (reply target highlighted, replies indented by `depth`), the persona snapshot and stance, and every draft with its verdict, rationale and any operator edit. Verdict buttons POST to the existing bridge routes — **Approve** on a pending draft, **Reject with a note…** (the note is the agent's revision brief), **I posted this** once one is approved — plus close/reopen and delete for the arena. **It cannot insert into a page**: typing an approved reply into a site's composer needs the tab, which is the extension's job. A closed arena stops offering verdicts. `404` renders a branded not-found. |
-| `GET` | `/personas` | **Persona management page.** A three-pane console: group rail (left), persona list (center), live edit/preview (right). Backed by the synced `personas` table, so it works **local + hosted**; renders an "unavailable" notice only if the DB can't be reached. See [Persona management](#persona-management-get-personas). |
+| `GET` | `/personas` | **Persona explorer** — the read-only cast grid (every persona except `AI-Models`), with search, group / category / tag filters and sort as GET params. Works fully on the hosted demo. See [Persona explorer](#persona-explorer-get-personas). |
+| `GET` | `/personas/{slug}` | One persona: cover, avatar, metadata, the card rendered as Markdown, downloads, **Use in a debate**. `?group=` narrows when two groups share a slug. `404` if not found. |
+| `GET` | `/personas/{slug}/card.md` | The card as a seed-format `.md` (`orchestrator.personas.card_text()`), the shape `/api/personas/import` reads back. |
+| `GET` | `/personas/{slug}/bundle.zip` | `<slug>/<slug>.md` + `<slug>/<slug>-avatar.<ext>` — re-imports with its picture through the Import modal. No avatar entry when the persona has no raster art of its own. |
+| `GET` | `/personas/manage` | **Persona management console.** A three-pane console: group rail (left), persona list (center), live edit/preview (right). Backed by the synced `personas` table, so it works **local + hosted**; renders an "unavailable" notice only if the DB can't be reached. See [Persona management](#persona-management-get-personasmanage). |
 | `GET` | `/api/personas` | **Palette index** — every persona as `{slug, name, group}`. Deliberately omits card bodies (the palette matches on name + group only, and shipping every body would turn a keystroke into a megabyte). Includes the reserved `AI-Models` group — unlike the casting paths, which must exclude it, the palette is pure navigation. Returns `[]` if the database is unreachable. Shares its path with the `POST` below; the two are split by method. |
 | `POST` | `/api/personas` | Create a persona. JSON `{name, body, group?, tags?, avatar?}` → `{ok, slug, group, has_avatar}` or `400 {ok:false, error}`. `avatar` is a base64 image (or `{b64}`, or a `data:` URI) — PNG/JPEG/GIF/WebP by magic bytes, ≤2 MB decoded; a rejected image fails the whole create. `404` only if the database is unreachable. |
-| `POST` | `/api/personas/import` | Bulk-import personas from Markdown cards, images, and/or `.zip` archives. JSON `{group?, overwrite?, files:[{filename, text}], images:[{filename, b64}], zips:[{filename, b64}]}` → `{ok, imported, skipped, avatars, errors[]}`. Each loose file and each `.md`/`.markdown` entry inside a zip (found recursively) is parsed as a seed-style card; the filename stem becomes the slug. Images in the same upload are paired to their card (see [Persona management](#persona-management-get-personas)) and stored as that persona's avatar. Zips are size/entry-capped against zip bombs. `404` if the database is unreachable. |
+| `POST` | `/api/personas/import` | Bulk-import personas from Markdown cards, images, and/or `.zip` archives. JSON `{group?, overwrite?, files:[{filename, text}], images:[{filename, b64}], zips:[{filename, b64}]}` → `{ok, imported, skipped, avatars, errors[]}`. Each loose file and each `.md`/`.markdown` entry inside a zip (found recursively) is parsed as a seed-style card; the filename stem becomes the slug. Images in the same upload are paired to their card (see [Persona management](#persona-management-get-personasmanage)) and stored as that persona's avatar. Zips are size/entry-capped against zip bombs. `404` if the database is unreachable. |
 | `POST` | `/api/personas/bulk-delete` | Delete many personas at once. JSON `{items:[{group, slug}]}` → `{ok, deleted, not_found, errors[]}`. Each item is matched on its `(group, slug)` pair (slugs are only unique within a group). `404` if the database is unreachable. |
 | `POST` | `/api/personas/{slug}` | Update a persona (by slug, searched across all groups). JSON `{name?, body?, tags?, group?, avatar?, clear_avatar?}` — `group` moves the row to another group; `avatar` replaces the stored image and `clear_avatar` drops it. **Omitting both leaves the existing avatar untouched**, so a plain body save can't delete it. `404` if not found, `400` on validation error. |
 | `POST` | `/api/personas/{slug}/delete` | Delete a persona. `{ok:true}` or `404` if not found. |
@@ -84,7 +88,7 @@ Three surfaces, three rules — the whole layout follows from this:
 |:---|:---|:---|
 | **Header** | Full-bleed | The wordmark sits in the literal left corner and the actions in the right one, inset only by `--gutter`. It spans the full width *above* the rail. The **breadcrumb defaults to the page title** — `_layout()` fills it in when a caller passes none, so the bar names the page everywhere rather than on the two routes that happened to pass one. |
 | **Reading pages** (`/`, `/orchestrate`, `/settings`, `/battleground`, 404) | Centred column, margins | A landing page set edge-to-edge reads badly. `/` centres on `--page`; every inner page is `.orch-shell` plus a class that only re-points `max-width` to one of the three **shell tokens** below. |
-| **App surfaces** (`/conversations`, `/personas`) | Panes edge-to-edge | These are consoles, not documents — their rails and panes should use the screen. They zero `<main>`'s padding via `main:has(.cv2)` / `main:has(.pm3)`. |
+| **App surfaces** (`/conversations`, `/personas/manage`) | Panes edge-to-edge | These are consoles, not documents — their rails and panes should use the screen. They zero `<main>`'s padding via `main:has(.cv2)` / `main:has(.pm3)`. |
 
 Tokens in `assets.DESIGN_TOKENS`:
 
@@ -163,7 +167,7 @@ what makes the top of the page read as one bar rather than two.
 | | |
 |:---|:---|
 | **Brand row** | The rail opens with the **mark + wordmark** (a link home, and the artwork the browser tab shows) and the collapse toggle beside it on the same row. Identity used to sit in the topbar's left corner; it belongs at the top of the navigation it labels, and the toggle rides with it because collapsing the rail is chrome for the rail, not one more destination. Collapsed (or ≤720px) the two **stack**, mark over toggle — 64px has no room for a row, and dropping the mark would have traded the brand away for the toggle's new home. The row's own `border-bottom` does the separating (negative inline margins run it the rail's full width), so there is no `rail-sep` under it. |
-| **Order** | **Two groups, always in this order.** *This app* (`_NAV_ITEMS`): Home · Conversations · Orchestrate · Personas · Browser extension · Battleground · Settings. **Settings is one row, not three** — it is a tab strip over the three per-machine config files, and a rail row per config file would have been three answers to one question (see [Settings](settings.md)). The two AgentBattleground rows sit together on purpose — the puzzle piece explains the feature, the crosshair operates it. Then a separator and a `Resources` heading, then *everything else* (`_RESOURCE_NAV_ITEMS`): Resources · Persona Registry ↗ · Theater ↗. Home leads the first group: the rail is a hierarchy, not a toolbar. The split exists because pages this server renders and links that leave for the AI-Automation-Library site are different kinds of thing, and one undifferentiated column made "Theater" look like a page of this app. |
+| **Order** | **Two groups, always in this order.** *This app* (`_NAV_ITEMS`): Home · Conversations · Orchestrate · Personas · Browser extension · Battleground · Settings. **Settings is one row, not three** — it is a tab strip over the three per-machine config files, and a rail row per config file would have been three answers to one question (see [Settings](settings.md)). The two AgentBattleground rows sit together on purpose — the puzzle piece explains the feature, the crosshair operates it. Then a separator and a `Resources` heading, then *everything else* (`_RESOURCE_NAV_ITEMS`): Resources. (Persona Registry ↗ lived here until 2026-11-06, when the registry moved in-app as the `/personas` explorer.) Home leads the first group: the rail is a hierarchy, not a toolbar. The split exists because pages this server renders and links that leave for the AI-Automation-Library site are different kinds of thing, and one undifferentiated column made an external link look like a page of this app. |
 | **Active** | Pass `active="<key>"`. Lights the row, sets `aria-current="page"`, and draws a marker on the rail's outer edge — a second, non-colour signal, so "you are here" survives forced-colors and colour-blindness. `-8px` lands it on the rail's edge in *both* states (the rail's `padding-inline` is 8px). |
 | **Colour** | **Labels are one colour, the icons are ten.** Every label is white (`--text`) at rest and lit alike; the colour lives in the glyph, where each destination owns a hue as HSL parts (`--nav-h`/`--nav-s`/`--nav-l`, set by the `btn-*` classes). Hover and the current row tint their background and the edge marker with that same hue. Text that changed colour per row read as decoration; a coloured glyph beside white text reads as an *identity* for the destination. |
 | **Labels** | Visible when expanded. Collapsed, the title moves to a hover tooltip (`data-tip`) — gated on `html.rail-collapsed`, since expanded it would be pure noise. The title is **always** on `aria-label` too, so nothing depends on hover or CSS to identify a destination. Tooltips are suppressed under `@media (hover: none)`, where they'd only fire on tap and stick. |
@@ -262,10 +266,9 @@ Fuzzy-jump to any conversation, persona, or page from anywhere. Markup is
   generous on prose (`ramsay` happily matched "**B**-**r**ain Computer
   Interf-**a**-ces … neur-**a**-l … technolog-**y**"), while the word-start
   exemption keeps real acronym queries (`bci`) working.
-- Personas link to `/personas?group=<g>&q=<name>`, which that page honours as a
-  deep-link (selects the group, prefills the search).
+- Personas link to their explorer page, `/personas/<slug>?group=<g>`.
 
-`SHELL_JS` reads its two external URLs from `window.__AB_LINKS` rather than
+`SHELL_JS` reads its external URL (the repo) from `window.__AB_LINKS` rather than
 being `.format()`-ed, so no brace in that JS has to be doubled.
 
 ---
@@ -327,7 +330,7 @@ with no network and nothing restyles it after first paint.
 | Topbar | The shared bar — see [Topbar](#topbar). Navigation isn't in it; that's the [icon rail](#navigation-the-icon-rail). |
 | Hero | Eyebrow (`INTER-AGENT MESSAGE BUS`), single-line title, lede naming the three best-known CLIs "and more" + a `persona` link, then a **vertical stack of three CTAs — one per format**: `Launch a debate` (solid emerald, the primary → `/orchestrate?type=debate`), `Launch a podcast` (violet → `/orchestrate?type=podcast`), `Participate in online forums` (sky → `/extension`). Each is an icon chip + title + one-line blurb + arrow, and each carries **its own hue** in the chip, a ~7% surface tint, and the hover border + arrow — the page's one deliberate exception to the single-emerald accent, since these three are a *set of choices* and the tint is what separates them at a glance. The glyphs are **inline stroke SVGs, not emoji** (they inherit the hue via `currentColor`, stay crisp at 36px, and match the rail's icon language): mirrored speech bubbles / microphone / a page with reply lines. Under them, a muted one-line **Guides** row links the matching doc on GitHub (`docs/guides/auto-debate.md`, `start-new-chat.md#a-podcast-instead-of-a-debate`, `battleground.md`) — deliberately docs, not app pages, since they answer *how do I run one* and so work unchanged on the read-only mirror. Then an info-icon **local-vs-hosted note** (`launch_note` — read-only-demo + `Clone the repo →` on the hosted mirror, "runs on your machine" locally), an inline **stats row** (conversations / active / messages / CLIs, mono numerals), and — on the right — the **Featured debates panel** (`_render_homepage_featured`), whose footer carries the hero's only route to the archive: `Browse all N conversations →`. |
 | 01 — What it is | **One section, merged 2026-08-13** — it was two, and they opened with near-identical headings ("Six CLIs. One SQLite file." over "Six CLI agents, one shared bus.") and two paragraphs that both explained agent-id registration. Now: one description covering the bus and the turn loop, then the **supported-CLIs table** (name → repo/home link, vendor, `agent-id`, status — `_render_homepage_clis_table()` over the `_SUPPORTED_CLIS` tuple: Claude Code, Codex, Antigravity, OpenCode, all active), then the asymmetric **bento** (one tall card + two stacked): turn engine, push handoff, live viewer. The table answers *which agents*, the cards answer *how they take turns*. |
-| 02 — Meet the cast | **Two layers (2026-08-13).** First three **category tiles** — group name, member count, four members by name, `+N more` — answering *what kinds of characters exist*. Then a row of **six persona cards** (avatar, name, summary, tag chips) answering *what one looks like*. Then `Browse all N characters →` to `/personas`. Rendered by `_render_homepage_personas()` via `_render_cast_tiles()` + `_pick_cast_cards()`; empty-state when the registry has no personas. Reads the synced `personas` table, so it populates on the hosted mirror too. **Nothing here hard-codes a group name** — `_cast_by_group()` buckets whatever `list_debater_personas()` returns and orders by size (alphabetical tie-break, so the pick is deterministic and snapshot-testable). Tiles take the three largest groups; the cards then take one persona per group *starting with groups the tiles didn't name*, so the section spans ~9 groups instead of showing nine neighbours from one. Names in tiles pass through `_short_name()` (drops ` — epithet` / ` (source)` so a four-item column doesn't wrap). **Draws from `_homepage_cast()` → `list_debater_personas()`, never `list_personas(None)`** — the unfiltered list includes the reserved `AI-Models` group, and until 2026-08-13 this section led with six CLI reference cards instead of characters (it asked for `DEFAULT_DEBATER_GROUP`, which holds zero rows, and silently fell through). The heading quotes that same castable count, so it and the CTA agree; `/personas` shows a larger total because it includes the reserved group. Summaries pass through `_strip_md()` — they are card front-matter rendered as plain text, so `**Name** — blurb` was reaching the page with its asterisks. |
+| 02 — Meet the cast | **Two layers (2026-08-13).** First three **category tiles** — group name, member count, four members by name, `+N more` — answering *what kinds of characters exist*. Then a row of **six persona cards** (avatar, name, summary, tag chips) answering *what one looks like*. Then `Browse all N characters →` to `/personas`. Rendered by `_render_homepage_personas()` via `_render_cast_tiles()` + `_pick_cast_cards()`; empty-state when the registry has no personas. Reads the synced `personas` table, so it populates on the hosted mirror too. **Nothing here hard-codes a group name** — `_cast_by_group()` buckets whatever `list_debater_personas()` returns and orders by size (alphabetical tie-break, so the pick is deterministic and snapshot-testable). Tiles take the three largest groups; the cards then take one persona per group *starting with groups the tiles didn't name*, so the section spans ~9 groups instead of showing nine neighbours from one. Names in tiles pass through `_short_name()` (drops ` — epithet` / ` (source)` so a four-item column doesn't wrap). **Draws from `_homepage_cast()` → `list_debater_personas()`, never `list_personas(None)`** — the unfiltered list includes the reserved `AI-Models` group, and until 2026-08-13 this section led with six CLI reference cards instead of characters (it asked for `DEFAULT_DEBATER_GROUP`, which holds zero rows, and silently fell through). The heading quotes that same castable count, so it, the CTA and the `/personas` explorer (which excludes the reserved group the same way) all agree. Summaries pass through `_strip_md()` — they are card front-matter rendered as plain text, so `**Name** — blurb` was reaching the page with its asterisks. |
 | 03 — How to use it | Five numbered steps with real code (clone → register MCP → seed → kickoff → watch). |
 | 04 — Latest from the arena | Top 5 conversations with id / topic / **cast** / status. The cast column shows **persona names** (`_conv_cast_label()` reads `participant_personas`) when a conversation recorded one, else the raw agent ids. Empty state suggests `scripts/start.ps1`. |
 | 05 — Browser extension | AgentBattleground pitch + install/verify walkthrough, linking `/extension` and `docs/app/battleground.md`. (This row was missing from the table before 2026-08-13 — the page has rendered the section since the extension landed.) |
@@ -1053,8 +1056,7 @@ through `markdown-it-py`'s `highlight=` callback.
 
 > **The renderers live in `src/orchestrator/export.py`** (since 2026-07-10),
 > imported into `web_ui.py` under their old underscore names — the same
-> functions also power `scripts/publish_debate.py`, which writes these files
-> straight into the AI-Automation-Library archive. The output format is a
+> functions also power the delivery folder sink. The output format is a
 > **contract** with downstream parsers — see
 > [`export-format.md`](export-format.md) before changing any shape below.
 
@@ -1169,8 +1171,8 @@ right:-6px`) and each tip was only 264px wide. Don't put them back per-button.
 Both are filled in from the conversation row: topic, format, seat roles, the
 cast, and each persona's card. Details worth knowing before changing them:
 
-- **Filenames use `export.topic_slug()`** — the same 25-char slug that joins the
-  DB, the library archive, and the theater app. Do not add a second slug rule.
+- **Filenames use `export.topic_slug()`** — the same 25-char slug that names the
+  export bundle and every delivered folder. Do not add a second slug rule.
   The folder shape matches the library's podcast episodes, so a finished bundle
   drops in without translation.
 - **The audio prompt links the transcript rather than embedding it.** It tells
@@ -1316,7 +1318,40 @@ To add or replace an avatar: drop `<slug>-avatar.png` into
 `images/AgentChat-Avatars/`, commit it, and (for the hosted mirror) redeploy to
 Fly so the new file ships.
 
-## Persona management (`GET /personas`)
+## Persona explorer (`GET /personas`)
+
+The **public, read-only** way in to the cast — it replaced the static Persona
+Registry on the AI-Automation-Library site on 2026-11-06. Rendered by
+`web/render/persona_explorer.py`, styled by `EXPLORER_CSS` (shared tokens only,
+so light mode needs no rules of its own). Nothing on it POSTs, so the hosted
+demo serves all of it.
+
+- **Who is shown:** `list_debater_personas()` — every persona except the
+  reserved `AI-Models` group, the same rule random casting uses. A direct
+  `/personas/<slug>` link to an AI-Models card still resolves.
+- **Filters are server-side GET params, not JS:** `q` (every term must hit name,
+  slug, group, category, tags or the card body), `group`, `cat` (`category` or
+  `category/subcategory`), `tag`, `sort` (`name` | `newest`, by `created_at`). The
+  selects re-submit on change; everything else works with no script, and a
+  filtered view is a shareable URL.
+- **Covers** come from `{PERSONA_MEDIA_URL}/covers/<slug>.webp` — default
+  `https://ai-automation-tools.dev/roundtable-personas`, override with the
+  `PERSONA_MEDIA_URL` env var. Not every persona has one, so every cover `<img>`
+  carries an `onerror` that swaps in `/avatars/<slug>` and centres it in the 2:3
+  frame. The app sets no `img-src` CSP (only `frame-ancestors`), so the media
+  origin needs no allow-listing.
+- **Detail page** (`/personas/<slug>`): cover, avatar, kicker, summary, tags
+  (each a filter link), metadata, and the card body through `render_markdown()`
+  — exactly what the model reads. Downloads: the `.md`, the avatar (only when
+  the persona has raster art of its own — `avatars.raster_avatar()`), and the
+  `.zip`, laid out so the Import modal re-imports it with its picture
+  (`tests/test_persona_explorer.py` round-trips it).
+- **Use in a debate** links `/orchestrate?persona=<slug>`, which seats that
+  persona in the first chair. Hosted, `/orchestrate` is the "debates run on your
+  machine" explainer, so the button stays and a line under it says so.
+- **Edit in the manager** links `/personas/manage?group=<g>&q=<name>`.
+
+## Persona management (`GET /personas/manage`)
 
 A **three-pane management console** for the debate personality roster (the
 2026-06-29 redesign replaced the single-column accordion). Emerald-accented to
@@ -1329,9 +1364,10 @@ and a `--rail-w` margin it must keep so the panes clear the
 `_render_personas_page`.
 
 **Deep-links.** Accepts `?group=<group>&q=<text>` — selects the group, then
-prefills the rail search. The command palette links personas this way, so
-picking "Gordon Ramsay" from `⌘K` lands on the Celebrities group filtered to
-that one row.
+prefills the rail search. The explorer's **Edit in the manager** links here this
+way, so it lands on the persona's group filtered to that one row. (The command
+palette linked here too until 2026-11-06; it now opens the explorer page.) The
+toolbar's **Browse the cast** button goes back to the explorer.
 
 - **Left rail — group navigator.** A search box, one button per group (folder
   icon, name, count chip) with the active group emerald-highlighted, and a
@@ -1582,12 +1618,11 @@ the same PR**, plus a CHANGELOG entry. The duplication is annotated with a
 | Tweak the conversations browser or reader | `web/render/conversations.py` (`_conversations_rail()` / `_render_conversations_overview()` / `_render_conversation_main()`), styled by `_CONV_CSS` in `web/assets.py` (+ `BASE_CSS` for `.msg` cards). |
 | Adjust Markdown rendering | `_md` instance + the `_link_open_renderer` rule in `web/render/common.py`. |
 | Swap syntax-highlighting theme or version | `HIGHLIGHT_JS_HEAD` in `web/assets.py` (CDN URLs + `.hljs` background override). Restart `web_ui.py` (or redeploy) — clients pick up the new CDN on next page load. |
-| Change the export format | `render_export_markdown()` in `src/orchestrator/export.py` — but read [`export-format.md`](export-format.md) first; the format is a contract with the library archive + theater app. |
+| Change the export format | `render_export_markdown()` in `src/orchestrator/export.py` — but read [`export-format.md`](export-format.md) first; the format is a contract with whatever parses the downloads and delivered folders. |
 | Touch SSE behavior | `api_stream()` in `web/api/conversations.py` + the inline JS in `_render_conversation_main()`. |
 | Force-stop semantics | `stop_conversation()` in `web/db.py` + `api_stop()` in `web/api/conversations.py`. Mirror in `inspect_conversations.cmd_stop`. |
 | Auth | `web/security.py` (`BasicAuthMiddleware` + `_build_middleware()`). |
 | Ingest | `ingest_payload()` in `web/db.py` + `api_ingest()` in `web/api/sync.py`. Client: `scripts/db_sync.py`. |
 | Favicon / brand | `_MARK_ART` in `web/assets.py` — edit it once and both the tab icon (`FAVICON_SVG` + the `favicon()` route in `web_ui.py`) and the topbar corner mark (`MARK_SVG`, inlined by `_topbar()`) change together. Mirror it into `images/AgentChat-Images/icons/dark/favicon-agents-06-panel-dark.svg`. |
 | Add a conversation topic logo / re-tune which one a topic gets | The `TOPICS` table in `web/topics.py` (keywords + glyph + gradient; order = tie-break priority). Add a case to `tests/test_topics.py`. No migration — existing rows re-classify on next page load. |
-| Theater link | `THEATER_URL` in `web/render/common.py` (icon rail via `_NAV_ITEMS`, homepage Featured-debates panel, command palette). |
-| Persona Registry link | `REGISTRY_URL` in `web/render/common.py` (icon rail via `_NAV_ITEMS`, command palette). Both reach it through `window.__AB_LINKS`, set in `_CMDK_HTML`. |
+| Persona explorer | `web/render/persona_explorer.py` (pages) + `persona_card_download` / `persona_bundle_download` in `web/api/personas.py`. `REGISTRY_URL` in `web/render/common.py` is now just `/personas` — the console's *Browse the cast* button and its Import hint use it. Cover origin: `PERSONA_MEDIA_URL`. |

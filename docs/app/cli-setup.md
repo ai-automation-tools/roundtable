@@ -1,10 +1,8 @@
-<div align="center">
+<h1 align="center">🧰 CLI setup</h1>
 
-# 🧰 CLI setup
-
-**Which CLI tools this machine has — and why one is enough**
-
-</div>
+<p align="center">
+  <strong>Which CLI tools this machine has — and why one is enough</strong>
+</p>
 
 ---
 
@@ -186,8 +184,6 @@ no-change case), the CLI-tools tab and its API, `/orchestrate` filtering, and th
 
 ---
 
-<div align="center">
-
-[⬅️ App docs](README.md) &nbsp;·&nbsp; [🏠 Docs home](../README.md) &nbsp;·&nbsp; [📦 Repo root](../../README.md)
-
-</div>
+<p align="center">
+  <a href="README.md">⬅️ App docs</a> &nbsp;·&nbsp; <a href="../README.md">🏠 Docs home</a> &nbsp;·&nbsp; <a href="../../README.md">📦 Repo root</a>
+</p>

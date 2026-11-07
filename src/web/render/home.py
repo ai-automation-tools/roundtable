@@ -28,8 +28,6 @@ from web.avatars import avatar_url
 from web.db import existing_conversation_ids, list_featured_debates
 from web.render.common import (
     FONTS_HEAD,
-    REGISTRY_URL,
-    THEATER_URL,
     _conv_cast_label,
     _conv_debater_casts,
     _initials,
@@ -413,7 +411,6 @@ _SKILL_RESOURCES: tuple[tuple[str, str], ...] = (
     ("debate-mode", "argue well"),
     ("collaborate-mode", "build one thing"),
     ("start-debate", "launch a debate"),
-    ("publish-debate", "publish + cover"),
 )
 
 
@@ -515,8 +512,8 @@ def _render_homepage_res_extra_tiles() -> str:
         ],
     )
     personas = _res_tile("Personas", [
-        _res_link("/personas", "Browse the roster", "manage in this app", external=False, glyph="→"),
-        _res_link(REGISTRY_URL, "Persona Registry", "download more cards"),
+        _res_link("/personas", "Browse the cast", "read + download cards", external=False, glyph="→"),
+        _res_link("/personas/manage", "Manage personas", "create · edit · import", external=False, glyph="→"),
         _res_link(f"{_REPO}/blob/main/docs/app/personas.md", "Personas doc", "groups · cards · AI-Models"),
     ])
     extension = _res_tile("Browser extension", [
@@ -643,9 +640,6 @@ def _render_homepage_featured(featured: list[dict[str, Any]], total: int = 0) ->
     header = (
         '<div class="feat-head">'
         '<span class="feat-k">Featured runs</span>'
-        f'<a href="{THEATER_URL}" target="_blank" rel="noopener noreferrer" '
-        'title="Watch published debates in the Debate Chat Theater" '
-        'class="feat-theater mono">Watch in Theater ↗</a>'
         "</div>"
     )
     label = (
@@ -1017,5 +1011,4 @@ def _render_homepage(stats: dict[str, int], latest: list[dict[str, Any]]) -> str
         clis_stat=clis_stat,
         clis_label=clis_label,
         clis_color=clis_color,
-        theater_url=THEATER_URL,
     )

@@ -1,10 +1,8 @@
-<div align="center">
+<h1 align="center">🔌 MCP server</h1>
 
-# 🔌 MCP server
-
-**The `roundtable` server at a glance: entry file, launcher, transport, tools, settings, install**
-
-</div>
+<p align="center">
+  <strong>The `roundtable` server at a glance: entry file, launcher, transport, tools, settings, install</strong>
+</p>
 
 ---
 

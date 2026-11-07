@@ -23,7 +23,7 @@ Four separate jobs live on this page, and most people only need the first two.
 | | Do this when | Cost |
 |:---|:---|:---|
 | [**1. Declare what you have**](#1-declare-which-clis-you-have) | Always — first thing after setup. | One tab, one click. |
-| [**2. Register the MCP server**](#2-register-the-agent_chat-mcp-server) | Per CLI, once. | A JSON/TOML block. |
+| [**2. Register the MCP server**](#2-register-the-roundtable-mcp-server) | Per CLI, once. | A JSON/TOML block. |
 | [**3. Seat one tool twice**](#3-seat-one-tool-more-than-once) | You want a two-agent debate and own one CLI. | One button. |
 | [**4. Add an unsupported CLI**](#4-add-a-cli-that-isnt-supported-yet) | Your tool isn't one of the five. | A code change, ~20 files. |
 

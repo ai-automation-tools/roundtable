@@ -235,6 +235,9 @@ class Persona:
     # hundred KB per card. Fetch them with get_avatar() when serving.
     avatar_mime: str = ""
     path: Path = field(default=Path(), compare=False)
+    # ISO timestamp the row was first written ("" for a card parsed from text).
+    # Only the explorer's "newest" sort reads it.
+    created_at: str = field(default="", compare=False)
 
     @property
     def has_avatar(self) -> bool:
@@ -298,6 +301,7 @@ def _row_to_persona(row: sqlite3.Row) -> Persona:
         body=body,
         avatar_mime=str(_row_get(row, "avatar_mime") or ""),
         path=_PERSONAS_ROOT / group / f"{slug}.md",
+        created_at=str(_row_get(row, "created_at") or ""),
     )
 
 
@@ -411,6 +415,29 @@ def parse_card_text(text: str, slug: str, group: str,
         body=body,
         path=path if path is not None else _PERSONAS_ROOT / group / f"{slug}.md",
     )
+
+
+def card_text(persona: Persona) -> str:
+    """Render a persona back into a seed card — the inverse of
+    :func:`parse_card_text`, so ``import_persona_card(card_text(p))`` lands the
+    same name, tags, category and body. The explorer's ``.md`` / ``.zip``
+    downloads are built from this.
+
+    Empty category/subcategory are omitted rather than written blank: the
+    frontmatter reader treats ``key:`` with no value as a list header, which
+    would come back as the string ``"[]"``."""
+    title = persona.name.replace('"', '\\"')
+    lines = ["---"]
+    if persona.category:
+        lines.append(f"category: {persona.category}")
+    if persona.subcategory:
+        lines.append(f"subcategory: {persona.subcategory}")
+    if persona.tags:
+        lines.append("tags:")
+        lines.extend(f"- {t}" for t in persona.tags)
+    lines.append(f'title: "{title}"')
+    lines.append("---")
+    return "\n".join(lines) + "\n\n" + persona.body.strip() + "\n"
 
 
 def _load_card(path: Path, group: str) -> Persona:

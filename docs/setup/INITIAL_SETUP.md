@@ -1,6 +1,6 @@
 # Initial Setup
 
-Two parts: a **[Fresh-clone setup](#fresh-clone-setup)** path (what to run today, the same steps as the [README](../../README.md#-getting-started)), and the original **[historical bootstrap record](#historical-bootstrap-record-2026-05-01)** of how the repo was first created (kept for audit).
+Two parts: a **[Fresh-clone setup](#fresh-clone-setup)** path (what to run today, the same steps as the [README](../../README.md#-quick-start)), and the original **[historical bootstrap record](#historical-bootstrap-record-2026-05-01)** of how the repo was first created (kept for audit).
 
 ---
 

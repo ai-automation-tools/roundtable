@@ -2,15 +2,15 @@
 
 The Markdown bundle that represents one finished conversation
 (``topic.md`` + ``personas/<agent>.md`` + ``transcript.md``) is consumed by
-three surfaces that must never drift apart:
+surfaces that must never drift apart:
 
 - the Web UI download endpoints (``/api/conversations/{cid}/export.md`` and
   ``…/export.zip`` in ``src/web_ui.py``),
-- ``scripts/publish_debate.py``, which writes the same files straight into the
-  AI-Automation-Library archive (``My-Library/Content/Agent-Debates/``),
-- downstream consumers of that archive (the library site and the
-  debate-chat-theater app), which parse the ``topic.md`` meta table + Cast
-  section and the ``## sender — timestamp`` transcript headings.
+- the delivery folder sink (``orchestrator/delivery.py``), which writes
+  ``bundle_files()`` verbatim, so a delivered folder is the ``.zip`` unpacked,
+- anything an operator points at those files, which parses the ``topic.md``
+  meta table + Cast section and the ``## sender — timestamp`` transcript
+  headings.
 
 Format changes here ripple to all of them — see docs/app/export-format.md.
 
@@ -44,8 +44,9 @@ def topic_slug(topic: str, max_len: int = 25) -> str:
     an empty string if no usable characters remain — callers should
     fall back to a default like ``conversation-{cid}``.
 
-    The slug is the join key between the DB, the library archive folder
-    and the theater app — keep any change backward-compatible.
+    The slug names every exported and delivered file, so it is the join key
+    between the DB and anything already on disk — keep any change
+    backward-compatible.
     """
     cleaned = (topic or "").encode("ascii", "ignore").decode("ascii").lower()
     slug = re.sub(r"[^a-z0-9]+", "-", cleaned).strip("-")
@@ -359,8 +360,8 @@ def bundle_files(data: dict[str, Any]) -> list[tuple[str, str]]:
     - ``transcript.md``       — topic + personas + the full debate (same body as the
                                  single-file export).
 
-    Shared by the .zip endpoint and scripts/publish_debate.py so the browser
-    download and the library archive can never diverge. Conversations seeded
+    Shared by the .zip endpoint and the delivery folder sink so the browser
+    download and a delivered folder can never diverge. Conversations seeded
     without personas still get one doc per participant noting the persona
     wasn't recorded.
     """

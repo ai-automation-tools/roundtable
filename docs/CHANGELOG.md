@@ -2,7 +2,35 @@
 
 All notable changes to this repository. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
-## 2026-11-05 (latest)
+## 2026-11-06 (latest)
+
+### Added — the persona explorer (the Persona Registry moves in-app)
+
+The AI-Automation-Library's static Persona Registry is retired; browsing the cast is now part of Roundtable, and works on the read-only demo.
+
+- **`/personas` is now a read-only explorer.** A grid of every persona except the reserved `AI-Models` group, each card showing its 2:3 cover, name, group and tags. Search covers name, tags and the whole card body (every word must match); filter by group, category / subcategory or tag; sort by name or newest. Filters are plain GET parameters, so a filtered view is a link you can share, and nothing on the page needs a script to work.
+- **A page per persona** at `/personas/<slug>`: cover, avatar, metadata, and the card rendered as Markdown exactly as the model reads it. Downloads: the card `.md`, the avatar (when the persona has art of its own), and a `.zip` of both laid out as `<slug>/<slug>.md` + `<slug>/<slug>-avatar.png`, which the Import modal re-imports with its picture.
+- **Use in a debate** opens `/orchestrate?persona=<slug>`, which now seats that persona in the first chair. On the demo the same button reaches the "debates run on your machine" page.
+- **Covers** load from `{PERSONA_MEDIA_URL}/covers/<slug>.webp` (default `https://ai-automation-tools.dev/roundtable-personas`, override with the `PERSONA_MEDIA_URL` env var). A persona with no cover shows its avatar instead, never a broken image.
+- **The management console moved to `/personas/manage`.** Unchanged otherwise. Its *Get more cards ↗* button is now **Browse the cast**, back to the explorer. The command palette opens a persona's explorer page and lists *Manage personas* as its own page.
+- **Persona Registry links removed:** the *Persona Registry ↗* rail row and palette entry are gone, `REGISTRY_URL` now points at `/personas`, and the README, the homepage resources, the static `homepage/`, `docs/guides/add-a-persona.md` and `docs/app/` point at the explorer.
+- New `orchestrator.personas.card_text()` (the inverse of `parse_card_text()`), `Persona.created_at`, and `web.avatars.raster_avatar()`. New `tests/test_persona_explorer.py`; `tests/test_availability.py` now checks the rail has no off-site registry row and that the explorer and console link to each other.
+
+### Removed — the Debate Chat Theater integration and the publish-to-library pipeline
+
+The Debate Chat Theater on the AI-Automation-Library site is being decommissioned, so Roundtable no longer feeds it or links to it.
+
+- **Publish pipeline gone.** `scripts/publish_debate.py`, the runtime skill `skills/publish-debate/`, and the `prompts/Auto-Debate/Debate-And-Publish/` prompts are deleted. The *publish a keeper* prompt is cut from `Manage-Debates/Review-And-Export/`, `start-debate` now points at the Export MD / Export ZIP buttons after a run, and the skills, scripts, prompts, repo-layout and agent docs no longer mention publishing into `My-Library/Content/Agent-Debates/`. Re-run `scripts/setup/setup-skill-links.ps1` (or delete the dangling `publish-debate` junction) on any other clone.
+- **Theater links gone.** `THEATER_URL`, the *Theater* rail row, the *Debate Chat Theater* command-palette entry, *Watch in Theater ↗* on the homepage's Featured runs panel, the `.feat-theater` / `.btn-thea` styles and the `thea` icon are removed, as are the link on the static `homepage/` and the README's Companion sites row. The Persona Registry link stays.
+- **Export format unchanged.** `/export.md` and `/export.zip` render exactly as before. `docs/app/export-format.md` and the code comments now name the consumers that remain — the downloads and the delivery folder sink. The generated image and audio prompts no longer suggest an `Agent-Debates/<slug>/` folder.
+- Roadmap: *Contain `publish_debate.py --category`* and *Cross-links between the three debate properties* are marked dropped.
+
+### Fixed — docs links and headers
+
+- Four in-page links now point at headings that exist (the README "Four ways to run one" nav link, the add-a-cli step 2 link, the INITIAL_SETUP link to the README quick start, and the `src/README.md` `web/` package link). `AGENTS.md` no longer links the gitignored `docs/Local/`. `docs/UPSTREAMS.md` is linked from the docs index.
+- Centred headers and footers that mixed Markdown into HTML blocks (`docs/mcp-server.md`, three `docs/app/` pages, `docs/cli-mcp-config/README.md`, `extension/README.md`, the Practitioners card index) are plain HTML now, and `skills/README.md` gets the standard section header.
+
+## 2026-11-05
 
 ### Changed — one topic library per conversation type
 

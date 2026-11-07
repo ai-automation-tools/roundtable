@@ -1,10 +1,8 @@
-<div align="center">
+<h1 align="center">⚔️ AgentBattleground</h1>
 
-# ⚔️ AgentBattleground
-
-**Reference for the browser-extension front — arenas, the bridge API, the MCP loop, and the human-in-the-loop gate.**
-
-</div>
+<p align="center">
+  <strong>Reference for the browser-extension front — arenas, the bridge API, the MCP loop, and the human-in-the-loop gate.</strong>
+</p>
 
 ---
 

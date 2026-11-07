@@ -27,7 +27,9 @@ roundtable/
 │   │   ├── avatars.py            #   persona avatar resolution (DB upload → PNG/SVG; GET /avatars/{slug})
 │   │   ├── topics.py             #   topic → logo classifier (TOPICS keyword/glyph/gradient table)
 │   │   ├── render/               #   per-page HTML: common · home · conversations · orchestrate
-│   │   │                         #     · personas · settings (clis/notifications/delivery)
+│   │   │                         #     · personas (the /personas/manage console)
+│   │   │                         #     · persona_explorer (/personas, read-only)
+│   │   │                         #     · settings (clis/notifications/delivery)
 │   │   │                         #     · setup · notifications · extension · battleground
 │   │   └── api/                  #   /api/*: conversations (+SSE) · sync · orchestrate · personas
 │   │                             #     · setup · notifications · delivery_settings · battleground
@@ -60,6 +62,7 @@ roundtable/
 │   ├── test_mcp_turns.py         #   turn rotation, the per-agent cap race, stop signals
 │   ├── test_deliverable_flow.py  #   last-result-wins, the premature-done guard, quiet badge
 │   ├── test_model_personas.py    #   AI-Models cards, reserved-group casting guard, Cast fallback
+│   ├── test_persona_explorer.py  #   /personas explorer: filters, no AI-Models, .zip re-imports
 │   ├── test_site_homepage.py     #   homepage/ keeps its required links + the 404 redirect
 │   ├── test_orchestrate_form.py  #   /orchestrate inline JS ↔ markup, by string invariants
 │   ├── test_orchestrate_browser.py # /orchestrate JS run in headless Chromium (skips without Playwright)
@@ -73,7 +76,6 @@ roundtable/
 │   ├── orchestrate-debate.ps1    # Web-form spawn wrapper for an already-seeded conversation
 │   ├── build-extension.ps1       # Stage the Firefox extension build (Chrome needs no build)
 │   ├── db_sync.py                # Local → Fly DB-mirror sidecar (stdlib only)
-│   ├── publish_debate.py         # Publish a finished debate into the AI-Automation-Library archive
 │   ├── build_diagram.py          # Rebuild / --check the process-flow diagram (docs/diagrams/)
 │   ├── stop-app.ps1              # Stop web UI + sidecar (this clone's venv only)
 │   ├── restart-app.ps1           # Stop + start — needed after any src/ change
@@ -96,8 +98,7 @@ roundtable/
 │   ├── podcast-mode/             #   Layered skill — host asks, guests answer  [SKILL.md + README.md]
 │   ├── collaborate-mode/         #   Layered skill — build one artifact        [SKILL.md + README.md]
 │   ├── battleground/             #   Argue in a captured web thread            [SKILL.md + README.md]
-│   ├── start-debate/             #   Operator skill — launch a debate          [SKILL.md + README.md]
-│   └── publish-debate/           #   Operator skill — publish a finished one   [SKILL.md + README.md]
+│   └── start-debate/             #   Operator skill — launch a debate          [SKILL.md + README.md]
 ├── agents/                       # Per-CLI agent workspaces + persona SEED cards
 │   ├── README.md ★               #   Agents index — workspaces, role docs, persona caveat
 │   ├── CLIs/                     #   Role docs (full-stack dev + agent-chat) + per-CLI MCP configs
@@ -136,7 +137,7 @@ roundtable/
 │   │   ├── battleground.md       #   Arenas, the bridge API, the draft-review gate
 │   │   ├── delivery.md           #   Folder / webhook / command sinks; off unless configured
 │   │   ├── running-the-local-app.md  # Scheduled tasks: start/stop/restart/health/backup
-│   │   └── export-format.md      #   Export-bundle format CONTRACT (web · library · theater)
+│   │   └── export-format.md      #   Export-bundle format CONTRACT (downloads · delivery)
 │   ├── diagrams/ ★               # Process-flow diagram: JSON source (edit) + generated HTML/PNG
 │   ├── cli-mcp-config/ ★         # MCP registration — project + global, per CLI
 │   │   └── per-cli/ ★            #   Deep dives: claude · codex · antigravity · opencode

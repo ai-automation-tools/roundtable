@@ -125,7 +125,7 @@ own `codex login`.
   - Local: `http://127.0.0.1:8765/conversations/<id>`
   - Hosted mirror (if the sidecar is up): `https://roundtable-demo.ai-automation-tools.dev/conversations/<id>`
 - The debate ends on its own at `max_turns`, or when an agent sends `signal='done'`. To stop early: the **Stop** button in the web UI, or `inspect_conversations.py stop <id>`.
-- Once it completes, the [`publish-debate`](../publish-debate/SKILL.md) skill files it (bundle + cover image) into the AI-Automation-Library archive.
+- Once it completes, the conversation page's **Export MD** / **Export ZIP** buttons (`/api/conversations/<id>/export.md` · `export.zip`) save the transcript and persona cards.
 
 ## Alternatives (when debate.ps1 doesn't fit)
 
