@@ -338,6 +338,7 @@ html.rail-collapsed .rail-lbl { display: none; }
 .btn-orch { --nav-h: 258; --nav-s: 90%; --nav-l: 66%; }   /* violet-500 */
 .btn-pers { --nav-h: 173; --nav-s: 80%; --nav-l: 45%; }   /* teal-500   */
 .btn-reg  { --nav-h: 292; --nav-s: 84%; --nav-l: 61%; }   /* fuchsia-500*/
+.btn-preg { --nav-h: 173; --nav-s: 80%; --nav-l: 45%; }   /* teal-500   */
 .btn-res  { --nav-h: 340; --nav-s: 82%; --nav-l: 62%; }   /* rose-500   */
 .btn-extn { --nav-h: 24;  --nav-s: 90%; --nav-l: 58%; }   /* orange-500 */
 .btn-setup{ --nav-h: 199; --nav-s: 89%; --nav-l: 55%; }   /* sky-500    */
@@ -3240,6 +3241,8 @@ main:has(.pm3) { max-width:none; padding:0; margin:0 0 0 var(--rail-w); }
 .pm-grp.active .pm-grp-count { color:#062019; background:var(--em); font-weight:600; }
 .pm-rail-foot { padding:12px; border-top:1px solid var(--pm-line); }
 .pm-rail-foot .btn { width:100%; justify-content:center; }
+.pm-rail-foot .pm-reg { margin:10px 0 0; font-size:12px; line-height:1.45; overflow-wrap:anywhere; }
+.pm-rail-foot .pm-reg a { color:var(--em-2); }
 
 /* ---- Center: persona list ---- */
 .pm-center { display:flex; flex-direction:column; min-width:0; min-height:0; }

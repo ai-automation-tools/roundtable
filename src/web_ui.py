@@ -103,7 +103,7 @@ from web.render.battleground import (  # noqa: E402
     _render_battleground_not_found,
     _render_battleground_readonly,
 )
-from web.render.common import _render_generic_404, render_markdown  # noqa: E402,F401
+from web.render.common import PUBLIC_REGISTRY_HOST, _render_generic_404, render_markdown  # noqa: E402,F401
 from web.render.conversations import (  # noqa: E402
     _render_conversation,
     _render_conversation_not_found,
@@ -165,7 +165,11 @@ from web.security import (  # noqa: E402,F401
 async def homepage(request: Request) -> Response:
     """Public landing page. Shows the marketing/intro shell plus live
     counters and the 5 most recent conversations on this deploy.
+
+    On the registry's own hostname the root IS the persona registry.
     """
+    if request.url.hostname == PUBLIC_REGISTRY_HOST:
+        return RedirectResponse("/personas", status_code=302)
     convs = list_conversations()
     return HTMLResponse(_render_homepage(list_stats(), convs[:5]))
 

@@ -10,7 +10,7 @@ from orchestrator import personas as personas_registry
 
 from web.assets import _PERSONAS_CSS
 from web.avatars import DEFAULT_AVATAR_URL, avatar_url
-from web.render.common import REGISTRY_URL, _initials, _layout, _pm_svg
+from web.render.common import PUBLIC_REGISTRY_HOST, PUBLIC_REGISTRY_URL, REGISTRY_URL, _initials, _layout, _pm_svg
 
 
 def _group_select(current: str, groups: list[str], cls: str) -> str:
@@ -119,6 +119,9 @@ def _render_personas_page() -> str:
         '</div>'
         '<div class="pm-rail-foot">'
         '<button type="button" class="btn btn-primary" id="pm-newgrp">+ New group</button>'
+        f'<p class="pm-hint pm-reg">Browse, read and download cards in the '
+        f'<a href="{REGISTRY_URL}">persona registry</a> &middot; public at '
+        f'<a href="{PUBLIC_REGISTRY_URL}" target="_blank" rel="noopener">{PUBLIC_REGISTRY_HOST}</a></p>'
         '</div></aside>'
     )
 

@@ -3,7 +3,9 @@
 # (the bare roundtable.ai-automation-tools.dev is the static homepage in
 # homepage/, on GitHub Pages; its 404.html forwards old app paths here).
 # The original https://agent-chat.mikesailab.com stays attached and serves the
-# same app — Fly routes by SNI, so both certs point at one deployment. Old links
+# same app — Fly routes by SNI, so both certs point at one deployment.
+# personas.ai-automation-tools.dev is another cert on this app; its GET /
+# redirects to /personas (the persona registry, see web_ui.homepage). Old links
 # and the DB-sync sidecar keep working; nothing redirects.
 # Deploy config for a self-hosted read-only mirror of the web UI.
 

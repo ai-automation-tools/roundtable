@@ -2,7 +2,15 @@
 
 All notable changes to this repository. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
-## 2026-11-06 (latest)
+## 2026-11-07 (latest)
+
+### Changed — Personas opens the console; the registry gets its own address
+
+- **The rail's *Personas* row now opens `/personas/manage`**, the page you actually edit cards on. The read-only explorer at `/personas` is a new **Persona registry** row under *Resources*, and lights that row instead.
+- **The registry has a hostname without "demo" in it: `https://personas.ai-automation-tools.dev`.** It is a second Fly cert on the same mirror; `GET /` on that host redirects to `/personas` (`web_ui.homepage`, pinned by `tests/test_availability.py`). Every other path serves as usual.
+- **Advertised in more places:** the management console's group rail links the registry and its public address; the static homepage links it from the top nav, the hero, the *At a glance* facts and the Resources grid; the README and the persona docs point at the new hostname.
+
+## 2026-11-06
 
 ### Added — the persona explorer (the Persona Registry moves in-app)
 
