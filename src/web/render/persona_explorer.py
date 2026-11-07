@@ -208,7 +208,7 @@ def render_explorer(params: dict[str, str]) -> str:
         '</div>'
     )
     return _layout("Agent Personas", "<strong>Agent Personas</strong>", body,
-                   head_extras=EXPLORER_CSS, active="personas")
+                   head_extras=EXPLORER_CSS, active="registry")
 
 
 def find_persona(slug: str, group: str = "") -> Persona | None:
@@ -285,4 +285,4 @@ def render_persona_detail(p: Persona) -> str:
         '</div>'
     )
     crumbs = f'<a href="/personas">Agent Personas</a> / <strong>{html.escape(p.name)}</strong>'
-    return _layout(p.name, crumbs, body, head_extras=EXPLORER_CSS, active="personas")
+    return _layout(p.name, crumbs, body, head_extras=EXPLORER_CSS, active="registry")

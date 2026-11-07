@@ -21,7 +21,7 @@ read-only MCP tools, so an agent can browse the cast and adopt a character
 > disk today. See [Storage & sync](#storage--sync) below.
 
 > [!TIP]
-> **Just want to add a persona?** [`../guides/add-a-persona.md`](../guides/add-a-persona.md) is the how-to — the `/personas/manage` editor, the import modal, and how your card gets cast. **Just want to look?** `/personas` is the read-only explorer (on the [demo](https://roundtable-demo.ai-automation-tools.dev/personas) too). This
+> **Just want to add a persona?** [`../guides/add-a-persona.md`](../guides/add-a-persona.md) is the how-to — the `/personas/manage` editor, the import modal, and how your card gets cast. **Just want to look?** `/personas` is the read-only explorer (on the [demo](https://personas.ai-automation-tools.dev/) too). This
 > document is the reference behind it.
 
 Pairs with [`scripts/debate.ps1`](../guides/auto-debate.md) (which injects a

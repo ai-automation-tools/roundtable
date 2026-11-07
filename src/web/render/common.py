@@ -75,6 +75,13 @@ def render_markdown(text: str) -> str:
 # site. Downloaded cards go back in through /personas/manage ("Import").
 REGISTRY_URL = "/personas"
 
+# The registry's own public address: a second Fly cert on the hosted mirror,
+# whose GET / redirects to /personas (see web_ui.homepage). Linked from the
+# management console and the static homepage so the registry has a name that
+# doesn't say "demo".
+PUBLIC_REGISTRY_URL = "https://personas.ai-automation-tools.dev"
+PUBLIC_REGISTRY_HOST = "personas.ai-automation-tools.dev"
+
 # Repo home — the topbar's far-right GitHub button and a palette entry.
 GITHUB_URL = "https://github.com/ai-automation-tools/roundtable"
 
@@ -169,7 +176,7 @@ _NAV_ITEMS: tuple[tuple[str, str, str, str, str, bool], ...] = (
     ("home", "Home", "/", "home", "btn-home", False),
     ("conversations", "Conversations", "/conversations", "chat", "btn-conv", False),
     ("orchestrate", "Orchestrate", "/orchestrate", "orch", "btn-orch", False),
-    ("personas", "Personas", "/personas", "pers", "btn-pers", False),
+    ("personas", "Personas", "/personas/manage", "pers", "btn-pers", False),
     ("extension", "Browser extension", "/extension", "extn", "btn-extn", False),
     ("battleground", "Battleground", "/battleground", "arena", "btn-arena", False),
     ("settings", "Settings", "/settings", "gear", "btn-setup", False),
@@ -180,6 +187,7 @@ _NAV_ITEMS: tuple[tuple[str, str, str, str, str, bool], ...] = (
 # in-page anchor it scrolled to nothing from every page but the homepage, which
 # is why it used to be passed in through `extra_nav`.
 _RESOURCE_NAV_ITEMS: tuple[tuple[str, str, str, str, str, bool], ...] = (
+    ("registry", "Persona registry", "/personas", "pers", "btn-preg", False),
     ("resources", "Resources", "/#resources", "res", "btn-res", False),
 )
 
