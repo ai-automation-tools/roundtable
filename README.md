@@ -173,9 +173,9 @@ Personas are rows in the database, not files, so adding one takes no code change
 | **`AI-Models`** *(reserved)* | One card per supported CLI — *"you are Claude Code"*. Backs the Cast panel when a run recorded no personas, and is excluded from random casting. |
 | **`Practitioners`** | Work-role cards built for collaborations — the seats that argue about a design rather than about politics. |
 | **`Random-Debate-Personas`** · **`Debate-Hosts`** | The general debate cast, plus the moderators and podcast hosts that run a room without taking a side. |
-| **`Celebrities`** · **`Comedians`** · **`Fictional Characters`** · **`Musicians`** · **`Podcasters`** · **`Political Figures`** | Character cards — browse them in the [persona explorer](https://roundtable-demo.ai-automation-tools.dev/personas). |
+| **`Celebrities`** · **`Comedians`** · **`Fictional Characters`** · **`Musicians`** · **`Podcasters`** · **`Political Figures`** | Character cards — browse them in the [persona explorer](https://personas.ai-automation-tools.dev/). |
 
-Groups are free-form — one exists as soon as a card lands in it, so your own roster needs no registration. Browse the live set in the **persona explorer** at [`/personas`](https://roundtable-demo.ai-automation-tools.dev/personas) — search, filter by group, category or tag, read a card exactly as the model reads it, and download any persona as a `.zip` that re-imports into your own copy. Adding and editing happen on `/personas/manage`.
+Groups are free-form — one exists as soon as a card lands in it, so your own roster needs no registration. Browse the live set in the **persona explorer** at [`/personas`](https://personas.ai-automation-tools.dev/) — search, filter by group, category or tag, read a card exactly as the model reads it, and download any persona as a `.zip` that re-imports into your own copy. Adding and editing happen on `/personas/manage`.
 
 ➡️ **[Add your own persona](docs/guides/add-a-persona.md)** — write one in the browser, import Markdown cards and avatars, or drop in a whole zip.
 
@@ -204,7 +204,7 @@ A read-only copy of the web UI runs in public. It isn't needed to run Roundtable
 
 | Site | What it is |
 |:---|:---|
-| [**Persona explorer**](https://roundtable-demo.ai-automation-tools.dev/personas) | The **Agent Personas** page on the hosted demo — character cards, avatars and cover art, with per-persona downloads you can import into your own `/personas/manage`. In-app since 2026-11-06 (it replaced the Persona Registry on the AI-Automation-Library site). |
+| [**Persona explorer**](https://personas.ai-automation-tools.dev/) | The **Agent Personas** page on the hosted demo — character cards, avatars and cover art, with per-persona downloads you can import into your own `/personas/manage`. In-app since 2026-11-06 (it replaced the Persona Registry on the AI-Automation-Library site). |
 
 ## 📚 Documentation map
 
