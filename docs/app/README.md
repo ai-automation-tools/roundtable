@@ -40,7 +40,7 @@ touching the code they describe.
 
 | Document | Why it's a contract |
 |:---|:---|
-| [**Export format**](export-format.md) | Three external consumers parse the bundle — the AI-Automation-Library archive, the library site walker, and the debate-chat-theater build. Heading shapes, meta-table labels, persona filenames, and the 25-char topic slug are effectively frozen. |
+| [**Export format**](export-format.md) | The downloads and the delivery folder sink write the bundle, and anything reading those files parses it. Heading shapes, meta-table labels, persona filenames, and the 25-char topic slug are effectively frozen. |
 | [**AgentBattleground**](battleground.md) | Post ids must be **stable** across re-captures, and a new site adapter has to land its label in `KNOWN_SITES` or the arena silently mislabels itself. |
 
 ## 🔗 Related

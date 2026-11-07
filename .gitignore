@@ -94,7 +94,6 @@ Thumbs.db
 .claude/skills/collaborate-mode/
 .claude/skills/humanizer/
 .claude/skills/start-debate/
-.claude/skills/publish-debate/
 
 # The un-ignore above is anchored to the repo-root .claude/ (a pattern with a
 # slash in it always is). Nested per-CLI tester Claude state is NOT tracked —

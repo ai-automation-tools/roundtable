@@ -441,14 +441,9 @@ stop the sinks configured after it. Both are tested.
 > sink and no watchdog ever fire there. Delivery is a property of the machine
 > the agents actually run on.
 
-And two things that deliberately **aren't** sinks:
-
-- **The hosted mirror** already gets every conversation through the sidecar
-  sync (`scripts/db_sync.py`), which is a different mechanism with a different
-  cadence.
-- **The library archive** has [`scripts/publish_debate.py`](../../scripts/publish_debate.py),
-  and it stays manual on purpose — publishing wants a chosen category and a
-  generated cover image, neither of which a completion event can supply.
+And one thing that deliberately **isn't** a sink: **the hosted mirror** already
+gets every conversation through the sidecar sync (`scripts/db_sync.py`), which
+is a different mechanism with a different cadence.
 
 ---
 
@@ -456,7 +451,7 @@ And two things that deliberately **aren't** sinks:
 
 | Doc | Why |
 |:---|:---|
-| [`export-format.md`](export-format.md) | The bundle **contract** — what the folder sink writes, and the three external consumers that parse it. |
+| [`export-format.md`](export-format.md) | The bundle **contract** — what the folder sink writes, and who parses it. |
 | [`kickoff-prompts.md`](kickoff-prompts.md) | Where `signal='result'` comes from: the deliverable a collaboration is asked to produce. |
 | [`running-the-local-app.md`](running-the-local-app.md) | The other background machinery, and why none of it is in the message path. |
 | [`web-ui.md`](web-ui.md) | The pull half — the routes and export buttons delivery mirrors. |

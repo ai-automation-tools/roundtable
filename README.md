@@ -31,11 +31,11 @@
 
 <p align="center">
   <a href="#-what-it-does">What it does</a> ·
-  <a href="#-three-ways-to-run-a-conversation">Three ways to run one</a> ·
+  <a href="#-four-ways-to-run-a-conversation">Four ways to run one</a> ·
   <a href="#-quick-start">Quick start</a> ·
   <a href="#-operator-workflows">Workflows</a> ·
   <a href="#-supported-clis--personas">CLIs &amp; personas</a> ·
-  <a href="#-companion-sites">Companion sites</a> ·
+  <a href="#-hosted-demo">Hosted demo</a> ·
   <a href="#-documentation-map">Docs</a>
 </p>
 
@@ -70,7 +70,7 @@ The first three put your own CLI agents in a room together, in character — arg
 |:---|:---|
 | **Live watching** | A local Starlette UI streams new messages over SSE while the agents work. |
 | **Personas** | A DB-backed registry of character cards with avatars, shared by every format. |
-| **Publishing** | Markdown and ZIP exports through one shared contract, then into the library workflow. |
+| **Exports** | Markdown and ZIP exports through one shared contract. |
 | **Delivery** | Optionally push a finished conversation out on its own — a folder, a webhook, or a command. Off unless configured; see [delivery](docs/app/delivery.md). |
 
 > [!IMPORTANT]
@@ -173,9 +173,9 @@ Personas are rows in the database, not files, so adding one takes no code change
 | **`AI-Models`** *(reserved)* | One card per supported CLI — *"you are Claude Code"*. Backs the Cast panel when a run recorded no personas, and is excluded from random casting. |
 | **`Practitioners`** | Work-role cards built for collaborations — the seats that argue about a design rather than about politics. |
 | **`Random-Debate-Personas`** · **`Debate-Hosts`** | The general debate cast, plus the moderators and podcast hosts that run a room without taking a side. |
-| **`Celebrities`** · **`Comedians`** · **`Fictional Characters`** · **`Musicians`** · **`Podcasters`** · **`Political Figures`** | Character cards imported from the [Persona Registry](https://library.mikesailab.com/tools/persona-registry/). |
+| **`Celebrities`** · **`Comedians`** · **`Fictional Characters`** · **`Musicians`** · **`Podcasters`** · **`Political Figures`** | Character cards — browse them in the [persona explorer](https://roundtable-demo.ai-automation-tools.dev/personas). |
 
-Groups are free-form — one exists as soon as a card lands in it, so your own roster needs no registration. Browse the live set at [`/personas`](https://roundtable-demo.ai-automation-tools.dev/personas), or the public catalogue at the [**Persona Registry**](https://library.mikesailab.com/tools/persona-registry/).
+Groups are free-form — one exists as soon as a card lands in it, so your own roster needs no registration. Browse the live set in the **persona explorer** at [`/personas`](https://roundtable-demo.ai-automation-tools.dev/personas) — search, filter by group, category or tag, read a card exactly as the model reads it, and download any persona as a `.zip` that re-imports into your own copy. Adding and editing happen on `/personas/manage`.
 
 ➡️ **[Add your own persona](docs/guides/add-a-persona.md)** — write one in the browser, import Markdown cards and avatars, or drop in a whole zip.
 
@@ -198,14 +198,13 @@ The app is branded **Agent Battleground** in-browser and runs locally at `http:/
 
 The hosted mirror at [roundtable-demo.ai-automation-tools.dev](https://roundtable-demo.ai-automation-tools.dev) runs the same app in read-only mode: it shows real conversations and says so on every page, but nothing there can be changed or launched.
 
-## 🌐 Companion sites
+## 🌐 Hosted demo
 
-Two published sites sit downstream of this repo. Neither is needed to run Roundtable locally — they are where personas and finished debates end up.
+A read-only copy of the web UI runs in public. It isn't needed to run Roundtable locally — it is where you can look before you clone.
 
 | Site | What it is |
 |:---|:---|
-| [**Persona Registry**](https://library.mikesailab.com/tools/persona-registry/) | Browsable catalog of the debate personas — character cards, avatars, and cover art, with per-persona downloads you can import into your own `/personas` registry. |
-| [**Debate Chat Theater**](https://library.mikesailab.com/tools/debate-chat-theater/) | Replays a finished debate message-by-message as a chat, so a transcript reads like a conversation instead of a wall of Markdown. Built from the same [export bundle](docs/app/export-format.md) the web UI produces. |
+| [**Persona explorer**](https://roundtable-demo.ai-automation-tools.dev/personas) | The cast on the hosted demo — character cards, avatars and cover art, with per-persona downloads you can import into your own `/personas/manage`. In-app since 2026-11-06 (it replaced the Persona Registry on the AI-Automation-Library site). |
 
 ## 📚 Documentation map
 
@@ -219,7 +218,7 @@ Start with the [documentation hub](docs/README.md). Every docs folder has its ow
 | [**MCP server**](docs/mcp-server.md) | What the server exposes, its settings, and the install line for each CLI. |
 | [**CLI MCP config**](docs/cli-mcp-config/README.md) | Project-vs-global MCP registration and per-CLI setup. |
 | [**Source**](src/README.md) | Entrypoints, packages, and invariants to preserve while coding. |
-| [**Scripts**](scripts/README.md) | Operator wrappers, sidecar sync, setup helpers, and publisher. |
+| [**Scripts**](scripts/README.md) | Operator wrappers, sidecar sync, and setup helpers. |
 | [**Skills**](skills/README.md) | Runtime skills read by participating CLI agents. |
 | [**Tests**](tests/README.md) | Sixteen standalone-runnable suites plus known coverage gaps. |
 | [**Roadmap**](docs/ROADMAP.md) · [**Changelog**](docs/CHANGELOG.md) | Priorities and shipped history. |

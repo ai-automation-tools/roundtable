@@ -35,8 +35,6 @@ because agent CLIs read these at runtime:
 - A change to `debate.ps1` flags, the persona group model, or how a debate is
   launched/seeded → `skills/start-debate/SKILL.md` (and `agent-chat`'s tool
   table / `debate-mode`'s persona section if tool or persona behavior shifted).
-- A change to `publish_debate.py` flags, the export bundle, or the library folder
-  layout → `skills/publish-debate/SKILL.md`.
 - Skill examples must **not** reference specific persona slugs or group names
   that can be deleted — flag any that do; keep examples generic or "e.g.".
 

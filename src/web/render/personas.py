@@ -1,4 +1,4 @@
-"""The /personas management console page."""
+"""The /personas/manage management console page (/personas is the explorer)."""
 
 from __future__ import annotations
 
@@ -133,11 +133,10 @@ def _render_personas_page() -> str:
         '<option value="za">Name Z&ndash;A</option></select>'
         '<button type="button" class="btn btn-primary" id="pm-new">+ New</button>'
         '<button type="button" class="btn" id="pm-import-open">Import</button>'
-        # Where cards come from. The console could always import them; it never
-        # said there was a catalogue to import them *from*.
-        f'<a class="btn pm-registry" href="{REGISTRY_URL}" target="_blank" '
-        'rel="noopener noreferrer" title="Browse and download persona cards from the '
-        'Persona Registry">Get more cards &#8599;</a>'
+        # Back to the browse view — the explorer, which is also where a card
+        # and its avatar download as a .zip this console's Import reads back.
+        f'<a class="btn pm-registry" href="{REGISTRY_URL}" '
+        'title="Browse, read and download persona cards">Browse the cast</a>'
         '<button type="button" class="btn pm-sel-toggle" id="pm-sel-toggle">Select</button>'
         '</div></header>'
         '<div class="pm-colhead"><span></span><span>Persona</span><span>Slug</span>'
@@ -203,10 +202,10 @@ def _render_personas_page() -> str:
         '<div class="pm-modal" id="pm-modal">'
         '<div class="pm-modal-card">'
         '<h3>Import personas</h3>'
-        f'<p class="pm-hint">Don\'t have cards to import? The '
-        f'<a href="{REGISTRY_URL}" target="_blank" rel="noopener noreferrer">'
-        'Persona Registry &#8599;</a> is a public catalogue &mdash; download a card '
-        'and its avatar, then drop both here.</p>'
+        f'<p class="pm-hint">Don\'t have cards to import? Any '
+        f'<a href="{REGISTRY_URL}">persona explorer</a> &mdash; this app\'s, or the '
+        'public demo\'s &mdash; downloads a card and its avatar as one '
+        '<code>.zip</code>; drop it here.</p>'
         '<p class="pm-hint">Select one or more <code>.md</code> cards (seed-card '
         'frontmatter) and/or a <code>.zip</code> archive. The filename becomes the '
         'slug; title, tags, and category come from the frontmatter.</p>'
@@ -810,8 +809,8 @@ def _render_personas_page() -> str:
         });
       }
 
-      // Deep-link target for the command palette, which links personas as
-      // /personas?group=<group>&q=<name>: select the group, then prefill the
+      // Deep-link target for the explorer's "Edit in the manager", which links
+      // /personas/manage?group=<group>&q=<name>: select the group, then prefill the
       // search so the card the operator picked is the one row on screen.
       // Runs before the initial applyFilterSort() so we filter exactly once.
       (() => {

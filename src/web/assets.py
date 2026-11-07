@@ -338,7 +338,6 @@ html.rail-collapsed .rail-lbl { display: none; }
 .btn-orch { --nav-h: 258; --nav-s: 90%; --nav-l: 66%; }   /* violet-500 */
 .btn-pers { --nav-h: 173; --nav-s: 80%; --nav-l: 45%; }   /* teal-500   */
 .btn-reg  { --nav-h: 292; --nav-s: 84%; --nav-l: 61%; }   /* fuchsia-500*/
-.btn-thea { --nav-h: 38;  --nav-s: 92%; --nav-l: 55%; }   /* amber-500  */
 .btn-res  { --nav-h: 340; --nav-s: 82%; --nav-l: 62%; }   /* rose-500   */
 .btn-extn { --nav-h: 24;  --nav-s: 90%; --nav-l: 58%; }   /* orange-500 */
 .btn-setup{ --nav-h: 199; --nav-s: 89%; --nav-l: 55%; }   /* sky-500    */
@@ -691,7 +690,7 @@ html.light .theme-btn[data-theme-set="light"] {
 # ---------------------------------------------------------------------------
 # Emitted by render.common._topbar() on every page, homepage included. Raw
 # string (r-prefix): the regex escapes below must reach the browser intact.
-# Reads its two external URLs from window.__AB_LINKS rather than being
+# Reads its external URL (the repo) from window.__AB_LINKS rather than being
 # .format()-ed, so no brace in this JS ever has to be doubled.
 
 SHELL_JS = r"""
@@ -780,7 +779,6 @@ SHELL_JS = r"""
     arena: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.4"/><line x1="12" y1="1.5" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22.5"/><line x1="1.5" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22.5" y2="12"/>',
     setup: '<polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>',
     reg: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
-    thea: '<rect x="2" y="2" width="20" height="20" rx="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/>',
     gh: '<path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>'
   };
 
@@ -793,12 +791,11 @@ SHELL_JS = r"""
     { kind: 'Pages', title: 'Home', sub: 'Landing page, live counters, featured debates', url: '/', ico: 'home' },
     { kind: 'Pages', title: 'Conversations', sub: 'Browse every debate transcript', url: '/conversations', ico: 'chat' },
     { kind: 'Pages', title: 'Orchestrate', sub: 'Seed and launch a new debate', url: '/orchestrate', ico: 'orch' },
-    { kind: 'Pages', title: 'Personas', sub: 'Manage debater cards and groups', url: '/personas', ico: 'pers' },
+    { kind: 'Pages', title: 'Personas', sub: 'Browse the cast, read and download cards', url: '/personas', ico: 'pers' },
+    { kind: 'Pages', title: 'Manage personas', sub: 'Create, edit, import debater cards', url: '/personas/manage', ico: 'pers' },
     { kind: 'Pages', title: 'Browser extension', sub: 'What AgentBattleground is and how to install it', url: '/extension', ico: 'extn' },
     { kind: 'Pages', title: 'Battleground', sub: 'Captured arenas, drafts, and verdicts', url: '/battleground', ico: 'arena' },
     { kind: 'Pages', title: 'CLI setup', sub: 'Which CLI tools this machine has', url: '/setup', ico: 'setup' },
-    { kind: 'Pages', title: 'Persona Registry', sub: 'Download more persona cards', url: LINKS.registry, ico: 'reg', ext: true },
-    { kind: 'Pages', title: 'Debate Chat Theater', sub: 'Watch published debates', url: LINKS.theater, ico: 'thea', ext: true },
     { kind: 'Pages', title: 'GitHub repository', sub: 'ai-automation-tools/roundtable', url: LINKS.github, ico: 'gh', ext: true }
   ];
 
@@ -832,7 +829,7 @@ SHELL_JS = r"""
           kind: 'Personas',
           title: p.name || p.slug,
           sub: p.group || '',
-          url: '/personas?group=' + encodeURIComponent(p.group || '') + '&q=' + encodeURIComponent(p.name || ''),
+          url: '/personas/' + encodeURIComponent(p.slug) + '?group=' + encodeURIComponent(p.group || ''),
           badge: initials(p.name || p.slug)
         });
       });
@@ -1673,8 +1670,6 @@ body.home .muted { color: var(--muted); }
 .featured { border: 1px solid var(--border); background: var(--panel); border-radius: 14px; overflow: hidden; backdrop-filter: blur(6px); }
 .feat-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
 .feat-k { font-size: 11px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--muted); }
-.feat-theater { font-size: 11px; color: var(--muted); }
-.feat-theater:hover { color: var(--text); text-decoration: none; }
 .feat-rows > .feat-row + .feat-row { border-top: 1px solid var(--border); }
 .feat-row { display: block; padding: 14px 16px; color: inherit; text-decoration: none; transition: background 0.2s var(--ease); }
 .feat-row:hover { background: rgba(39, 39, 42, 0.35); text-decoration: none; }
@@ -3330,7 +3325,7 @@ main:has(.pm3) { max-width:none; padding:0; margin:0 0 0 var(--rail-w); }
 /* ---- Buttons / messages (scoped overrides on the shared .btn) ---- */
 .pm3 .btn { font-size:12px; padding:7px 13px; border-radius:7px; border:1px solid var(--pm-line-2); background:transparent; color:var(--pm-bone); }
 .pm3 .btn:hover { background:rgba(255,255,255,0.05); border-color:var(--pm-ash); }
-/* The one .btn that's an <a>, not a <button>: out to the Persona Registry. */
+/* The one .btn that's an <a>, not a <button>: back to the persona explorer. */
 .pm3 a.btn { display:inline-flex; align-items:center; text-decoration:none; line-height:1.5; }
 .pm3 a.btn:hover { text-decoration:none; color:var(--pm-paper); }
 .pm3 .pm-registry { color:var(--em-2); border-color:var(--em-line); }
@@ -3424,6 +3419,80 @@ main:has(.pm3) { max-width:none; padding:0; margin:0 0 0 var(--rail-w); }
 #
 # THEME_BOOT_JS runs in <head> before first paint. Its default ('dark') must
 # match initTheme() in SHELL_JS, which treats anything but `light` as dark.
+EXPLORER_CSS = """\
+<style>
+/* --- Persona explorer (/personas, /personas/{slug}) ---------------------
+   Built only on the shared tokens (--panel, --text, --muted, --border,
+   --accent), so LIGHT_CSS re-themes it with no html.light rules of its own. */
+.px { max-width: var(--w-list); margin: 0 auto; }
+.px .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+.px-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+.px-head .page-sub { margin-bottom:20px; max-width:var(--measure); }
+.px .btn { min-height:36px; }
+.px-controls { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.px-controls input, .px-controls select {
+  font:inherit; font-size:14px; min-height:38px; padding:7px 10px; border-radius:6px;
+  border:1px solid var(--border-strong); background:var(--panel); color:var(--text); }
+.px-search { flex:1 1 260px; display:flex; }
+.px-search input { width:100%; }
+.px-cloud { display:flex; flex-wrap:wrap; gap:6px; margin:14px 0 6px; }
+.px-tag { display:inline-flex; align-items:center; gap:6px; min-height:30px; padding:3px 10px;
+  border:1px solid var(--border-strong); border-radius:999px; font-size:12px; color:var(--muted);
+  text-decoration:none; }
+.px-tag span { font-size:11px; color:var(--muted-2); }
+.px-tag:hover { color:var(--text); border-color:var(--accent); text-decoration:none; }
+.px-tag.on { color:var(--accent); border-color:var(--accent); }
+.px-count { font-size:13px; color:var(--muted); margin:10px 0 16px; }
+.px-grid { display:grid; gap:16px; grid-template-columns:repeat(auto-fill, minmax(176px, 1fr)); }
+.px-card { display:flex; flex-direction:column; border:1px solid var(--border); border-radius:10px;
+  overflow:hidden; background:var(--panel); color:var(--text); text-decoration:none;
+  transition:border-color .15s ease, transform .15s ease; }
+.px-card:hover { border-color:var(--accent); transform:translateY(-2px); text-decoration:none; }
+.px-cover { display:block; aspect-ratio:2/3; background:var(--panel-2); overflow:hidden; }
+.px-cover img { width:100%; height:100%; object-fit:cover; display:block; }
+/* No cover: the square avatar, centred on the frame rather than cropped. */
+.px-cover.is-avatar { display:flex; align-items:center; justify-content:center; }
+.px-cover.is-avatar img { width:62%; height:auto; aspect-ratio:1; border-radius:50%; }
+.px-cbody { display:flex; flex-direction:column; gap:3px; padding:10px 12px 12px; min-width:0; }
+.px-name { font-size:14px; font-weight:600; }
+.px-kick { font-family:'JetBrains Mono',ui-monospace,monospace; font-size:10px; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--muted-2); margin:0; }
+.px-ctags { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; }
+.px-ctags span { font-size:11px; color:var(--muted); background:var(--panel-2); border-radius:4px; padding:1px 6px; }
+.px-empty { color:var(--muted); padding:40px 0; text-align:center; }
+.px-back { margin:0 0 16px; font-size:13px; }
+.px-dgrid { display:grid; grid-template-columns:minmax(0, 320px) minmax(0, 1fr); gap:28px; align-items:start; }
+.px-dcover { border-radius:12px; border:1px solid var(--border); }
+.px-id { display:flex; gap:14px; align-items:center; }
+.px-id .page-title { margin:2px 0 0; }
+.px-av { width:64px; height:64px; border-radius:50%; object-fit:cover; border:1px solid var(--border-strong); flex:none; }
+.px-summary { color:var(--muted); max-width:var(--measure); margin:14px 0; }
+.px-tags { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 16px; }
+.px-actions { margin:6px 0 16px; }
+.px-dl { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:18px; }
+.px-dl-h { font-size:12px; color:var(--muted-2); text-transform:uppercase; letter-spacing:.1em; margin-right:4px; }
+.px-meta { display:grid; grid-template-columns:auto 1fr; gap:6px 16px; font-size:13px; margin:0 0 10px; }
+.px-meta dt { color:var(--muted-2); }
+.px-meta dd { margin:0; }
+.px-hint { font-size:12px; color:var(--muted-2); margin:6px 0 0; }
+.px-card-body { margin-top:32px; border-top:1px solid var(--border); padding-top:20px; max-width:var(--measure); }
+.px-card-body h3 { font-size:15px; margin:0 0 14px; }
+.px-card-body h3 span { font-weight:400; color:var(--muted-2); }
+@media (max-width: 760px) {
+  .px-dgrid { grid-template-columns:1fr; }
+  .px-dcover { max-width:240px; }
+  .px-grid { grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:12px; }
+  .px-controls > label:not(.px-search) { flex:1 1 30%; }
+  .px-controls select { width:100%; }
+  .px-tag { min-height:36px; }
+  /* 30 tags would push the grid off the first screen; the active tag is
+     repeated in .px-count, so trimming here never hides the filter in use. */
+  .px-cloud .px-tag:nth-child(n+9) { display:none; }
+}
+</style>
+"""
+
+
 THEME_BOOT_JS = (
     "<script>(function(){var t='dark';"
     "try{var s=localStorage.getItem('agent-chat.theme');if(s==='light'||s==='dark')t=s;}catch(e){}"
