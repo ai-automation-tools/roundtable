@@ -151,6 +151,7 @@ from web.security import (  # noqa: E402,F401
     CrossSiteWriteGuard,
     ExtensionCorsMiddleware,
     ReadOnlyMiddleware,
+    RegistryHostMiddleware,
     SecurityHeadersMiddleware,
     _build_middleware,
     _env_truthy,
