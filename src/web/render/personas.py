@@ -37,6 +37,39 @@ def _pm_glabel(g: str) -> str:
     return g.replace("-", " ").replace("_", " ")
 
 
+def _registry_promo() -> str:
+    """The persona-registry card in the empty detail pane: the first thing an
+    operator sees on this page, so it advertises the public registry with its
+    real size and a few of its faces. Counts the same cast the registry shows
+    (no AI-Models reference cards); a registry/DB hiccup just drops the numbers."""
+    try:
+        cast = list(personas_registry.list_debater_personas())
+    except Exception:  # noqa: BLE001 — the ad degrades, the console doesn't
+        cast = []
+    faces = "".join(
+        f'<img src="{html.escape(avatar_url(p.slug), quote=True)}" alt="" loading="lazy" '
+        f'onerror="this.remove()">'
+        for p in [p for p in cast if p.has_avatar][:5]
+    )
+    n_groups = len({p.group for p in cast})
+    size = (
+        f'<strong class="pm-promo-title">{len(cast)} ready-made characters'
+        f'<span> in {n_groups} groups</span></strong>'
+        if cast else '<strong class="pm-promo-title">Ready-made characters</strong>'
+    )
+    return (
+        f'<a class="pm-promo" href="{PUBLIC_REGISTRY_URL}" target="_blank" rel="noopener">'
+        + (f'<span class="pm-promo-faces" aria-hidden="true">{faces}</span>' if faces else '')
+        + '<span class="pm-promo-eyebrow">Persona registry</span>'
+        + size
+        + '<span class="pm-promo-copy">Browse the whole cast, read each card, and download one '
+        'with its avatar as a <code>.zip</code> that <b>Import</b> reads back here.</span>'
+        '<span class="btn btn-primary pm-promo-cta">Browse the registry &#8599;</span>'
+        f'<span class="pm-promo-host mono">{PUBLIC_REGISTRY_HOST}</span>'
+        '</a>'
+    )
+
+
 def _render_personas_page() -> str:
     crumbs = '<strong>Personas</strong>'
     if not personas_registry.root_exists():
@@ -153,10 +186,12 @@ def _render_personas_page() -> str:
     detail = (
         '<aside class="pm-detail" id="pm-detail">'
         '<div class="pm-detail-empty" id="pm-detail-empty">'
+        + _registry_promo() +
+        '<div class="pm-detail-start">'
         f'{_pm_svg("doc")}'
         '<p>Select a persona to edit,<br>or create a new one.</p>'
-        '<button type="button" class="btn btn-primary" id="pm-new-2">+ New persona</button>'
-        '</div>'
+        '<button type="button" class="btn" id="pm-new-2">+ New persona</button>'
+        '</div></div>'
         '<form class="pm-dform" id="pm-dform" data-mode="create" data-slug="" data-group="" hidden>'
         '<div class="pm-dhead">'
         '<h2 class="pm-dtitle" id="pm-dtitle">New persona</h2>'
