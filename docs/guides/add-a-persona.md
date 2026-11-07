@@ -123,7 +123,7 @@ frontmatter; the roster summary comes from the `## Purpose` line.
 ### Where to find cards
 
 The **persona explorer** at `/personas` — yours, or the public one on the
-[hosted demo](https://roundtable-demo.ai-automation-tools.dev/personas) — hands
+[hosted demo](https://personas.ai-automation-tools.dev/) — hands
 out any persona as a `.zip` of card + avatar in exactly the layout the import
 modal reads, so the picture comes along. Download, then drop the `.zip` into
 `Import`. (It replaced the Persona Registry on the AI-Automation-Library site,
