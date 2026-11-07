@@ -1086,7 +1086,8 @@ def _render_orchestrate(
     const toolSel = row.querySelector('.seat-tool');
     if (tool && Array.from(toolSel.options).some(o => o.value === tool)) toolSel.value = tool;
     const personaSel = row.querySelector('.seat-persona');
-    if (persona) personaSel.value = persona;
+    // Only a slug the roster offers — assigning an unknown value blanks the select.
+    if (persona && Array.from(personaSel.options).some(o => o.value === persona)) personaSel.value = persona;
     toolSel.addEventListener('change', seatsChanged);
     personaSel.addEventListener('change', () => {{
       if (personaSel.value !== '__custom__' && customPersonas[id]) clearCustom(id);
@@ -1442,8 +1443,9 @@ def _render_orchestrate(
     updateRecap();
   }});
   // Two chairs is every format's minimum, and the historical default pair when
-  // this machine has both tools.
-  addChair('claude-code', null);
+  // this machine has both tools. ?persona=<slug> (the persona explorer's "Use in
+  // a debate") seats that persona in the first chair.
+  addChair('claude-code', new URLSearchParams(location.search).get('persona'));
   addChair('codex', null);
   // Default the host onto a tool no chair is using, when there is one. Sharing
   // a tool is fine now — the host just becomes 'claude-code-2' — but a default

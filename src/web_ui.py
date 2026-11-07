@@ -69,6 +69,8 @@ from web.api.personas import (  # noqa: E402
     api_persona_import,
     api_persona_list,
     api_persona_update,
+    persona_bundle_download,
+    persona_card_download,
 )
 from web.api.delivery_settings import (  # noqa: E402
     api_delivery_settings,
@@ -118,6 +120,11 @@ from web.render.notifications import (  # noqa: E402
     _render_notifications_readonly,
 )
 from web.render.personas import _render_personas_page  # noqa: E402
+from web.render.persona_explorer import (  # noqa: E402
+    find_persona,
+    render_explorer,
+    render_persona_detail,
+)
 from web.render import settings as _settings  # noqa: E402
 from web.render.notifications import (  # noqa: E402
     NOTIFICATIONS_TAB_CSS,
@@ -192,7 +199,9 @@ async def orchestrate(request: Request) -> Response:
 
     ``?type=<conv_type>`` pre-selects a conversation format — that's how the
     homepage's separate "Launch a debate" / "Launch a podcast" buttons land on
-    the right form. Unknown values fall back to the default type."""
+    the right form. Unknown values fall back to the default type.
+    ``?persona=<slug>`` (the explorer's "Use in a debate") seats that persona in
+    the first chair, client-side; an unknown slug is ignored."""
     if _is_public_readonly():
         return HTMLResponse(_render_orchestrate_readonly())
     # Only seats on CLIs this operator actually has (see orchestrator/
@@ -224,7 +233,20 @@ async def orchestrate(request: Request) -> Response:
 
 
 async def personas_page(request: Request) -> Response:
-    """GET /personas — the persona-management page."""
+    """GET /personas — the read-only persona explorer (the cast grid)."""
+    return HTMLResponse(render_explorer(dict(request.query_params)))
+
+
+async def persona_detail_page(request: Request) -> Response:
+    """GET /personas/{slug} — one persona: cover, card, downloads."""
+    p = find_persona(request.path_params["slug"], request.query_params.get("group", ""))
+    if p is None:
+        return HTMLResponse(_render_generic_404(request.url.path), status_code=404)
+    return HTMLResponse(render_persona_detail(p))
+
+
+async def personas_manage_page(request: Request) -> Response:
+    """GET /personas/manage — the persona-management console (CRUD/import)."""
     return HTMLResponse(_render_personas_page())
 
 
@@ -374,6 +396,12 @@ routes = [
     Route("/battleground", battleground_page),
     Route("/battleground/{aid:int}", battleground_arena_page),
     Route("/personas", personas_page),
+    # /manage before /{slug}: a persona slugged "manage" is reachable only by
+    # its downloads. ponytail: accepted shadow, rename the console route if one appears.
+    Route("/personas/manage", personas_manage_page),
+    Route("/personas/{slug}", persona_detail_page),
+    Route("/personas/{slug}/card.md", persona_card_download),
+    Route("/personas/{slug}/bundle.zip", persona_bundle_download),
     # Same path, split by method: GET is the palette's persona index (read-only,
     # so ReadOnlyMiddleware lets it through on the hosted mirror); POST creates.
     Route("/api/personas", api_persona_list, methods=["GET"]),

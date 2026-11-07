@@ -4,6 +4,18 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 ## 2026-11-06 (latest)
 
+### Added — the persona explorer (the Persona Registry moves in-app)
+
+The AI-Automation-Library's static Persona Registry is retired; browsing the cast is now part of Roundtable, and works on the read-only demo.
+
+- **`/personas` is now a read-only explorer.** A grid of every persona except the reserved `AI-Models` group, each card showing its 2:3 cover, name, group and tags. Search covers name, tags and the whole card body (every word must match); filter by group, category / subcategory or tag; sort by name or newest. Filters are plain GET parameters, so a filtered view is a link you can share, and nothing on the page needs a script to work.
+- **A page per persona** at `/personas/<slug>`: cover, avatar, metadata, and the card rendered as Markdown exactly as the model reads it. Downloads: the card `.md`, the avatar (when the persona has art of its own), and a `.zip` of both laid out as `<slug>/<slug>.md` + `<slug>/<slug>-avatar.png`, which the Import modal re-imports with its picture.
+- **Use in a debate** opens `/orchestrate?persona=<slug>`, which now seats that persona in the first chair. On the demo the same button reaches the "debates run on your machine" page.
+- **Covers** load from `{PERSONA_MEDIA_URL}/covers/<slug>.webp` (default `https://ai-automation-tools.dev/roundtable-personas`, override with the `PERSONA_MEDIA_URL` env var). A persona with no cover shows its avatar instead, never a broken image.
+- **The management console moved to `/personas/manage`.** Unchanged otherwise. Its *Get more cards ↗* button is now **Browse the cast**, back to the explorer. The command palette opens a persona's explorer page and lists *Manage personas* as its own page.
+- **Persona Registry links removed:** the *Persona Registry ↗* rail row and palette entry are gone, `REGISTRY_URL` now points at `/personas`, and the README, the homepage resources, the static `homepage/`, `docs/guides/add-a-persona.md` and `docs/app/` point at the explorer.
+- New `orchestrator.personas.card_text()` (the inverse of `parse_card_text()`), `Persona.created_at`, and `web.avatars.raster_avatar()`. New `tests/test_persona_explorer.py`; `tests/test_availability.py` now checks the rail has no off-site registry row and that the explorer and console link to each other.
+
 ### Removed — the Debate Chat Theater integration and the publish-to-library pipeline
 
 The Debate Chat Theater on the AI-Automation-Library site is being decommissioned, so Roundtable no longer feeds it or links to it.
