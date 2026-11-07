@@ -27,7 +27,9 @@ roundtable/
 │   │   ├── avatars.py            #   persona avatar resolution (DB upload → PNG/SVG; GET /avatars/{slug})
 │   │   ├── topics.py             #   topic → logo classifier (TOPICS keyword/glyph/gradient table)
 │   │   ├── render/               #   per-page HTML: common · home · conversations · orchestrate
-│   │   │                         #     · personas · settings (clis/notifications/delivery)
+│   │   │                         #     · personas (the /personas/manage console)
+│   │   │                         #     · persona_explorer (/personas, read-only)
+│   │   │                         #     · settings (clis/notifications/delivery)
 │   │   │                         #     · setup · notifications · extension · battleground
 │   │   └── api/                  #   /api/*: conversations (+SSE) · sync · orchestrate · personas
 │   │                             #     · setup · notifications · delivery_settings · battleground
@@ -60,6 +62,7 @@ roundtable/
 │   ├── test_mcp_turns.py         #   turn rotation, the per-agent cap race, stop signals
 │   ├── test_deliverable_flow.py  #   last-result-wins, the premature-done guard, quiet badge
 │   ├── test_model_personas.py    #   AI-Models cards, reserved-group casting guard, Cast fallback
+│   ├── test_persona_explorer.py  #   /personas explorer: filters, no AI-Models, .zip re-imports
 │   ├── test_site_homepage.py     #   homepage/ keeps its required links + the 404 redirect
 │   ├── test_orchestrate_form.py  #   /orchestrate inline JS ↔ markup, by string invariants
 │   ├── test_orchestrate_browser.py # /orchestrate JS run in headless Chromium (skips without Playwright)

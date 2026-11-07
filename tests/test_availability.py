@@ -478,8 +478,9 @@ def test_sidebar_groups_third_party_links_below_a_separator():
         # This app's pages above the separator; reference links below it.
         for href in ('href="/conversations"', 'href="/personas"', 'href="/settings"'):
             assert rail.index(href) < sep, href
-        for marker in ('href="/#resources"', "persona-registry"):
-            assert rail.index(marker) > sep, marker
+        assert rail.index('href="/#resources"') > sep
+        # The Persona Registry moved in-app (2026-11-06): no off-site row for it.
+        assert "persona-registry" not in rail
 
 
 def test_every_page_names_itself_in_the_topbar():
@@ -542,11 +543,16 @@ def test_content_shells_resolve_from_the_width_tokens():
     assert "var(--w-form)" in strip and "auto" in strip
 
 
-def test_personas_page_links_out_to_the_registry():
+def test_personas_explorer_and_console_link_to_each_other():
+    # /personas is the explorer; the console moved to /personas/manage. Each
+    # must reach the other, and nothing may still point at the retired Registry.
     with _client() as client:
-        page = client.get("/personas").text
-        assert "Get more cards" in page
-        assert "persona-registry" in page
+        explorer = client.get("/personas").text
+        console = client.get("/personas/manage").text
+        assert 'href="/personas/manage"' in explorer
+        assert "Browse the cast" in console and 'href="/personas"' in console
+        for page in (explorer, console):
+            assert "persona-registry" not in page
 
 
 # ---------------------------------------------------------------------------
