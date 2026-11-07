@@ -842,7 +842,7 @@ def _render_homepage_personas() -> str:
         return (
             '<div class="empty-note">'
             'No personas yet — add cards on the '
-            '<a href="/personas">Personas</a>'
+            '<a href="/personas/manage">Personas</a>'
             ' page or import the bundled roster.</div>'
         )
     grouped = _cast_by_group(all_personas)

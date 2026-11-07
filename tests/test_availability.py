@@ -476,7 +476,7 @@ def test_sidebar_groups_third_party_links_below_a_separator():
         # the group boundary is the Resources heading, not the first separator.
         sep = rail.index('<span class="rail-glabel">')
         # This app's pages above the separator; reference links below it.
-        for href in ('href="/conversations"', 'href="/personas"', 'href="/settings"'):
+        for href in ('href="/conversations"', 'href="/personas/manage"', 'href="/settings"'):
             assert rail.index(href) < sep, href
         assert rail.index('href="/#resources"') > sep
         # The Persona Registry moved in-app (2026-11-06): no off-site row for it.
@@ -553,6 +553,27 @@ def test_personas_explorer_and_console_link_to_each_other():
         assert "Browse the cast" in console and 'href="/personas"' in console
         for page in (explorer, console):
             assert "persona-registry" not in page
+
+
+def test_sidebar_personas_opens_the_console_and_registry_has_its_own_row():
+    # "Personas" in the rail is where you manage them; the read-only registry
+    # is a Resources row, and the console advertises its public hostname.
+    from web.render.common import PUBLIC_REGISTRY_HOST
+    with _client() as client:
+        page = client.get("/conversations").text
+        rail = page[page.index('<nav class="siderail"'):page.index("</nav>")]
+        assert 'href="/personas/manage"' in rail
+        sep = rail.index('<span class="rail-glabel">')
+        assert rail.index('href="/personas"') > sep
+        assert PUBLIC_REGISTRY_HOST in client.get("/personas/manage").text
+
+
+def test_registry_hostname_root_redirects_to_the_explorer():
+    from web.render.common import PUBLIC_REGISTRY_HOST
+    with _client() as client:
+        r = client.get("/", headers={"host": PUBLIC_REGISTRY_HOST}, follow_redirects=False)
+        assert r.status_code == 302 and r.headers["location"] == "/personas"
+        assert client.get("/", follow_redirects=False).status_code == 200
 
 
 # ---------------------------------------------------------------------------
