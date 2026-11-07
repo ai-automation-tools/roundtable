@@ -204,7 +204,7 @@ A read-only copy of the web UI runs in public. It isn't needed to run Roundtable
 
 | Site | What it is |
 |:---|:---|
-| [**Persona explorer**](https://roundtable-demo.ai-automation-tools.dev/personas) | The cast on the hosted demo — character cards, avatars and cover art, with per-persona downloads you can import into your own `/personas/manage`. In-app since 2026-11-06 (it replaced the Persona Registry on the AI-Automation-Library site). |
+| [**Persona explorer**](https://roundtable-demo.ai-automation-tools.dev/personas) | The **Agent Personas** page on the hosted demo — character cards, avatars and cover art, with per-persona downloads you can import into your own `/personas/manage`. In-app since 2026-11-06 (it replaced the Persona Registry on the AI-Automation-Library site). |
 
 ## 📚 Documentation map
 
