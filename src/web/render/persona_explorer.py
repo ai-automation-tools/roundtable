@@ -200,14 +200,14 @@ def render_explorer(params: dict[str, str]) -> str:
     body = (
         '<div class="px">'
         '<header class="px-head"><div>'
-        '<h2 class="page-title">The cast</h2>'
+        '<h2 class="page-title">Agent Personas</h2>'
         '<p class="page-sub">Every persona an agent can play. Read a card exactly as the '
         'model reads it, download it, or put it in a debate.</p></div>'
         f'{manage}</header>'
         f'{controls}<nav class="px-cloud" aria-label="Tags">{cloud}</nav>{active}{grid}'
         '</div>'
     )
-    return _layout("Personas", "<strong>Personas</strong>", body,
+    return _layout("Agent Personas", "<strong>Agent Personas</strong>", body,
                    head_extras=EXPLORER_CSS, active="personas")
 
 
@@ -284,5 +284,5 @@ def render_persona_detail(p: Persona) -> str:
         f'<div class="msg-body">{render_markdown(p.body)}</div></section>'
         '</div>'
     )
-    crumbs = f'<a href="/personas">Personas</a> / <strong>{html.escape(p.name)}</strong>'
+    crumbs = f'<a href="/personas">Agent Personas</a> / <strong>{html.escape(p.name)}</strong>'
     return _layout(p.name, crumbs, body, head_extras=EXPLORER_CSS, active="personas")
