@@ -73,14 +73,16 @@ def render_markdown(text: str) -> str:
 # The persona explorer — browse, read and download persona cards. In-app since
 # 2026-11-06; it replaced the static Persona Registry on the AI-Automation-Library
 # site. Downloaded cards go back in through /personas/manage ("Import").
-REGISTRY_URL = "/personas"
-
-# The registry's own public address: a second Fly cert on the hosted mirror,
-# whose GET / redirects to /personas (see web_ui.homepage). Linked from the
-# management console and the static homepage so the registry has a name that
-# doesn't say "demo".
-PUBLIC_REGISTRY_URL = "https://personas.ai-automation-tools.dev"
+#
+# The registry is a standalone site, not a page of the app: its own hostname
+# (another Fly cert on the hosted mirror; RegistryHostMiddleware serves only the
+# explorer there and bounces every other path to the demo), its own chrome
+# (_registry_layout — no rail, no palette). The app links OUT to it, everywhere.
 PUBLIC_REGISTRY_HOST = "personas.ai-automation-tools.dev"
+PUBLIC_REGISTRY_URL = f"https://{PUBLIC_REGISTRY_HOST}"
+REGISTRY_URL = PUBLIC_REGISTRY_URL
+DEMO_URL = "https://roundtable-demo.ai-automation-tools.dev"
+PRODUCT_URL = "https://roundtable.ai-automation-tools.dev"
 
 # Repo home — the topbar's far-right GitHub button and a palette entry.
 GITHUB_URL = "https://github.com/ai-automation-tools/roundtable"
@@ -187,7 +189,7 @@ _NAV_ITEMS: tuple[tuple[str, str, str, str, str, bool], ...] = (
 # in-page anchor it scrolled to nothing from every page but the homepage, which
 # is why it used to be passed in through `extra_nav`.
 _RESOURCE_NAV_ITEMS: tuple[tuple[str, str, str, str, str, bool], ...] = (
-    ("registry", "Persona registry", "/personas", "pers", "btn-preg", False),
+    ("registry", "Persona registry", PUBLIC_REGISTRY_URL, "pers", "btn-preg", True),
     ("resources", "Resources", "/#resources", "res", "btn-res", False),
 )
 
@@ -469,6 +471,42 @@ def _layout(
 <main id="main" tabindex="-1">{body_html}</main>
 {consent_script()}
 </body></html>"""
+
+def _registry_layout(title: str, crumbs_html: str, body_html: str, head_extras: str = "") -> str:
+    """The persona registry's own shell: the org source bar and a slim header
+    (registry name, a link out to Roundtable, the theme switch) — no rail, no
+    palette, no live pill. The registry is a separate site the app links to,
+    so nothing on it may read as a page of the app."""
+    return f"""<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{html.escape(title)} — Agent Personas</title>
+<meta name="theme-color" content="#060606" />
+{THEME_BOOT_JS}
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+{FONTS_HEAD}
+<style>{BASE_CSS}</style>
+{head_extras}
+<style>{LIGHT_CSS}</style>
+<style>html{{--rail-w:0px!important}}.reg-brand{{display:inline-flex;align-items:center;gap:8px;color:var(--text);text-decoration:none;font-weight:600}}.reg-brand svg{{width:22px;height:22px}}.reg-out{{color:var(--muted);text-decoration:none;font-size:13px;margin-right:8px}}.reg-out:hover{{color:var(--text)}}</style>
+</head><body>
+<a class="skip-link" href="#main">Skip to content</a>
+{source_bar()}
+<div class="topbar"><div class="topbar-inner">
+  <a class="reg-brand" href="/personas">{MARK_SVG}<span>Agent Personas</span></a>
+  <span class="crumb">{crumbs_html}</span>
+  <div class="topbar-right">
+    <a class="reg-out" href="{PRODUCT_URL}" target="_blank" rel="noopener">Roundtable &#8599;</a>
+    {_THEME_TOGGLE}
+  </div>
+</div></div>
+<script>window.__AB_LINKS = {{}};</script>
+{SHELL_JS}
+<main id="main" tabindex="-1">{body_html}</main>
+{consent_script()}
+</body></html>"""
+
 
 def _conv_cast_label(c: dict[str, Any]) -> str:
     """Display label for a conversation's participants on the homepage 'latest'
