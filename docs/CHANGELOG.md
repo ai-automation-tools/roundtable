@@ -4,6 +4,11 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 ## 2026-11-07 (latest)
 
+### Changed — the persona console advertises the registry
+
+- **A registry card fills the console's empty detail pane** (`_registry_promo` in `src/web/render/personas.py`): five faces from the cast, *N ready-made characters in M groups* (the same cast the registry shows, no AI-Models cards), what you can do there (read a card, download it with its avatar as a `.zip` that Import reads back), and a *Browse the registry ↗* button to `personas.ai-automation-tools.dev`. The "Select a persona to edit" prompt sits below it, its button now secondary. Pinned by `tests/test_persona_explorer.py`.
+- **The group title no longer collapses to "P…".** `.pm-ctitle` keeps its natural width (`flex:1 1 auto`), so the toolbar wraps to its own row when the two don't fit.
+
 ### Changed — the persona registry is a standalone site
 
 - **`personas.ai-automation-tools.dev` serves only the registry.** `RegistryHostMiddleware` (`src/web/security.py`) opens `/personas` at `/`, serves the explorer, its downloads and avatars, and redirects every other path (the app, `/personas/manage`, the API) to the same path on `roundtable-demo`. It shares the mirror's deployment and database, but it no longer reads as a second copy of the demo.

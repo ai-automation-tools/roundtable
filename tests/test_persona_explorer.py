@@ -213,5 +213,22 @@ def _main() -> int:
     return 1 if failures else 0
 
 
+def test_console_advertises_the_registry_with_its_real_cast() -> None:
+    # The empty detail pane on /personas/manage carries a card for the public
+    # registry. Its count is the cast the registry shows (no AI-Models cards),
+    # and only personas with an uploaded avatar appear in its face stack.
+    from web.render.common import PUBLIC_REGISTRY_URL
+
+    _seed()
+    page = _client().get("/personas/manage").text
+    promo = page[page.index('class="pm-promo"'):]
+    promo = promo[:promo.index("</a>")]
+    assert f'href="{PUBLIC_REGISTRY_URL}"' in page[page.index('<a class="pm-promo"'):][:200]
+    assert "3 ready-made characters" in promo
+    assert "in 2 groups" in promo
+    assert promo.count("<img ") == 1  # only Crypto "Chad" has an upload
+    assert "Browse the registry" in promo
+
+
 if __name__ == "__main__":
     raise SystemExit(_main())
