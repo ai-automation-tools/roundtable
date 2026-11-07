@@ -4,6 +4,12 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 ## 2026-11-07 (latest)
 
+### Changed — the persona registry is a standalone site
+
+- **`personas.ai-automation-tools.dev` serves only the registry.** `RegistryHostMiddleware` (`src/web/security.py`) opens `/personas` at `/`, serves the explorer, its downloads and avatars, and redirects every other path (the app, `/personas/manage`, the API) to the same path on `roundtable-demo`. It shares the mirror's deployment and database, but it no longer reads as a second copy of the demo.
+- **The explorer has its own chrome** (`_registry_layout` in `src/web/render/common.py`): the source bar and a slim *Agent Personas* header with a *Roundtable ↗* link and the theme switch. No app sidebar, search palette or live pill.
+- **The app links out to it:** the *Persona registry* rail row, the console's toolbar button and Import hint, and the home page's *Browse all* link all open `https://personas.ai-automation-tools.dev` in a new tab.
+
 ### Changed — Personas opens the console; the registry gets its own address
 
 - **The rail's *Personas* row now opens `/personas/manage`**, the page you actually edit cards on. The read-only explorer at `/personas` is a new **Persona registry** row under *Resources*, and lights that row instead.
