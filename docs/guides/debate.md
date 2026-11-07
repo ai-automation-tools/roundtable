@@ -141,8 +141,8 @@ get it.
 The web UI is the better view: `http://127.0.0.1:8765/conversations/<id>`
 streams each message over SSE as it lands, renders Markdown, and has a **Stop**
 button. When it finishes, `/export.md` and `/export.zip` on the same page give
-you the transcript plus the persona cards in the frozen bundle format that the
-library archive and the theater app both read.
+you the transcript plus the persona cards in the frozen
+[bundle format](../app/export-format.md).
 
 ---
 

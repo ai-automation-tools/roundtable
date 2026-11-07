@@ -478,7 +478,7 @@ def test_sidebar_groups_third_party_links_below_a_separator():
         # This app's pages above the separator; reference links below it.
         for href in ('href="/conversations"', 'href="/personas"', 'href="/settings"'):
             assert rail.index(href) < sep, href
-        for marker in ('href="/#resources"', "persona-registry", "debate-chat-theater"):
+        for marker in ('href="/#resources"', "persona-registry"):
             assert rail.index(marker) > sep, marker
 
 

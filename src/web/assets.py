@@ -338,7 +338,6 @@ html.rail-collapsed .rail-lbl { display: none; }
 .btn-orch { --nav-h: 258; --nav-s: 90%; --nav-l: 66%; }   /* violet-500 */
 .btn-pers { --nav-h: 173; --nav-s: 80%; --nav-l: 45%; }   /* teal-500   */
 .btn-reg  { --nav-h: 292; --nav-s: 84%; --nav-l: 61%; }   /* fuchsia-500*/
-.btn-thea { --nav-h: 38;  --nav-s: 92%; --nav-l: 55%; }   /* amber-500  */
 .btn-res  { --nav-h: 340; --nav-s: 82%; --nav-l: 62%; }   /* rose-500   */
 .btn-extn { --nav-h: 24;  --nav-s: 90%; --nav-l: 58%; }   /* orange-500 */
 .btn-setup{ --nav-h: 199; --nav-s: 89%; --nav-l: 55%; }   /* sky-500    */
@@ -780,7 +779,6 @@ SHELL_JS = r"""
     arena: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.4"/><line x1="12" y1="1.5" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22.5"/><line x1="1.5" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22.5" y2="12"/>',
     setup: '<polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>',
     reg: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
-    thea: '<rect x="2" y="2" width="20" height="20" rx="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/>',
     gh: '<path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>'
   };
 
@@ -798,7 +796,6 @@ SHELL_JS = r"""
     { kind: 'Pages', title: 'Battleground', sub: 'Captured arenas, drafts, and verdicts', url: '/battleground', ico: 'arena' },
     { kind: 'Pages', title: 'CLI setup', sub: 'Which CLI tools this machine has', url: '/setup', ico: 'setup' },
     { kind: 'Pages', title: 'Persona Registry', sub: 'Download more persona cards', url: LINKS.registry, ico: 'reg', ext: true },
-    { kind: 'Pages', title: 'Debate Chat Theater', sub: 'Watch published debates', url: LINKS.theater, ico: 'thea', ext: true },
     { kind: 'Pages', title: 'GitHub repository', sub: 'ai-automation-tools/roundtable', url: LINKS.github, ico: 'gh', ext: true }
   ];
 
@@ -1673,8 +1670,6 @@ body.home .muted { color: var(--muted); }
 .featured { border: 1px solid var(--border); background: var(--panel); border-radius: 14px; overflow: hidden; backdrop-filter: blur(6px); }
 .feat-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
 .feat-k { font-size: 11px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--muted); }
-.feat-theater { font-size: 11px; color: var(--muted); }
-.feat-theater:hover { color: var(--text); text-decoration: none; }
 .feat-rows > .feat-row + .feat-row { border-top: 1px solid var(--border); }
 .feat-row { display: block; padding: 14px 16px; color: inherit; text-decoration: none; transition: background 0.2s var(--ease); }
 .feat-row:hover { background: rgba(39, 39, 42, 0.35); text-decoration: none; }

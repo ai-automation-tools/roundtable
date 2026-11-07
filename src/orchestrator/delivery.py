@@ -520,7 +520,7 @@ _SINKS = {
 
 def resolve_db_path(db_path: str | None = None) -> str:
     """``db_path`` > ``$AGENT_CHAT_DB`` > ``<repo>/db/chat.db`` — the same
-    precedence the MCP server and publish_debate.py use."""
+    precedence the MCP server uses."""
     if db_path:
         return db_path
     env = os.environ.get("AGENT_CHAT_DB")

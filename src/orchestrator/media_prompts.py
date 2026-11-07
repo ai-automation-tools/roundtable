@@ -24,9 +24,9 @@ so their output drops into that archive's folder shape without translation:
   into the prompt (it stays correct when the conversation grows, and keeps the
   prompt short enough to paste).
 
-Filenames follow ``export.topic_slug()``, the 25-char slug that is already the
-join key between the DB, the library archive, and the theater app. Don't
-introduce a second slugging rule here.
+Filenames follow ``export.topic_slug()``, the 25-char slug that already names
+the export bundle and every delivered folder. Don't introduce a second slugging
+rule here.
 """
 
 from __future__ import annotations
@@ -43,10 +43,6 @@ from orchestrator.export import parse_participant_personas, safe_name, topic_slu
 
 # The two kinds this module knows how to write. The route validates against it.
 PROMPT_KINDS: tuple[str, ...] = ("images", "audio")
-
-# Where a finished bundle lands in the library archive. Used only to tell the
-# receiving tool where to put its output; nothing here writes to disk.
-_ARCHIVE_HINT = "Agent-Debates/<Topic-Slug>/"
 
 # Per-card budget, in characters. Persona bodies run ~5KB and are mostly
 # *behavioural* instruction — how to argue, what to never concede — which an
@@ -190,12 +186,11 @@ given, so the portraits match how each one actually argued.
 
 ## Output
 
-Generate exactly **{n + 2} PNG images** into a folder named `{slug}/`
-(in the library archive that's `{_ARCHIVE_HINT.replace('<Topic-Slug>', slug)}`):
+Generate exactly **{n + 2} PNG images** into a folder named `{slug}/`:
 
 | File | What it is |
 |:---|:---|
-| `cover-image.png` | The episode cover. One strong visual concept for the topic itself — this is the card the web app and the archive surface. |
+| `cover-image.png` | The episode cover. One strong visual concept for the topic itself — this is the card the web app surfaces. |
 | `{team_file}` | A stylized group shot of the whole cast, in character, together. |
 {chr(10).join(f"| `{r['slug']}.png` | Portrait of {r['name']}, alone. |" for r in rows)}
 
@@ -253,7 +248,7 @@ def audio_prompt(data: dict[str, Any], cid: int,
     (workflow → generated files → requirements → rules), with one change worth
     knowing: the transcript is **fetched from the export endpoint** rather than
     pasted in. A long debate would blow past a comfortable paste, and the export
-    is the format the archive already parses.
+    is already a stable, parseable format.
     """
     c = data["conversation"]
     rows = _cast_rows(c)
@@ -324,9 +319,7 @@ without being told.
 | `{slug}.md` | The transcript it was rendered from (keep it alongside the audio). |
 | `README.md` | Title, date, format, cast, and the voice each speaker got. |
 
-Into the folder `{slug}/` — in the library archive that's
-`{_ARCHIVE_HINT.replace('<Topic-Slug>', slug)}`, next to the images from the
-Generate-images prompt.
+Into the folder `{slug}/`, next to the images from the Generate-images prompt.
 
 Do not overwrite an existing `{slug}.mp3` — fail clearly and stop.
 
