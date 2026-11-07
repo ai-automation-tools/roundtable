@@ -58,12 +58,6 @@ These are the scripts behind the scheduled jobs. All are safe to run by hand, al
 | [**`startup-app.ps1`**](startup-app.ps1) | Logon launcher — brings the web UI and sidecar up hidden. Idempotent, so it's safe to re-run. |
 | [**`db_sync.py`**](db_sync.py) | Optional sidecar that mirrors the local DB to a self-hosted read-only viewer. Pushes local deltas (`POST /api/ingest`) and pulls remote state (`GET /api/since`) every 5s. Deliberately does **not** carry battleground tables. Not needed to run a debate. `--force-push` rewinds the push watermarks for one run and re-ships everything — the repair path when the mirror has drifted. |
 
-## 📤 After a debate
-
-| Script | What it does |
-|:---|:---|
-| [**`publish_debate.py`**](publish_debate.py) | Publishes a finished debate into the AI-Automation-Library archive — bundles straight from `chat.db` through `orchestrator.export`, no ZIP round-trip. Paired with the [`publish-debate`](../skills/publish-debate/SKILL.md) skill. |
-
 ## 🧭 Docs
 
 | Script | What it does |

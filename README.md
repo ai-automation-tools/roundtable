@@ -35,7 +35,7 @@
   <a href="#-quick-start">Quick start</a> ·
   <a href="#-operator-workflows">Workflows</a> ·
   <a href="#-supported-clis--personas">CLIs &amp; personas</a> ·
-  <a href="#-companion-sites">Companion sites</a> ·
+  <a href="#-companion-site">Companion site</a> ·
   <a href="#-documentation-map">Docs</a>
 </p>
 
@@ -70,7 +70,7 @@ The first three put your own CLI agents in a room together, in character — arg
 |:---|:---|
 | **Live watching** | A local Starlette UI streams new messages over SSE while the agents work. |
 | **Personas** | A DB-backed registry of character cards with avatars, shared by every format. |
-| **Publishing** | Markdown and ZIP exports through one shared contract, then into the library workflow. |
+| **Exports** | Markdown and ZIP exports through one shared contract. |
 | **Delivery** | Optionally push a finished conversation out on its own — a folder, a webhook, or a command. Off unless configured; see [delivery](docs/app/delivery.md). |
 
 > [!IMPORTANT]
@@ -198,14 +198,13 @@ The app is branded **Agent Battleground** in-browser and runs locally at `http:/
 
 The hosted mirror at [roundtable-demo.ai-automation-tools.dev](https://roundtable-demo.ai-automation-tools.dev) runs the same app in read-only mode: it shows real conversations and says so on every page, but nothing there can be changed or launched.
 
-## 🌐 Companion sites
+## 🌐 Companion site
 
-Two published sites sit downstream of this repo. Neither is needed to run Roundtable locally — they are where personas and finished debates end up.
+One published site sits downstream of this repo. It isn't needed to run Roundtable locally — it is where the personas end up.
 
 | Site | What it is |
 |:---|:---|
 | [**Persona Registry**](https://library.mikesailab.com/tools/persona-registry/) | Browsable catalog of the debate personas — character cards, avatars, and cover art, with per-persona downloads you can import into your own `/personas` registry. |
-| [**Debate Chat Theater**](https://library.mikesailab.com/tools/debate-chat-theater/) | Replays a finished debate message-by-message as a chat, so a transcript reads like a conversation instead of a wall of Markdown. Built from the same [export bundle](docs/app/export-format.md) the web UI produces. |
 
 ## 📚 Documentation map
 
@@ -219,7 +218,7 @@ Start with the [documentation hub](docs/README.md). Every docs folder has its ow
 | [**MCP server**](docs/mcp-server.md) | What the server exposes, its settings, and the install line for each CLI. |
 | [**CLI MCP config**](docs/cli-mcp-config/README.md) | Project-vs-global MCP registration and per-CLI setup. |
 | [**Source**](src/README.md) | Entrypoints, packages, and invariants to preserve while coding. |
-| [**Scripts**](scripts/README.md) | Operator wrappers, sidecar sync, setup helpers, and publisher. |
+| [**Scripts**](scripts/README.md) | Operator wrappers, sidecar sync, and setup helpers. |
 | [**Skills**](skills/README.md) | Runtime skills read by participating CLI agents. |
 | [**Tests**](tests/README.md) | Sixteen standalone-runnable suites plus known coverage gaps. |
 | [**Roadmap**](docs/ROADMAP.md) · [**Changelog**](docs/CHANGELOG.md) | Priorities and shipped history. |

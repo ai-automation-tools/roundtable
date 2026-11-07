@@ -29,7 +29,6 @@ from web.db import existing_conversation_ids, list_featured_debates
 from web.render.common import (
     FONTS_HEAD,
     REGISTRY_URL,
-    THEATER_URL,
     _conv_cast_label,
     _conv_debater_casts,
     _initials,
@@ -413,7 +412,6 @@ _SKILL_RESOURCES: tuple[tuple[str, str], ...] = (
     ("debate-mode", "argue well"),
     ("collaborate-mode", "build one thing"),
     ("start-debate", "launch a debate"),
-    ("publish-debate", "publish + cover"),
 )
 
 
@@ -643,9 +641,6 @@ def _render_homepage_featured(featured: list[dict[str, Any]], total: int = 0) ->
     header = (
         '<div class="feat-head">'
         '<span class="feat-k">Featured runs</span>'
-        f'<a href="{THEATER_URL}" target="_blank" rel="noopener noreferrer" '
-        'title="Watch published debates in the Debate Chat Theater" '
-        'class="feat-theater mono">Watch in Theater ↗</a>'
         "</div>"
     )
     label = (
@@ -1017,5 +1012,4 @@ def _render_homepage(stats: dict[str, int], latest: list[dict[str, Any]]) -> str
         clis_stat=clis_stat,
         clis_label=clis_label,
         clis_color=clis_color,
-        theater_url=THEATER_URL,
     )

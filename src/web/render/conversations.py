@@ -987,8 +987,7 @@ def _render_conversation_main(data: dict[str, Any],
             "download": export_filename,
             "help": (
                 "Downloads <b>one Markdown file</b> — the whole transcript, "
-                "with a metadata table and a heading per turn. The format the "
-                "library archive and the theater app read."
+                "with a metadata table and a heading per turn."
             ),
         },
         {

@@ -1,21 +1,21 @@
 # Export-bundle format (the contract)
 
 The Markdown bundle that represents one finished conversation is produced in
-exactly one place — **`src/orchestrator/export.py`** — and consumed by three
-surfaces that parse it:
+exactly one place — **`src/orchestrator/export.py`** — and consumed by these
+surfaces:
 
 | Consumer | How it gets the bundle |
 |:---|:---|
 | Web UI downloads | `GET /api/conversations/{cid}/export.md` (transcript only) and `…/export.zip` (full bundle) in `src/web_ui.py` |
-| AI-Automation-Library archive | `scripts/publish_debate.py` writes the same files into `AI-Automation-Library/My-Library/Content/Agent-Debates/<Category>/<topic-slug>/` |
-| debate-chat-theater app | its `build.mjs` **parses** the archived files — the topic meta table + Cast section, the transcript's `## sender — timestamp` headings, and the persona cards |
+| Delivery folder sink | `orchestrator/delivery.py` writes `bundle_files()` verbatim, so a delivered folder is the `.zip` unpacked, byte for byte ([delivery.md](delivery.md)) |
+| Whatever reads those files | any script or tool an operator points at a download or a delivered folder **parses** it — the topic meta table + Cast section, the transcript's `## sender — timestamp` headings, and the persona cards |
 
 > **Change policy:** any change to the render functions in
-> `orchestrator/export.py` changes what all three see. Additive changes (a new
+> `orchestrator/export.py` changes what all of them see. Additive changes (a new
 > meta-table row, a new optional section) are usually safe; renaming headings,
-> the meta-table labels, the message-heading shape, or file names **breaks the
-> theater parser and the archive convention** — update the consumers in the
-> same change and note it in the CHANGELOG.
+> the meta-table labels, the message-heading shape, or file names **breaks
+> anything already parsing the bundle and every folder already on disk** — note
+> it in the CHANGELOG.
 
 ## The bundle
 
@@ -25,10 +25,10 @@ personas/<agent>[-<slug>].md  # one per participant
 transcript.md                 # topic + personas + the full debate
 ```
 
-The `.zip` download contains exactly these entries; `publish_debate.py` writes
-them as real files (LF newlines, UTF-8). `cover-image.png` is **not** part of
-the bundle — it's generated separately (see the `publish-debate` skill) and
-lives only in the library folder.
+The `.zip` download contains exactly these entries; the delivery folder sink
+writes them as real files (LF newlines, UTF-8). `cover-image.png` is **not** part
+of the bundle — the conversation page's *Image prompt* asks for it,
+and whatever renders it saves it next to the bundle.
 
 ## `topic.md` — `render_export_overview()`
 
@@ -63,8 +63,8 @@ lives only in the library folder.
 _Exported from Agent Battleground._
 ```
 
-The theater app reads the **Cast** bullets (`- **<agent>** — <persona name>`)
-to label debaters, and the meta table for mode/timestamps.
+A parser reads the **Cast** bullets (`- **<agent>** — <persona name>`) to
+label debaters, and the meta table for mode/timestamps.
 
 > [!NOTE]
 > **Type / Host were added 2026-08-11** and sit after the optional `Preset`
@@ -112,7 +112,7 @@ _Exported from Agent Battleground. Source: Conversation #<id>._
 ```
 
 Messages are separated by `---` rules. The `## sender — timestamp` heading
-shape is what the theater's parser splits turns on — treat it as frozen.
+shape is what a parser splits turns on — treat it as frozen.
 
 > [!NOTE]
 > **The Topic and Personas sections were added 2026-09-28** so the single-file
@@ -159,6 +159,6 @@ today looks exactly as it did.
 Lowercased ASCII, non-alphanumerics collapsed to single hyphens, trimmed, then
 **truncated to 25 chars** (trailing hyphen stripped) — e.g. *"Should
 restaurants be required…"* → `should-restaurants-be-req`. Empty result falls
-back to `conversation-<id>`. The slug names the download files **and** the
-library debate folder, so it's the join key between the DB, the archive, and
-the theater — changing the truncation changes where re-publishes land.
+back to `conversation-<id>`. The slug names the download files **and** every
+delivered folder, so it's the join key between the DB and anything already on
+disk — changing the truncation changes where a re-delivery lands.

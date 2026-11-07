@@ -28,7 +28,7 @@
 ```
 prompts/
 ├── Kickoff/        🧩 canonical kickoff template (manual / non-debate seeds)
-├── Auto-Debate/    ▶️  START a debate   — 6 categories, 29 prompts
+├── Auto-Debate/    ▶️  START a debate   — 5 categories, 24 prompts
 ├── Manage-Debates/ 🛠️  RUN a debate     — 5 categories, 25 prompts
 ├── Battleground/   ⚔️  FIGHT on the web — 3 categories, 30 prompts
 └── Avatars/        🎨 persona avatar image prompts — 11 prompts
@@ -54,7 +54,6 @@ Copy a fenced block from any category file, paste it into Claude Code, confirm t
 | 🎯 [`Group-Themed/`](Auto-Debate/Group-Themed/) | [`group-themed.md`](Auto-Debate/Group-Themed/group-themed.md) | Restrict the cast to one group |
 | 🎬 [`Custom-Cast/`](Auto-Debate/Custom-Cast/) | [`custom-cast.md`](Auto-Debate/Custom-Cast/custom-cast.md) | Force exact personas **and** CLIs |
 | 🎲 [`Surprise-Me/`](Auto-Debate/Surprise-Me/) | [`surprise-me.md`](Auto-Debate/Surprise-Me/surprise-me.md) | Let the script pick everything |
-| 🚢 [`Debate-And-Publish/`](Auto-Debate/Debate-And-Publish/) | [`debate-and-publish.md`](Auto-Debate/Debate-And-Publish/debate-and-publish.md) | Launch → wait → publish to the AI library |
 
 ## 🛠️ Run a debate
 
