@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "receiptId": "7846e9b6-297a-4783-995e-97c36728ef8a",
+  "receiptId": "73e19a6b-3957-4f54-8b35-c76e498b0767",
   "status": "current",
   "command": "deliver",
   "type": "workflow",
-  "input": "C:\\Users\\mikes\\AppData\\Local\\Temp\\org-upkeep\\wt-roundtable\\docs\\diagrams\\process-flow.json",
-  "output": "C:\\Users\\mikes\\AppData\\Local\\Temp\\org-upkeep\\wt-roundtable\\docs\\diagrams\\process-flow.html",
+  "input": "C:\\Users\\mikes\\AppData\\Local\\Temp\\org-upkeep\\roundtable\\docs\\diagrams\\process-flow.json",
+  "output": "C:\\Users\\mikes\\AppData\\Local\\Temp\\org-upkeep\\roundtable\\docs\\diagrams\\process-flow.html",
   "specification": {
-    "sha256": "926003ff3763a5949a4ff216b32ea6c31ac1a020cd7fa82a4a2b129d2786ebb8",
+    "sha256": "178c783a13465054ce4c4c27fc46b10dc533971aceb2a5ae12ce88d9b8385e7e",
     "bytes": 8967
   },
   "artifact": {
-    "sha256": "5f453b4ad5dbbe1677e318e01e87a5c2a028e2c91dba4e61510971483062d6cd",
+    "sha256": "a5fd537e8dd1aaab26f6737689e877d1ff655e2864d7d8d27b2ccab3bba45af3",
     "bytes": 840709
   }
 }
