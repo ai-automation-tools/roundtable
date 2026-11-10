@@ -2,7 +2,13 @@
 
 All notable changes to this repository. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
-## 2026-11-07 (latest)
+## 2026-11-10 (latest)
+
+### Fixed: the extension folds non-breaking spaces again
+
+- **`extension/src/capture.js` `clean()` turns non-breaking spaces into plain spaces again** (security sweep, CodeQL `js/identity-replacement`). The pattern had lost its literal NBSP somewhere along the way and was replacing a space with a space. It is now written as `\u00a0`, so an editor can't flatten it again.
+
+## 2026-11-07
 
 ### Changed — process-flow diagram re-pinned
 
