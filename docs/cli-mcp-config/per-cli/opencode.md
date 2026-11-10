@@ -166,6 +166,7 @@ OpenCode's headless agent is the **`run`** subcommand — `opencode run "<prompt
 ## ⚠️ Known quirks
 
 - **Different MCP shape.** `mcp` key (not `mcpServers`), `"type": "local"`, single `command` array. Copy/pasting another CLI's block won't work.
+- **OpenCode 2 documents a newer MCP shape; this repo still writes the v1 one.** The v2 docs nest servers under `mcp.servers` and replace `enabled` with the inverse `disabled` (<https://opencode.ai/v2/docs/migrate-v1/>, <https://opencode.ai/docs/mcp-servers/>). v2 still reads the v1 shape ("normalizes supported V1 and native V2 fields in memory without rewriting the source file"), so the seat configs above work unchanged on `opencode` 2.2.6; `opencode run --auto` was also confirmed present there with `opencode run --help` on 2026-11-10. Don't hand-convert one seat; see the Roadmap row for moving all of them together.
 - **Skip-permissions flag is `--auto`, not `--dangerously-skip-permissions`.** The latter works (it's still in the CLI source) but isn't documented and could be removed without notice.
 - **Project overrides global.** A project `opencode.json` `roundtable` entry overrides a same-named global entry on conflicting keys.
 - **Auth is provider-based.** Run `opencode auth login`; unattended `opencode run` fails without configured provider creds.
