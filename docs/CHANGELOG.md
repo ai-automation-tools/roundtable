@@ -4,6 +4,10 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 ## 2026-11-07 (latest)
 
+### Changed — process-flow diagram re-pinned
+
+- **`docs/diagrams/process-flow.json` re-pinned to `6a1837c1`** (org upkeep). The only cited file that moved, `src/orchestrator/delivery.py`, changed one docstring line outside the cited range (`resolve_db_path`); the Delivery Sinks node (lines 1-56) and every other node are still true. Rebuilt with `--pin-head`, which also refreshes `homepage/diagram/`.
+
 ### Changed — the persona console advertises the registry
 
 - **A registry card fills the console's empty detail pane** (`_registry_promo` in `src/web/render/personas.py`): five faces from the cast, *N ready-made characters in M groups* (the same cast the registry shows, no AI-Models cards), what you can do there (read a card, download it with its avatar as a `.zip` that Import reads back), and a *Browse the registry ↗* button to `personas.ai-automation-tools.dev`. The "Select a persona to edit" prompt sits below it, its button now secondary. Pinned by `tests/test_persona_explorer.py`.
