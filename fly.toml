@@ -25,6 +25,10 @@ primary_region = "iad"
   # bearer-gated /api/ingest sync realm is exempt so the local->Fly sidecar
   # keeps pushing. See ReadOnlyMiddleware in src/web_ui.py.
   AGENT_CHAT_PUBLIC_READONLY = "1"
+  # Host allowlist (web.security): loopback is always allowed; every name this
+  # app is reached by must be listed here, or Fly's proxy forwards a Host the
+  # app refuses with 400. Add a new custom domain here before attaching it.
+  AGENT_CHAT_ALLOWED_HOSTS = "roundtable-demo.ai-automation-tools.dev,agent-chat.mikesailab.com,agent-chat-mikesailab.fly.dev"
 
 # Persistent SQLite WAL needs a writable, durable filesystem. A 1GB volume
 # is overkill for a demo but is the smallest size Fly offers.

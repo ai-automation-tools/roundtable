@@ -25,9 +25,12 @@ from pathlib import Path
 
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
 from starlette.testclient import TestClient
+# The Host allowlist (web.security) refuses TestClient's default "testserver".
+LOCAL = "http://127.0.0.1:8765"
 
 _SRC = Path(__file__).resolve().parent.parent / "src"
 if str(_SRC) not in sys.path:
@@ -62,7 +65,7 @@ def _isolated_client() -> TestClient:
         ],
         middleware=[Middleware(web_ui.ReadOnlyMiddleware)],
     )
-    return TestClient(app)
+    return TestClient(app, base_url=LOCAL)
 
 
 def test_readonly_allows_get():
@@ -138,6 +141,7 @@ def test_build_middleware_default_is_cors_only():
     # Both gates off, but the AgentBattleground CORS layer is unconditional —
     # it only ever acts on /api/battleground/* with a chrome-extension origin.
     assert [m.cls for m in _build_with_env()] == [
+        TrustedHostMiddleware,
         web_ui.SecurityHeadersMiddleware,
         web_ui.RegistryHostMiddleware,
         web_ui.ExtensionCorsMiddleware,
@@ -148,6 +152,7 @@ def test_build_middleware_default_is_cors_only():
 def test_build_middleware_readonly_only():
     stack = _build_with_env(AGENT_CHAT_PUBLIC_READONLY="1")
     assert [m.cls for m in stack] == [
+        TrustedHostMiddleware,
         web_ui.SecurityHeadersMiddleware,
         web_ui.RegistryHostMiddleware,
         web_ui.ExtensionCorsMiddleware,
@@ -159,6 +164,7 @@ def test_build_middleware_readonly_only():
 def test_build_middleware_basic_auth_only():
     stack = _build_with_env(AGENT_CHAT_BASIC_AUTH_PASSWORD="secret")
     assert [m.cls for m in stack] == [
+        TrustedHostMiddleware,
         web_ui.SecurityHeadersMiddleware,
         web_ui.RegistryHostMiddleware,
         web_ui.ExtensionCorsMiddleware,
@@ -176,6 +182,7 @@ def test_build_middleware_both_auth_outermost():
     # before the read-only check runs — and CORS outside even that, so a
     # browser preflight (no Authorization header, by spec) isn't challenged.
     assert [m.cls for m in stack] == [
+        TrustedHostMiddleware,
         web_ui.SecurityHeadersMiddleware,
         web_ui.RegistryHostMiddleware,
         web_ui.ExtensionCorsMiddleware,
@@ -230,6 +237,96 @@ def test_security_headers_are_set():
     assert "max-age=" in r.headers["strict-transport-security"]
 
 
+def test_mutation_body_must_be_json():
+    """The three content types a no-cors page may send are refused with a body;
+    a JSON body and a body-less POST (stop/delete) pass."""
+    c = _guarded_client()
+    for ctype in ("text/plain", "application/x-www-form-urlencoded", "multipart/form-data; boundary=x"):
+        r = c.post("/api/settings/delivery", content=b'{"a":1}', headers={"Content-Type": ctype})
+        assert r.status_code == 415, (ctype, r.status_code)
+    r = c.post("/api/settings/delivery", content=b'{"a":1}')  # no Content-Type at all
+    assert r.status_code == 415, r.status_code
+    r = c.post("/api/settings/delivery", json={"a": 1})
+    assert r.status_code == 200, r.status_code
+    r = c.post("/api/settings/delivery", content=b"{}",
+               headers={"Content-Type": "application/json; charset=utf-8"})
+    assert r.status_code == 200, r.status_code
+    r = c.post("/api/settings/delivery")  # body-less
+    assert r.status_code == 200, r.status_code
+
+
+def _hosted_stack_client(host: str, allowed: str | None = None) -> TestClient:
+    """The real middleware stack (from _build_middleware) around one stand-in
+    route, with ``AGENT_CHAT_ALLOWED_HOSTS`` set to *allowed* while it's built."""
+
+    async def mutate(request):
+        return JSONResponse({"mutated": True})
+
+    saved = os.environ.pop("AGENT_CHAT_ALLOWED_HOSTS", None)
+    try:
+        # "" (not unset) so a developer's own .env can't leak into the test.
+        os.environ["AGENT_CHAT_ALLOWED_HOSTS"] = allowed or ""
+        app = Starlette(
+            routes=[Route("/api/settings/delivery", mutate, methods=["GET", "POST"])],
+            middleware=web_ui._build_middleware(),
+        )
+    finally:
+        os.environ.pop("AGENT_CHAT_ALLOWED_HOSTS", None)
+        if saved is not None:
+            os.environ["AGENT_CHAT_ALLOWED_HOSTS"] = saved
+    return TestClient(app, base_url=f"http://{host}")
+
+
+def test_foreign_host_is_refused_on_every_method():
+    c = _hosted_stack_client("evil.example:8765")
+    assert c.get("/api/settings/delivery").status_code == 400
+    assert c.post("/api/settings/delivery", json={}).status_code == 400
+    # A DNS-rebinding page is same-origin with its own name: Origin == Host,
+    # which the cross-site guard alone would wave through.
+    r = c.post("/api/settings/delivery", json={}, headers={"Origin": "http://evil.example:8765"})
+    assert r.status_code == 400, r.status_code
+
+
+def test_loopback_hosts_pass():
+    for host in ("127.0.0.1:8765", "localhost:8765"):
+        c = _hosted_stack_client(host)
+        assert c.get("/api/settings/delivery").status_code == 200, host
+        assert c.post("/api/settings/delivery", json={}).status_code == 200, host
+
+
+def test_configured_proxy_host_passes():
+    allowed = " Box.Tailnet.ts.net , roundtable-demo.ai-automation-tools.dev,*"
+    c = _hosted_stack_client("box.tailnet.ts.net", allowed)
+    r = c.post("/api/settings/delivery", json={},
+               headers={"Origin": "http://box.tailnet.ts.net"})
+    assert r.status_code == 200, r.status_code
+    assert _hosted_stack_client("roundtable-demo.ai-automation-tools.dev", allowed) \
+        .get("/api/settings/delivery").status_code == 200
+    # A bare "*" in the list must not switch the check off.
+    assert _hosted_stack_client("evil.example", allowed) \
+        .get("/api/settings/delivery").status_code == 400
+
+
+def test_allowed_hosts_reads_the_env_file():
+    from web import security
+    with tempfile.TemporaryDirectory() as tmp:
+        env = Path(tmp) / ".env"
+        env.write_text('# c\nAGENT_CHAT_ALLOWED_HOSTS="box.tailnet.ts.net"\n', encoding="utf-8")
+        assert security._env_file_value("AGENT_CHAT_ALLOWED_HOSTS", env) == "box.tailnet.ts.net"
+        assert security._env_file_value("OTHER", env) == ""
+    assert security._env_file_value("X", Path(tmp) / "missing") == ""
+
+
+def test_fly_toml_allows_the_mirror_hosts():
+    """Merging a web change to main deploys it, so the mirror's own names must
+    ship with the allowlist or every hosted page answers 400."""
+    text = (Path(__file__).resolve().parents[1] / "fly.toml").read_text(encoding="utf-8")
+    line = next(l for l in text.splitlines() if l.strip().startswith("AGENT_CHAT_ALLOWED_HOSTS"))
+    for host in ("roundtable-demo.ai-automation-tools.dev", "agent-chat.mikesailab.com",
+                 "agent-chat-mikesailab.fly.dev"):
+        assert host in line, host
+
+
 # ---------------------------------------------------------------------------
 # 3. End-to-end against the real route table with the flag on
 # ---------------------------------------------------------------------------
@@ -267,7 +364,7 @@ def test_real_routes_readonly_end_to_end():
         tmp_db = Path(d) / "chat.db"
         try:
             app = _reload_app_readonly(tmp_db)
-            client = TestClient(app)
+            client = TestClient(app, base_url=LOCAL)
 
             # Reads still work against the live route table.
             assert client.get("/conversations").status_code == 200
@@ -334,7 +431,7 @@ def test_orchestrate_is_local_only_when_readonly():
         try:
             # Hosted / read-only.
             app = _reload_app_readonly(tmp_db)
-            client = TestClient(app)
+            client = TestClient(app, base_url=LOCAL)
             page = client.get("/orchestrate")
             assert page.status_code == 200
             assert "Debates run on your machine, not here" in page.text
@@ -346,7 +443,7 @@ def test_orchestrate_is_local_only_when_readonly():
             importlib.reload(web_ui)
             web_ui.set_db_path(str(tmp_db))
             web_ui.db_init()
-            local = TestClient(web_ui.app).get("/orchestrate")
+            local = TestClient(web_ui.app, base_url=LOCAL).get("/orchestrate")
             assert local.status_code == 200
             assert "Run preflight + start conversation" in local.text
             assert "Debates run on your machine, not here" not in local.text
@@ -367,7 +464,7 @@ def test_notifications_page_is_local_only_when_readonly():
         tmp_db = Path(d) / "chat.db"
         try:
             app = _reload_app_readonly(tmp_db)
-            client = TestClient(app)
+            client = TestClient(app, base_url=LOCAL)
             page = client.get("/settings?tab=notifications")
             assert page.status_code == 200
             assert "Settings live on your own machine" in page.text
@@ -377,7 +474,7 @@ def test_notifications_page_is_local_only_when_readonly():
             importlib.reload(web_ui)
             web_ui.set_db_path(str(tmp_db))
             web_ui.db_init()
-            local = TestClient(web_ui.app).get("/settings?tab=notifications")
+            local = TestClient(web_ui.app, base_url=LOCAL).get("/settings?tab=notifications")
             assert local.status_code == 200
             assert "Send test notification" in local.text
             assert "Settings live on your own machine" not in local.text
@@ -399,7 +496,7 @@ def test_battleground_console_is_local_only_when_readonly():
         tmp_db = Path(d) / "chat.db"
         try:
             app = _reload_app_readonly(tmp_db)
-            client = TestClient(app)
+            client = TestClient(app, base_url=LOCAL)
             page = client.get("/battleground")
             assert page.status_code == 200
             assert "Arenas stay on the machine that captured them" in page.text
@@ -409,7 +506,7 @@ def test_battleground_console_is_local_only_when_readonly():
             importlib.reload(web_ui)
             web_ui.set_db_path(str(tmp_db))
             web_ui.db_init()
-            local = TestClient(web_ui.app).get("/battleground")
+            local = TestClient(web_ui.app, base_url=LOCAL).get("/battleground")
             assert local.status_code == 200
             assert "No arenas captured yet" in local.text
             assert "Arenas stay on the machine that captured them" not in local.text

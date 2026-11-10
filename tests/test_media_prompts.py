@@ -20,6 +20,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from starlette.testclient import TestClient  # noqa: E402
+# The Host allowlist (web.security) refuses TestClient's default "testserver".
+LOCAL = "http://127.0.0.1:8765"
 
 import web_ui  # noqa: E402
 from orchestrator.conv_types import CONV_TYPES  # noqa: E402
@@ -156,7 +158,7 @@ def main() -> int:
           prompt_filename("images", d_id, "Is coffee overrated?") == f"{slug}-images-prompt.md")
 
     # --- the route --------------------------------------------------------
-    client = TestClient(web_ui.app)
+    client = TestClient(web_ui.app, base_url=LOCAL)
     for kind in PROMPT_KINDS:
         r = client.get(f"/api/conversations/{d_id}/prompts/{kind}.md")
         check(f"GET prompts/{kind}.md is 200", r.status_code == 200, str(r.status_code))
@@ -174,7 +176,7 @@ def main() -> int:
     # not a hardcoded localhost, or a hosted visitor gets an unusable command.
     body = client.get(f"/api/conversations/{d_id}/prompts/audio.md").text
     check("export URL is built from the request origin",
-          f"http://testserver/api/conversations/{d_id}/export.md" in body)
+          f"{LOCAL}/api/conversations/{d_id}/export.md" in body)
 
     # --- read-only mirror: these are GETs, so they must still work --------
     # The middleware stack is built at import time (`app = Starlette(
@@ -185,7 +187,7 @@ def main() -> int:
         os.environ["AGENT_CHAT_PUBLIC_READONLY"] = "1"
         importlib.reload(web_ui)
         web_ui.set_db_path(db)
-        ro = TestClient(web_ui.app)
+        ro = TestClient(web_ui.app, base_url=LOCAL)
         check("read-only mode is actually on for this client",
               web_ui._is_public_readonly())
         # A write route proves the middleware is engaged, so the 200 below is

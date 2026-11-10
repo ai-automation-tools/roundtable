@@ -1548,6 +1548,24 @@ on your tailnet with `tailscale serve`; see
 `/favicon.svg` is exempt from basic auth (so browsers can fetch the icon for
 the auth-challenge tab); `GET` requests are never blocked by read-only mode.
 
+Under both flags sit layers that are **always on**, local and hosted alike
+(`web/security.py`):
+
+| Layer | Refuses | Why |
+|:---|:---|:---|
+| Host allowlist (Starlette `TrustedHostMiddleware`, outermost, every method) | Any `Host` other than `127.0.0.1`, `localhost` or a name in `AGENT_CHAT_ALLOWED_HOSTS` → `400 Invalid host header` | The cross-site guard compares `Origin` with `Host`, and a DNS-rebinding page controls both. Pinning `Host` closes that. |
+| `CrossSiteWriteGuard` | A mutation whose `Origin` isn't this host or a browser extension → `403`; a mutation **with a body** that isn't `application/json` → `415` | A `no-cors` page can POST at localhost but only as `text/plain`, form-encoded or multipart. Body-less POSTs (stop, delete) pass. |
+| `SecurityHeadersMiddleware` | — | `nosniff`, `X-Frame-Options: DENY`, `frame-ancestors 'none'`, HSTS over HTTPS. |
+
+`AGENT_CHAT_ALLOWED_HOSTS` is comma-separated and read once at startup, from
+the environment first and then the repo-root `.env` (see
+[`.env.example`](../../.env.example)). The hosted mirror lists its three names
+in `fly.toml`'s `[env]`, so **a new custom domain must be added there before
+it is attached**. Locally, add your `tailscale serve` MagicDNS name if the
+phone gets `Invalid host header`
+([remote access](../guides/remote-access.md)), or the LAN address you bound
+with `--host`. A bare `*` is ignored rather than honoured.
+
 ### The demo strip
 
 Enforcement without communication is a trap: someone landing on a shared
