@@ -2,7 +2,13 @@
 
 All notable changes to this repository. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
-## 2026-11-07 (latest)
+## 2026-11-10 (latest)
+
+### Changed — upstream check
+
+- **OpenCode 2's MCP shape is noted, not adopted.** `docs/cli-mcp-config/per-cli/opencode.md` gains a quirk: OpenCode 2 documents servers under `mcp.servers` (with `disabled` for `enabled`) and still reads the v1 shape this repo writes. The move is queued as a Low Roadmap item. `docs/UPSTREAMS.md`: every row re-read and dated 2026-11-10, the Antigravity `agy mcp add` note flagged as unverified, and the OpenCode row's config shape and `--auto` evidence recorded.
+
+## 2026-11-07
 
 ### Changed — process-flow diagram re-pinned
 
