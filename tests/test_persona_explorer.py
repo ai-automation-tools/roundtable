@@ -33,6 +33,10 @@ from pathlib import Path
 
 from starlette.testclient import TestClient
 
+# The Host allowlist (src/web/security.py) answers loopback only by default;
+# TestClient's own "testserver" host gets 400.
+LOCAL = "http://127.0.0.1:8765"
+
 _SRC = Path(__file__).resolve().parent.parent / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
@@ -77,7 +81,7 @@ def _seed() -> None:
 def _client() -> TestClient:
     import web_ui
 
-    return TestClient(web_ui.app)
+    return TestClient(web_ui.app, base_url=LOCAL)
 
 
 def _grid(page: str) -> str:
@@ -188,7 +192,7 @@ def test_explorer_works_on_the_read_only_demo() -> None:
     try:
         importlib.reload(web_ui)
         _seed()
-        c = TestClient(web_ui.app)
+        c = TestClient(web_ui.app, base_url=LOCAL)
         for url in ("/personas", "/personas?q=moon", "/personas/crypto-chad",
                     "/personas/crypto-chad/card.md", "/personas/crypto-chad/bundle.zip"):
             assert c.get(url).status_code == 200, url
