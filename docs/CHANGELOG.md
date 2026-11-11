@@ -2,7 +2,18 @@
 
 All notable changes to this repository. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
-## 2026-11-07 (latest)
+## 2026-11-11 (latest)
+
+### Fixed — the persona registry answers on its own hostname again
+
+- **`personas.ai-automation-tools.dev` returned `400 Invalid host header`** from the 2026-11-10 deploy on. The Host allowlist (#251) and the standalone registry site (#257) landed in separate PRs, and `fly.toml`'s `AGENT_CHAT_ALLOWED_HOSTS` never got the registry's name. It is listed now, and `test_fly_allows_every_public_host` (`tests/test_availability.py`) fails when a hostname the code serves (`PUBLIC_REGISTRY_HOST`, `DEMO_URL`) is missing from it.
+- **CI on `main` is green again.** `tests/test_persona_explorer.py` used TestClient's default `testserver` host, which the allowlist refuses; it now uses loopback like the other suites. The registry-host test allows that host for its own run.
+
+## 2026-11-07
+
+### Changed — process-flow diagram re-pinned
+
+- **`docs/diagrams/process-flow.json` re-pinned to `6a1837c1`** (org upkeep). The only cited file that moved, `src/orchestrator/delivery.py`, changed one docstring line outside the cited range (`resolve_db_path`); the Delivery Sinks node (lines 1-56) and every other node are still true. Rebuilt with `--pin-head`, which also refreshes `homepage/diagram/`.
 
 ### Changed — the persona console advertises the registry
 
@@ -50,6 +61,14 @@ The Debate Chat Theater on the AI-Automation-Library site is being decommissione
 - Centred headers and footers that mixed Markdown into HTML blocks (`docs/mcp-server.md`, three `docs/app/` pages, `docs/cli-mcp-config/README.md`, `extension/README.md`, the Practitioners card index) are plain HTML now, and `skills/README.md` gets the standard section header.
 
 ## 2026-11-05
+
+### Security — the web UI answers only to host names it knows, and write bodies must be JSON
+
+- Every request whose `Host` isn't `127.0.0.1`, `localhost` or a name in the new **`AGENT_CHAT_ALLOWED_HOSTS`** setting now gets `400 Invalid host header`, on every method (Starlette's `TrustedHostMiddleware`, outermost in `_build_middleware()`). The cross-site write guard compared `Origin` with a `Host` the client chose, so a DNS-rebinding page, same-origin with its own name, got through it.
+- `AGENT_CHAT_ALLOWED_HOSTS` is comma-separated, read at startup from the environment or the repo-root `.env` (documented in `.env.example`). **If you reach your local UI through `tailscale serve` and the phone shows `Invalid host header`, add the MagicDNS name there and restart the web UI** ([remote access](guides/remote-access.md), step 4). Same for a LAN address bound with `--host`.
+- The hosted mirror's three names (`roundtable-demo.ai-automation-tools.dev`, `agent-chat.mikesailab.com`, `agent-chat-mikesailab.fly.dev`) are in `fly.toml`'s `[env]`, so it keeps answering after the deploy. A new custom domain needs adding there first.
+- A POST that carries a body must now be `Content-Type: application/json`, or it gets `415`. Every route that reads a body parses JSON, and the web UI, the extension and the sidecar already send it; body-less POSTs (stop, delete) are unchanged. This is what a `no-cors` page can't fake.
+- Tests: six new cases in `tests/test_web_readonly.py`. The other web suites now point their test client at `127.0.0.1:8765`, since the allowlist refuses its default `testserver` host.
 
 ### Changed — one topic library per conversation type
 
