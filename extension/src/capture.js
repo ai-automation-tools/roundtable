@@ -39,7 +39,7 @@
 
   const clean = (s) =>
     (s || '')
-      .replace(/ /g, ' ')
+      .replace(/ /g, ' ')
       .replace(/[ \t]+\n/g, '\n')
       .replace(/\n{3,}/g, '\n\n')
       .trim()
