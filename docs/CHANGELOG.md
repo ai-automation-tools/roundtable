@@ -2,7 +2,14 @@
 
 All notable changes to this repository. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
-## 2026-11-10 (latest)
+## 2026-11-11 (latest)
+
+### Fixed — the persona registry answers on its own hostname again
+
+- **`personas.ai-automation-tools.dev` returned `400 Invalid host header`** from the 2026-11-10 deploy on. The Host allowlist (#251) and the standalone registry site (#257) landed in separate PRs, and `fly.toml`'s `AGENT_CHAT_ALLOWED_HOSTS` never got the registry's name. It is listed now, and `test_fly_allows_every_public_host` (`tests/test_availability.py`) fails when a hostname the code serves (`PUBLIC_REGISTRY_HOST`, `DEMO_URL`) is missing from it.
+- **CI on `main` is green again.** `tests/test_persona_explorer.py` used TestClient's default `testserver` host, which the allowlist refuses; it now uses loopback like the other suites. The registry-host test allows that host for its own run.
+
+## 2026-11-10
 
 ### Fixed: the extension folds non-breaking spaces again
 
