@@ -4,12 +4,21 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 ## 2026-11-11 (latest)
 
+### Changed — roadmap rechecked against the org's 2026-11 requirements
+
+- **`docs/ROADMAP.md` rechecked against the org's 2026-11 requirements.** The intro names the job that works it (`agent-chat-roadmap`) instead of a disabled task and its day. New items: a Cronsole catalog for the scheduled jobs (🔒 Needs owner until the template scope and the `-SkipPermissions` default are decided), a demo build stamp, the `roundtable.theme` key, a `-TaskPath` parameter on the task scripts, a carried security item (no credential hint in logs, no raw DB errors) and the About text (🔒). *Arm stall notifications on this machine* is marked 🔒 Needs owner; progress notes narrow *Favicon and basic site polish* (Open Graph on conversation pages is what's left) and *Dependency + deploy hygiene* (Dependabot shipped 2026-09-29), and *Explore remote debate kickoff* is scoped to the remote trigger only.
+- **Ticked *Web UI: dark mode*** *(After public release · Low)*: it shipped 2026-10-05 as the light theme and the light/dark switch on every page (`cadd9e3`).
+
 ### Fixed — the persona registry answers on its own hostname again
 
 - **`personas.ai-automation-tools.dev` returned `400 Invalid host header`** from the 2026-11-10 deploy on. The Host allowlist (#251) and the standalone registry site (#257) landed in separate PRs, and `fly.toml`'s `AGENT_CHAT_ALLOWED_HOSTS` never got the registry's name. It is listed now, and `test_fly_allows_every_public_host` (`tests/test_availability.py`) fails when a hostname the code serves (`PUBLIC_REGISTRY_HOST`, `DEMO_URL`) is missing from it.
 - **CI on `main` is green again.** `tests/test_persona_explorer.py` used TestClient's default `testserver` host, which the allowlist refuses; it now uses loopback like the other suites. The registry-host test allows that host for its own run.
 
 ## 2026-11-10
+
+### Fixed: the extension folds non-breaking spaces again
+
+- **`extension/src/capture.js` `clean()` turns non-breaking spaces into plain spaces again** (security sweep, CodeQL `js/identity-replacement`). The pattern had lost its literal NBSP somewhere along the way and was replacing a space with a space. It is now written as `\u00a0`, so an editor can't flatten it again.
 
 ### Changed — upstream check
 
