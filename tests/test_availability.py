@@ -576,6 +576,20 @@ def test_registry_is_a_standalone_site_on_its_own_host():
     # hostname only the explorer is served; everything else goes to the demo.
     from web.render.common import DEMO_URL, PUBLIC_REGISTRY_HOST
     h = {"host": PUBLIC_REGISTRY_HOST}
+    # The Host allowlist must name the registry's hostname, as fly.toml does
+    # (test_fly_allows_every_public_host); _client reloads the app with it.
+    saved = os.environ.get("AGENT_CHAT_ALLOWED_HOSTS")
+    os.environ["AGENT_CHAT_ALLOWED_HOSTS"] = PUBLIC_REGISTRY_HOST
+    try:
+        _registry_host_checks(h, DEMO_URL)
+    finally:
+        if saved is None:
+            os.environ.pop("AGENT_CHAT_ALLOWED_HOSTS", None)
+        else:
+            os.environ["AGENT_CHAT_ALLOWED_HOSTS"] = saved
+
+
+def _registry_host_checks(h: dict, DEMO_URL: str) -> None:
     with _client() as client:
         r = client.get("/", headers=h, follow_redirects=False)
         assert r.status_code == 302 and r.headers["location"] == "/personas"
@@ -587,6 +601,20 @@ def test_registry_is_a_standalone_site_on_its_own_host():
         # Other hosts are untouched.
         assert client.get("/", follow_redirects=False).status_code == 200
         assert client.get("/conversations").status_code == 200
+
+
+def test_fly_allows_every_public_host():
+    # Fly's proxy forwards the Host it was reached by; one the allowlist lacks
+    # gets 400 "Invalid host header". The registry's hostname was missing from
+    # fly.toml for a day (2026-11-10) because the allowlist and the registry
+    # site landed in separate PRs.
+    import tomllib
+    from urllib.parse import urlsplit
+    from web.render.common import DEMO_URL, PUBLIC_REGISTRY_HOST
+    fly = tomllib.loads((Path(__file__).resolve().parents[1] / "fly.toml").read_text(encoding="utf-8"))
+    listed = {h.strip().lower() for h in fly["env"]["AGENT_CHAT_ALLOWED_HOSTS"].split(",")}
+    for host in (PUBLIC_REGISTRY_HOST, urlsplit(DEMO_URL).hostname):
+        assert host in listed, host
 
 
 # ---------------------------------------------------------------------------
