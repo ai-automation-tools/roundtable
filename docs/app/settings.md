@@ -65,6 +65,7 @@ settings:
 |:---|:---|
 | `AGENT_CHAT_DB` | A launch argument. Changing it mid-run points the UI at a different bus than the agents. |
 | `AGENT_CHAT_INGEST_TOKEN` · `AGENT_CHAT_BATTLEGROUND_TOKEN` · `AGENT_CHAT_BASIC_AUTH_PASSWORD` | Secrets. A page that can edit its own auth is a worse idea than a page that cannot, and these belong in the environment that starts the process. |
+| `AGENT_CHAT_EXTENSION_IDS` | Which browser extension may drive the battleground bridge. A form that could add an id would be a form that lets an extension authorize itself. |
 | `AGENT_CHAT_PUBLIC_READONLY` | The hosted mirror's whole safety posture. It is set by the deploy, and a UI toggle for it would be a UI toggle for "let strangers write to this". |
 | `AGENT_CHAT_REMOTE_URL` · `AGENT_CHAT_TERMINAL` | Belong to `scripts/db_sync.py` and the PowerShell spawner — separate processes that never read a web form. |
 

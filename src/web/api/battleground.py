@@ -18,10 +18,12 @@ Two deliberate constraints:
   side panel; the extension *types it into the composer* and a human clicks
   the site's own post button. ``POST /drafts/{id}/verdict`` is that gate.
 
-Auth follows the ingest pattern in ``web/api/sync.py``, but opt-in from the
-other direction: unset ``AGENT_CHAT_BATTLEGROUND_TOKEN`` and the endpoints are
-open (the repo's local no-auth posture); set it and every request must carry
-``Authorization: Bearer <token>``.
+Auth follows the ingest pattern in ``web/api/sync.py``: every request must
+carry ``Authorization: Bearer <AGENT_CHAT_BATTLEGROUND_TOKEN>``, and with no
+token configured the bridge refuses everything (required since 2026-11-12;
+it used to be opt-in). Two exceptions: ``/healthz``, and a request from this
+app's own pages (the ``/battleground`` console), which can already read every
+arena it would post about.
 """
 
 from __future__ import annotations
@@ -49,7 +51,7 @@ from web.db import (
     bg_set_verdict,
     bg_update_arena,
 )
-from web.security import _is_public_readonly
+from web.security import _env_file_value, _is_public_readonly, is_same_origin
 
 # Guardrails on what a page capture may push into the DB. A thread is a
 # snapshot for the agent to argue against, not an archive of the site.
@@ -101,9 +103,22 @@ CLI_LAUNCH = {
 # Auth
 # ---------------------------------------------------------------------------
 
+def _bridge_token() -> str:
+    """``AGENT_CHAT_BATTLEGROUND_TOKEN``: the environment, then ``.env``."""
+    return os.environ.get("AGENT_CHAT_BATTLEGROUND_TOKEN") or _env_file_value(
+        "AGENT_CHAT_BATTLEGROUND_TOKEN"
+    )
+
+
 def _unauthorized() -> Response:
+    error = "invalid or missing bearer token"
+    if not _bridge_token():
+        error = (
+            "no bridge token is configured: set AGENT_CHAT_BATTLEGROUND_TOKEN in "
+            "the repo's .env and paste the same value into the panel's Settings"
+        )
     return JSONResponse(
-        {"error": "invalid or missing bearer token"},
+        {"error": error},
         status_code=401,
         headers={"WWW-Authenticate": 'Bearer realm="agent_chat_battleground"'},
     )
@@ -112,12 +127,16 @@ def _unauthorized() -> Response:
 def _authorized(request: Request) -> bool:
     """True when the request may proceed.
 
-    No ``AGENT_CHAT_BATTLEGROUND_TOKEN`` set → open, matching the rest of the
-    local web UI. Token set → require an exact bearer match.
+    A same-origin request (this app's ``/battleground`` console) passes.
+    Everything else needs an exact bearer match, and with no token
+    configured nothing else passes: an unset token used to mean "open",
+    which let any extension on the machine drive the bridge.
     """
-    expected = os.environ.get("AGENT_CHAT_BATTLEGROUND_TOKEN")
-    if not expected:
+    if is_same_origin(request):
         return True
+    expected = _bridge_token()
+    if not expected:
+        return False
     header = request.headers.get("authorization", "")
     if not header.startswith("Bearer "):
         return False
@@ -562,13 +581,16 @@ async def api_bg_healthz(request: Request) -> Response:
 
     Deliberately **outside** the bearer-token check: its whole job is telling
     the panel why a call might fail, and "the token is wrong" is one of the
-    answers. It exposes no data — table names and two booleans — and the CORS
-    gate still limits who can read it to ``chrome-extension://`` origins.
+    answers. It exposes no data — table names and a few booleans — and the
+    CORS gate still limits which extension can read it to the configured one.
+    ``token_required`` is always true since the token stopped being optional
+    (kept so an older panel reads it right); ``token_configured`` says whether
+    this server has one at all, without which every other call is refused.
 
     Returns::
 
         {"ok": bool, "db": bool, "schema": bool, "readonly": bool,
-         "token_required": bool, "error": str?}
+         "token_required": true, "token_configured": bool, "error": str?}
     """
     db_ok = schema_ok = False
     error: str | None = None
@@ -588,7 +610,8 @@ async def api_bg_healthz(request: Request) -> Response:
         "db": db_ok,
         "schema": schema_ok,
         "readonly": _is_public_readonly(),
-        "token_required": bool(os.environ.get("AGENT_CHAT_BATTLEGROUND_TOKEN")),
+        "token_required": True,
+        "token_configured": bool(_bridge_token()),
     }
     if error:
         payload["error"] = error

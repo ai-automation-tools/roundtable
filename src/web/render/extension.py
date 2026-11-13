@@ -73,9 +73,10 @@ def _bridge_html() -> str:
         "var box=document.getElementById('xt-bridge');"
         "var txt=document.getElementById('xt-bridge-txt');"
         "fetch('/api/battleground/healthz').then(function(r){return r.json();}).then(function(d){"
-        "if(d && d.ok){box.className='xt-bridge up';"
-        "txt.innerHTML='Bridge is up on this instance. The extension can create arenas here'"
-        "+(d.token_required?', and a bridge token is required \\u2014 paste the same value into the panel\\u2019s Settings.':'; no bridge token is set, so any extension on this machine may use it.');"
+        "if(d && d.ok && d.token_configured){box.className='xt-bridge up';"
+        "txt.textContent='Bridge is up on this instance. The extension can create arenas here once its id is in AGENT_CHAT_EXTENSION_IDS and the panel\\u2019s Settings carry the bridge token.';"
+        "}else if(d && d.ok){box.className='xt-bridge down';"
+        "txt.textContent='Bridge is up, but no bridge token is set, so it refuses the extension. Add AGENT_CHAT_BATTLEGROUND_TOKEN to the repo\\u2019s .env.';"
         "}else{box.className='xt-bridge down';"
         "txt.textContent='Bridge is not answering: '+((d&&d.error)||'unknown error')"
         "+'. The extension will not be able to open an arena until this server can read its database.';}"
@@ -168,8 +169,12 @@ def _render_extension_page() -> str:
         <div class="xt-code">.\\scripts\\build-extension.ps1</div></div></li>
       <li><div><h4>Point it at your local server</h4>
         <p>The panel&rsquo;s Settings expect <code>http://127.0.0.1:8765</code> &mdash;
-           this app, running locally. If you set
-           <code>AGENT_CHAT_BATTLEGROUND_TOKEN</code>, paste the same value there.</p></div></li>
+           this app, running locally. The bridge only answers an extension you name
+           and a token you set: put the extension&rsquo;s id (from
+           <code>chrome://extensions</code>, or the Internal UUID in Firefox&rsquo;s
+           <code>about:debugging</code>) in <code>AGENT_CHAT_EXTENSION_IDS</code> and a long
+           random <code>AGENT_CHAT_BATTLEGROUND_TOKEN</code> in the repo&rsquo;s
+           <code>.env</code>, then paste the same token into the panel&rsquo;s Settings.</p></div></li>
     </ol>
     <div style="margin-top:16px">{bridge}</div>
   </div>

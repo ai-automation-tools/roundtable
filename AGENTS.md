@@ -147,7 +147,7 @@ Full reference: [`docs/app/battleground.md`](docs/app/battleground.md).
 - **Re-capture merges on post `id`** — that's the contract a site adapter in `extension/src/capture.js` exists to satisfy: stable ids, the site's own comment id wherever possible, namespaced for third-party iframes (`disqus:501`). Ids invented per capture silently duplicate the thread on every refresh.
 - **A new adapter is two edits:** its label must also land in `KNOWN_SITES` (`web/api/battleground.py`) or the bridge silently coerces the arena to `generic`. `tests/test_battleground.py` pins the lists together.
 - **Never let the extension acquire access without a click.** Host permissions are per-origin, requested from a user gesture (a comment iframe is a separate origin and gets its own button). The auto re-capture timer checks `permissions.contains` and skips — it must never call `permissions.request`. Firefox discards the gesture across an `await`, so click handlers start the request **before** their first await.
-- **CORS stays narrow.** `ExtensionCorsMiddleware` echoes only `chrome-extension://` origins, only under `/api/battleground/`. Never widen it.
+- **CORS and the extension exemption stay narrow.** `ExtensionCorsMiddleware` echoes, and `CrossSiteWriteGuard` exempts, only an extension origin whose id is in `AGENT_CHAT_EXTENSION_IDS`, and only under `/api/battleground/`. Any other extension is just another site. The bridge token is **required**: no token configured means every bridge call is refused (`/healthz` and same-origin requests from the `/battleground` console excepted). Never widen either.
 
 ### Delivery (`orchestrator/delivery.py`)
 
