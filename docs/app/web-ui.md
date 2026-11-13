@@ -1554,7 +1554,7 @@ Under both flags sit layers that are **always on**, local and hosted alike
 | Layer | Refuses | Why |
 |:---|:---|:---|
 | Host allowlist (Starlette `TrustedHostMiddleware`, outermost, every method) | Any `Host` other than `127.0.0.1`, `localhost` or a name in `AGENT_CHAT_ALLOWED_HOSTS` → `400 Invalid host header` | The cross-site guard compares `Origin` with `Host`, and a DNS-rebinding page controls both. Pinning `Host` closes that. |
-| `CrossSiteWriteGuard` | A mutation whose `Origin` isn't this host or a browser extension → `403`; a mutation **with a body** that isn't `application/json` → `415` | A `no-cors` page can POST at localhost but only as `text/plain`, form-encoded or multipart. Body-less POSTs (stop, delete) pass. |
+| `CrossSiteWriteGuard` | A mutation whose `Origin` isn't this host → `403`, except the AgentBattleground extension named in `AGENT_CHAT_EXTENSION_IDS`, and only under `/api/battleground/` (since 2026-11-12; any extension used to pass on every route); a mutation **with a body** that isn't `application/json` → `415` | A `no-cors` page can POST at localhost but only as `text/plain`, form-encoded or multipart. Body-less POSTs (stop, delete) pass. Another installed extension can't reach `/api/settings/delivery` and through it a command sink. See [battleground.md › Auth + CORS](battleground.md#auth--cors). |
 | `SecurityHeadersMiddleware` | — | `nosniff`, `X-Frame-Options: DENY`, `frame-ancestors 'none'`, HSTS over HTTPS. |
 
 `AGENT_CHAT_ALLOWED_HOSTS` is comma-separated and read once at startup, from

@@ -70,16 +70,22 @@ different loop.
 That's the whole install — it's an unpacked local extension, nothing is
 published to the Chrome Web Store.
 
-### Optional: require a token
+### Name the extension and set a token
 
-By default the bridge accepts unauthenticated local calls, same as the rest of
-the web UI. To lock it down, set the env var **before** starting the web UI and
-paste the same value into the panel's ⚙ Settings:
+The bridge answers only the extension you name, and only with a token (both
+required since 2026-11-12). Add two lines to the `.env` at the repo root
+(copy [`.env.example`](../../.env.example) if you have none), then paste the
+same token into the panel's ⚙ Settings:
 
-```powershell
-$env:AGENT_CHAT_BATTLEGROUND_TOKEN = "some-long-random-string"
-.\.venv\Scripts\python.exe src\web_ui.py
+```ini
+AGENT_CHAT_BATTLEGROUND_TOKEN=some-long-random-string
+AGENT_CHAT_EXTENSION_IDS=<the extension's id>
 ```
+
+The id is the **ID** on `chrome://extensions`, or in Firefox the **Internal
+UUID** on `about:debugging`. The panel shows it too, in its setup notice and
+when **Test connection** is refused. Both are read on every request, so no
+restart is needed.
 
 ---
 
@@ -374,7 +380,8 @@ re-capture merge instead of duplicate.
 | Clicked Start over but the agent is still working | That's intended. Start over only detaches *your panel*; the arena and its drafts live on the server. Use **Close arena** to actually stop the agent drafting. |
 | "No reply box found" | Open the site's reply form first, and click into it so the extension knows which box you mean. |
 | "Typed, but reading the box back didn't show the text" | The site's editor rejected the write. Check the page before posting; paste it yourself if it's empty. |
-| Settings warns the bridge takes calls without a token | Informational. Fine on a machine only you use; the warning includes the line to set if you'd rather it didn't. |
+| Settings says the bridge has no token | The server has no `AGENT_CHAT_BATTLEGROUND_TOKEN`, so it refuses every call. The notice gives both `.env` lines, with this extension's id filled in. |
+| `extension … is not allowed` | This extension's id isn't in `AGENT_CHAT_EXTENSION_IDS`. The error quotes the id; add it to `.env`. Reloading an unpacked extension from a different folder, or a new Firefox profile, changes it. |
 | Agent says there's no arena | It's assigned to a different CLI, or closed. Check the panel's arena line. |
 | Agent says it posted something | The `battleground` skill isn't loading — check `/skills`, then re-run `setup-skill-links.ps1`. |
 | Draft never appears | Agent hasn't called `submit_draft` yet. The panel polls every 3s; check the CLI output. |

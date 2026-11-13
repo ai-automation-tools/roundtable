@@ -40,7 +40,7 @@ import {
   saveSettings,
   syncCustomPersona,
 } from './lib/settings.js';
-import { loadHealth, loadRoster } from './lib/bridge.js';
+import { extensionId, loadHealth, loadRoster } from './lib/bridge.js';
 import { requestPageAccess } from './lib/permissions.js';
 import { renderHints, runCapture } from './lib/capture.js';
 import {
@@ -128,9 +128,10 @@ $('test-bridge').onclick = async () => {
     msg.textContent = `Connected to ${state.settings.bridgeUrl}.`;
   } else if (health) {
     // healthz answered but roster didn't: the bridge is up and rejecting us.
-    msg.textContent = health.token_required
-      ? 'The bridge is up but refused the call — check the bearer token above.'
-      : `The bridge is up but the call failed${health.error ? `: ${health.error}` : '.'}`;
+    msg.textContent = health.error
+      ? `The bridge is up but the call failed: ${health.error}`
+      : 'The bridge is up but refused the call — check the bearer token above, ' +
+        `and that AGENT_CHAT_EXTENSION_IDS in the server's .env lists ${extensionId()}.`;
   } else {
     msg.textContent = `No answer from ${state.settings.bridgeUrl} — is the web UI running?`;
   }
