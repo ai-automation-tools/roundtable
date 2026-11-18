@@ -1653,7 +1653,8 @@ body.home .muted { color: var(--muted); }
 .cta-solid::before { background: radial-gradient(260px circle at var(--mx) var(--my), rgba(255, 255, 255, 0.9), transparent 65%); }
 .cta-solid::after { display: none; }
 .guides { margin-top: 16px; font-size: 12.5px; color: var(--muted-2); max-width: 28rem; }
-.guides a { color: var(--muted); }
+/* inline-block + padding: a 24px-tall tap target on a phone (WCAG 2.5.8) that never splits across the wrap. */
+.guides a { color: var(--muted); display: inline-block; padding: 4px 0; }
 .guides a:hover { color: var(--accent); text-decoration: none; }
 .guides .sep { color: #3f3f46; margin: 0 4px; }
 .note { margin-top: 16px; display: flex; align-items: flex-start; gap: 10px; font-size: 13px; color: var(--muted-2); max-width: 28rem; }

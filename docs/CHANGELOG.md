@@ -2,7 +2,13 @@
 
 All notable changes to this repository. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
-## 2026-11-11 (latest)
+## 2026-11-16 (latest)
+
+### Fixed — homepage guide links are phone-sized tap targets
+
+- **The *Guides:* links on the home page were 16px tall and, where the row wrapped on a phone, *Online forums* split across both lines and sat on top of the others** (Local App Checks, *usable on a phone*, WCAG 2.5.8). `.guides a` in `src/web/assets.py` is now `inline-block` with 4px of vertical padding: 24px tall and never split.
+
+## 2026-11-11
 
 ### Changed — roadmap rechecked against the org's 2026-11 requirements
 
