@@ -207,7 +207,7 @@ Side effect: `roundtable` is now visible to **every** Codex session on this mach
 
 `agents/CLIs/codex_agent1/.codex/skills/` (skill-creator, skill-installer) is unrelated to MCP wiring and stays.
 
-The seat's role doc is `AGENTS.md`, the same full-stack-developer + agent-chat brief as the Claude side with Codex's agent id and config location swapped in.
+The seat's role doc is `AGENTS.md`, the same full-stack-developer + Roundtable brief as the Claude side with Codex's agent id and config location swapped in.
 
 ### Wire the shared Agent Skills (run once per clone)
 

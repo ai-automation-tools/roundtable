@@ -55,7 +55,7 @@ claude mcp add --transport stdio -s project roundtable -- pwsh -NoProfile -File 
 
 ```json
 "roundtable": {
-  "command": "/abs/path/to/Agent-Chat/scripts/run-mcp-server.sh",
+  "command": "/abs/path/to/roundtable/scripts/run-mcp-server.sh",
   "args": ["claude-code"]
 }
 ```
