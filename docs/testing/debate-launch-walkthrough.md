@@ -85,13 +85,13 @@ same registry by slug or display name.)
 
 ### 4. Persona → CLI mapping
 
-CLI preference order is fixed by the `$Clis` ordered hashtable in `debate.ps1`:
+CLI preference order is fixed by the `$Clis` ordered hashtable in `scripts/lib/spawn-agents.ps1`:
 
-| Order | CLI key       | Working dir                       | Exe   | Initial-prompt flag | Skip-perms flag                  |
+| Order | CLI key       | Working dir                       | Exe   | Initial-prompt flag | `-SkipPermissions` allowlist (after the prompt) |
 |-------|---------------|-----------------------------------|-------|---------------------|----------------------------------|
-| 1     | `claude-code` | `agents\CLIs\claude-code_agent1`  | `claude` | `{0}`            | `--dangerously-skip-permissions` |
-| 2     | `antigravity` | `agents\CLIs\antigravity_agent1`  | `agy` | `-i {0}`            | `--dangerously-skip-permissions` |
-| 3     | `codex`       | `agents\CLIs\codex_agent1`        | `codex` | `{0}`             | `--yolo`                         |
+| 1     | `claude-code` | `agents\CLIs\claude-code_agent1`  | `claude` | `{0}`            | `--allowedTools mcp__roundtable --add-dir '<repo>\db\launch'` |
+| 2     | `antigravity` | `agents\CLIs\antigravity_agent1`  | `agy` | `-i {0}`            | *(none: no per-tool allowlist flag)* |
+| 3     | `codex`       | `agents\CLIs\codex_agent1`        | `codex` | `{0}`             | *(none: no per-tool allowlist flag)* |
 
 The first `$count` CLIs are used, and **the first is the `--first` speaker**. So for
 2 agents: `claude-code` (first) + `antigravity`. Personas are zipped onto CLIs by
@@ -177,13 +177,13 @@ the command line stays trivially quotable regardless of persona length or conten
 For each agent the script builds:
 
 ```powershell
-Set-Location -LiteralPath '<repo>\agents\CLIs\<cli>_agent1'; <exe>[ <skip-flag>] <prompt-arg>
+Set-Location -LiteralPath '<repo>\agents\CLIs\<cli>_agent1'; <exe> <prompt-arg>[ <allowlist>]
 ```
 
-e.g. for antigravity with `-SkipPermissions`:
+e.g. for claude-code with `-SkipPermissions`:
 
 ```powershell
-Set-Location -LiteralPath '...\antigravity_agent1'; agy --dangerously-skip-permissions -i "Read the file at '...conv23-antigravity.txt'..."
+Set-Location -LiteralPath '...\claude-code_agent1'; claude "Read the file at '...conv23-claude-code.txt'..." --allowedTools mcp__roundtable --add-dir '...\db\launch'
 ```
 
 That command string is UTF-16LE base64-encoded and launched via

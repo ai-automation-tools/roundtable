@@ -745,10 +745,19 @@ def _render_orchestrate(
         <input type="checkbox" name="spawn" checked />
         <span>Spawn one CLI window per agent automatically (local Windows only)</span>
       </label>
+      <!-- Off by default (security audit 2026-10-30): persona and topic text is
+           untrusted input to an agent. Ticked, a seat is allowlisted to the
+           roundtable tools only, never given a blanket bypass; a CLI with no
+           allowlist flag gets nothing and keeps asking. See ALLOW in
+           scripts/lib/spawn-agents.ps1. -->
       <label class="orch-toggle">
-        <input type="checkbox" name="skip_permissions" checked />
-        <span>Skip each CLI's tool-approval prompts (hands-off run)</span>
+        <input type="checkbox" name="skip_permissions" />
+        <span>Let Claude Code seats use the roundtable tools without asking
+          (other CLIs still ask for every tool)</span>
       </label>
+      <p class="hint orch-skip-warn" id="orch-skip-warn" style="display:none">A custom persona
+        card is seated. Its text reaches the agent as instructions &mdash; read it before you
+        let that agent act without asking.</p>
       {delivery_toggle_html}
     </section>
 
@@ -1418,7 +1427,20 @@ def _render_orchestrate(
       parts.push('<b>' + extras[cli] + '</b> ' + cli);
     }});
     recap.innerHTML = parts.join('<span class="sep">/</span>');
+    updateSkipWarn();
   }}
+
+  // Every persona change already routes through updateRecap(), so the warning
+  // rides it rather than hooking each add/clear/remove path separately.
+  // Looked up per call, not hoisted into a const: updateRecap() can run before
+  // this line does, and a const read there is a TDZ ReferenceError.
+  function updateSkipWarn() {{
+    const skipWarn = document.getElementById('orch-skip-warn');
+    if (!skipWarn) return;
+    const on = !!(skipToggle && skipToggle.checked) && Object.keys(customPersonas).length > 0;
+    skipWarn.style.display = on ? '' : 'none';
+  }}
+  if (skipToggle) skipToggle.addEventListener('change', updateSkipWarn);
 
   if (addSeatBtn) addSeatBtn.addEventListener('click', () => {{
     addChair(null, null);

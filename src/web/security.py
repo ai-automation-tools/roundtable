@@ -178,6 +178,42 @@ class ReadOnlyMiddleware(BaseHTTPMiddleware):
 # ---------------------------------------------------------------------------
 
 _BATTLEGROUND_PREFIX = "/api/battleground/"
+_EXTENSION_SCHEMES = ("chrome-extension://", "moz-extension://")
+
+
+def extension_ids() -> frozenset[str]:
+    """The AgentBattleground install(s) allowed to call the bridge.
+
+    ``AGENT_CHAT_EXTENSION_IDS``, comma-separated (environment first, then
+    ``.env``): the Chrome id from ``chrome://extensions``, or the Firefox
+    *Internal UUID* from ``about:debugging`` — the host part of the origin the
+    browser sends. Read per call (only for extension-scheme origins), so an
+    edit to ``.env`` needs no restart. Unset means no extension is trusted.
+    """
+    raw = os.environ.get("AGENT_CHAT_EXTENSION_IDS") or _env_file_value(
+        "AGENT_CHAT_EXTENSION_IDS"
+    )
+    return frozenset(i.strip().lower() for i in raw.split(",") if i.strip())
+
+
+def is_configured_extension(origin: str) -> bool:
+    """True when *origin* is ``chrome-extension://`` / ``moz-extension://``
+    plus an id listed in ``AGENT_CHAT_EXTENSION_IDS``."""
+    if not origin.startswith(_EXTENSION_SCHEMES):
+        return False
+    return origin.partition("://")[2].lower() in extension_ids()
+
+
+def is_same_origin(request: Request) -> bool:
+    """True when the browser says this request came from one of our own pages.
+
+    ``Origin`` matches ``Host`` (or ``X-Forwarded-Host``, for ``tailscale
+    serve``). A page can't forge ``Origin``; a non-browser client can, which
+    is fine — it can open ``db/chat.db`` directly anyway.
+    """
+    origin = request.headers.get("origin")
+    hosts = {request.headers.get("host"), request.headers.get("x-forwarded-host")}
+    return origin is not None and origin.partition("://")[2] in hosts
 
 
 class ExtensionCorsMiddleware(BaseHTTPMiddleware):
@@ -190,9 +226,10 @@ class ExtensionCorsMiddleware(BaseHTTPMiddleware):
     * **Path** — only the battleground bridge. Every other route keeps
       today's posture, where a random page you're browsing can fire a
       no-CORS POST at localhost but can never read the response.
-    * **Origin** — only ``chrome-extension://…``. A normal web page's origin
-      is never echoed, so no site can read your local DB even if it guesses
-      the port.
+    * **Origin** — only ``chrome-extension://<id>`` for an id listed in
+      ``AGENT_CHAT_EXTENSION_IDS``. A normal web page's origin, or any other
+      extension's, is never echoed, so neither can read your local DB even if
+      it guesses the port.
 
     Always on (no env flag): with no matching origin it adds nothing.
     """
@@ -202,6 +239,7 @@ class ExtensionCorsMiddleware(BaseHTTPMiddleware):
         scoped = (
             request.url.path.startswith(_BATTLEGROUND_PREFIX)
             and origin.startswith("chrome-extension://")
+            and is_configured_extension(origin)
         )
         if scoped and request.method == "OPTIONS":
             # Preflight: answer here so it never reaches the auth/read-only
@@ -227,9 +265,6 @@ def _cors_headers(origin: str) -> dict[str, str]:
 # Cross-site write guard + security headers — always on
 # ---------------------------------------------------------------------------
 
-_EXTENSION_SCHEMES = ("chrome-extension://", "moz-extension://")
-
-
 class CrossSiteWriteGuard(BaseHTTPMiddleware):
     """Refuse a browser mutation sent from another site (CSRF).
 
@@ -237,8 +272,10 @@ class CrossSiteWriteGuard(BaseHTTPMiddleware):
     could fire a ``no-cors`` POST at the local instance and, through
     /api/settings/delivery or /api/orchestrate, end up running commands.
     Browsers always send ``Origin`` on a cross-origin POST, so a non-safe
-    request whose Origin isn't this host (or one of the browser extensions)
-    is answered 403. No Origin at all (curl, the MCP server, the sidecar)
+    request whose Origin isn't this host is answered 403. The one exemption
+    is the configured AgentBattleground extension (``AGENT_CHAT_EXTENSION_IDS``)
+    and only under ``/api/battleground/`` — any other extension, or the right
+    one on any other route, is just another site. No Origin at all (curl, the MCP server, the sidecar)
     passes: that is not a browser being tricked. ``X-Forwarded-Host`` counts
     as this host too (a reverse proxy such as ``tailscale serve``); a
     ``no-cors`` page can't set that header. ``Host`` itself is pinned by the
@@ -254,15 +291,17 @@ class CrossSiteWriteGuard(BaseHTTPMiddleware):
         if request.method in _SAFE_METHODS:
             return await call_next(request)
         origin = request.headers.get("origin")
-        hosts = {request.headers.get("host"), request.headers.get("x-forwarded-host")}
-        if (
-            origin is not None
-            and not origin.startswith(_EXTENSION_SCHEMES)
-            and origin.partition("://")[2] not in hosts
-        ):
-            return JSONResponse(
-                {"error": "cross-site request refused"}, status_code=403
-            )
+        if origin is not None and not is_same_origin(request):
+            bridge = request.url.path.startswith(_BATTLEGROUND_PREFIX)
+            if not (bridge and is_configured_extension(origin)):
+                error = "cross-site request refused"
+                if bridge and origin.startswith(_EXTENSION_SCHEMES):
+                    # The extension surfaces this text; tell the operator the fix.
+                    error = (
+                        f"extension {origin.partition('://')[2]} is not allowed: add "
+                        "that id to AGENT_CHAT_EXTENSION_IDS in the repo's .env"
+                    )
+                return JSONResponse({"error": error}, status_code=403)
         has_body = (
             request.headers.get("content-length", "0") not in ("", "0")
             or "transfer-encoding" in request.headers
