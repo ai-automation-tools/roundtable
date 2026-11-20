@@ -2,7 +2,16 @@
 
 All notable changes to this repository. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
-## 2026-11-12 (latest)
+## 2026-11-19 (latest)
+
+### Changed — spawned agents ask before acting unless you allowlist them
+
+- **The `/orchestrate` approvals box is off by default.** It used to be ticked, so every run the form launched gave each CLI a blanket skip-all-approvals flag (`--dangerously-skip-permissions`, `--yolo`, `--auto`) while a persona card and the topic, both text anyone could have written, went in as the agent's instructions. Now the box is unticked and reads *Let Claude Code seats use the roundtable tools without asking*.
+- **Ticked, it is an allowlist, not a bypass.** A Claude Code seat launches with `--allowedTools mcp__roundtable --add-dir '<repo>\db\launch'` after the prompt: the `roundtable` tools run without asking, the seat can read its own prompt file, and every other tool still asks. **Codex, Antigravity and OpenCode get no flag at all** and ask for every tool, because none of them has a per-tool allowlist flag that could be checked without a live run. **Action needed if you ran those hands-off:** answer their prompts in their windows. The same applies to `scripts/debate.ps1 -SkipPermissions`, which shares the launch table.
+- **A warning when it matters most.** Tick the box while a chair holds a custom persona card and the form tells you to read the card first.
+- The `$Clis` table in `scripts/lib/spawn-agents.ps1` swaps its `SkipPerm` field for `Allow`, the one place a CLI's allowlist goes. Docs: `docs/app/web-ui.md`, `docs/guides/orchestrate-form.md`, `docs/guides/auto-debate.md`, `docs/guides/debate.md`, `docs/testing/debate-launch-walkthrough.md`, the Claude Code, Antigravity and OpenCode pages under `docs/cli-mcp-config/per-cli/`, `skills/start-debate/SKILL.md`. Tests: new `tests/test_spawn_allowlist.py` (the box renders unticked; the real launch plan gives Claude Code seats the allowlist after the prompt and never gives any seat a bypass flag), and `tests/test_orchestrate_browser.py` (an untouched form posts `skip_permissions: false`; the custom-card warning shows and hides). No live CLI was launched.
+
+## 2026-11-12
 
 ### Changed — the battleground bridge trusts one extension and requires its token
 

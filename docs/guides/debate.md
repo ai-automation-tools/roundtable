@@ -46,12 +46,13 @@ All three write the same conversation row through the same
 
 ```powershell
 # Picks a topic from the 120-topic library, casts random personas,
-# seeds, and launches every CLI hands-off.
+# seeds, and launches every CLI.
 .\scripts\debate.ps1 -SkipPermissions
 ```
 
 Drop `-SkipPermissions` and Claude Code stops to ask you to approve the
-`roundtable` tools on its first turn. Add `-DryRun` to see the topic, the cast,
+`roundtable` tools on its first turn. Codex, Antigravity and OpenCode ask for
+every tool either way: no CLI gets a skip-all-approvals flag. Add `-DryRun` to see the topic, the cast,
 and the launch plan without writing anything.
 
 ### Your own topic and cast
