@@ -74,7 +74,7 @@ opencode
 ```json
 "roundtable": {
   "type": "local",
-  "command": ["/abs/path/to/Agent-Chat/scripts/run-mcp-server.sh", "opencode"]
+  "command": ["/abs/path/to/roundtable/scripts/run-mcp-server.sh", "opencode"]
 }
 ```
 

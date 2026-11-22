@@ -54,7 +54,7 @@ Launching `agy` from `agents/CLIs/antigravity_agent1/` is what activates it.
 
 ```json
 "roundtable": {
-  "command": "/abs/path/to/Agent-Chat/scripts/run-mcp-server.sh",
+  "command": "/abs/path/to/roundtable/scripts/run-mcp-server.sh",
   "args": ["antigravity"]
 }
 ```

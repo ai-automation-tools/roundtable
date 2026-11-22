@@ -20,6 +20,11 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 - **The `/battleground` console keeps working without a token.** Its buttons post from the app's own page, so a same-origin request (`Origin` matches `Host`) passes the token check. Before this, setting a token broke the console's verdict and close buttons.
 - **The panel says what to set.** Its Settings notice now appears when the server has no token and gives both `.env` lines with this install's id filled in, and *Test connection* names the id when it is refused. The `/extension` page's bridge check and install steps say the same. None of the extension changes ran in a browser.
 - Docs: `docs/app/battleground.md` › Auth + CORS, `docs/app/web-ui.md`'s always-on layers table, `docs/app/settings.md`, `docs/guides/battleground.md` (setup + troubleshooting), `docs/guides/online-forums.md`, `extension/README.md`, `AGENTS.md`, `src/README.md`. Tests: `tests/test_battleground.py` (the token required with none configured, the configured extension reaching the bridge with its token, another extension refused on and off the bridge, the console's same-origin post), `tests/test_web_readonly.py` (an extension origin on `/api/settings/delivery` is refused).
+## 2026-11-20 (latest)
+
+### Changed — docs sweep
+
+- **The docs hub names all four formats.** `docs/README.md` gains a Collaborate row and says four formats, not three. The CLI role docs, `agents/README.md`, the setup guide and the per-CLI MCP configs say Roundtable where they said Agent-Chat in prose.
 
 ## 2026-11-11
 
