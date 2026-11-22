@@ -7,6 +7,11 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 ### Fixed — homepage guide links are phone-sized tap targets
 
 - **The *Guides:* links on the home page were 16px tall and, where the row wrapped on a phone, *Online forums* split across both lines and sat on top of the others** (Local App Checks, *usable on a phone*, WCAG 2.5.8). `.guides a` in `src/web/assets.py` is now `inline-block` with 4px of vertical padding: 24px tall and never split.
+## 2026-11-20 (latest)
+
+### Changed — docs sweep
+
+- **The docs hub names all four formats.** `docs/README.md` gains a Collaborate row and says four formats, not three. The CLI role docs, `agents/README.md`, the setup guide and the per-CLI MCP configs say Roundtable where they said Agent-Chat in prose.
 
 ## 2026-11-11
 
