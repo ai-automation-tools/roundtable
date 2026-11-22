@@ -49,7 +49,7 @@ launch, and are **gitignored** — each holds this machine's launcher path.
 
 Each **role doc** is what that CLI reads on startup from its own folder. All
 five say the same thing with per-CLI config details swapped in: the seat is a
-**full-stack developer** on this repo that can *also* join an agent-chat
+**full-stack developer** on this repo that can *also* join a Roundtable
 conversation — carrying its agent id, how the three conversation types
 (`debate` / `podcast` / `collaborate`) differ, the participation loop, and the
 `roundtable` tool table.

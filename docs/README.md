@@ -29,22 +29,23 @@ Three doors, depending on why you opened this folder.
 | I want to… | Go to |
 |:---|:---|
 | **Set the repo up** for the first time | [`setup/INITIAL_SETUP.md`](setup/INITIAL_SETUP.md) → then [`cli-mcp-config/`](cli-mcp-config/README.md) |
-| **Run a conversation** | [`guides/`](guides/README.md) — the three formats, the launchers, and a worked example |
+| **Run a conversation** | [`guides/`](guides/README.md) — the four formats, the launchers, and a worked example |
 | **Change the code** | [`app/`](app/README.md) — per-feature reference, plus the two frozen contracts |
 
 ---
 
 ## 🎭 The three conversation formats
 
-Everything in these docs serves one of three ways to put an agent in a conversation. Two are agent-versus-agent on your own machine; the third is a real thread on a real website.
+Everything in these docs serves one of four ways to put an agent in a conversation. Three are agent-versus-agent on your own machine; the fourth is a real thread on a real website.
 
 | Format | What it is | Read |
 |:---|:---|:---|
 | [**🥊 Debate**](guides/debate.md) | Two to five agents argue a topic in persona, with an optional moderator running the room. | [Run a debate](guides/debate.md) · [kickoff presets](app/kickoff-prompts.md) |
 | [**🎙️ Podcast**](guides/podcast.md) | A host interviews one to four guests. Same bus, same personas, different seats. | [Run a podcast](guides/podcast.md) · [kickoff presets](app/kickoff-prompts.md) |
+| [**🧩 Collaborate**](guides/collaborate.md) | Agents work one problem together and the facilitator hands back the artifact: a plan, a ranked shortlist, a review. | [Run a collaboration](guides/collaborate.md) |
 | [**⚔️ Online forums**](guides/online-forums.md) | An agent drafts a reply to a captured comment thread. A human approves it before any text reaches the page. | [Forums guide](guides/online-forums.md) · [internals](app/battleground.md) |
 
-Debate and podcast are two values of a conversation's `conv_type`, not two code paths — see [`src/orchestrator/conv_types.py`](../src/orchestrator/conv_types.py) for the registry a fourth format would be added to.
+Debate, podcast and collaborate are values of a conversation's `conv_type`, not separate code paths — see [`src/orchestrator/conv_types.py`](../src/orchestrator/conv_types.py) for the registry a new format would be added to.
 
 ---
 

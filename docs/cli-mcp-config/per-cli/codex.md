@@ -56,7 +56,7 @@ Once registered globally, `roundtable` is visible to **every** Codex session on 
 
 ```toml
 [mcp_servers.roundtable]
-command = "/abs/path/to/Agent-Chat/scripts/run-mcp-server.sh"
+command = "/abs/path/to/roundtable/scripts/run-mcp-server.sh"
 args = ["codex"]
 ```
 
