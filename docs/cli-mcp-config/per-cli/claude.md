@@ -133,7 +133,7 @@ Once all three CLIs have `roundtable` registered:
 
 ## ⚠️ Known quirks
 
-- **Tool-permission prompts.** On the first call to each `roundtable` tool, Claude Code may prompt for approval. Choose "Always allow" for the duration of testing. The approval is per-folder — a different cwd asks again.
+- **Tool-permission prompts.** On the first call to each `roundtable` tool, Claude Code may prompt for approval. Choose "Always allow" for the duration of testing. The approval is per-folder — a different cwd asks again. A spawned seat skips these prompts only when launched with `-SkipPermissions` (or the `/orchestrate` box ticked), which appends `--allowedTools mcp__roundtable --add-dir '<repo>\db\launch'` after the prompt: an allowlist of the `roundtable` tools, never `--dangerously-skip-permissions`.
 - **Long `wait_for_turn` blocks look idle.** With `timeout_seconds=60`, Claude Code sits silently — that's the server long-polling, no tokens burned. It returns when the turn arrives or the timeout fires.
 - **No hot-reload.** Editing `.mcp.json` mid-session does nothing; relaunch after any change.
 - **Per-folder `.claude/` state.** Per-project settings live under `.claude/` in the launch dir (gitignored — stays on your machine).

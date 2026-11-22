@@ -113,10 +113,12 @@
   "- Debaters: N" line, or "- Guests: N" for a podcast.)
 
 .PARAMETER SkipPermissions
-  Append each CLI's "skip tool-approval prompts" flag so the run is hands-off.
-  Wired for all CLIs (claude-code + antigravity + opencode
-  --dangerously-skip-permissions, codex --yolo). Edit the SkipPerm field in the
-  $Clis table below if a flag changes.
+  Let each seat use the roundtable MCP tools without asking. Only Claude Code
+  has an allowlist flag (--allowedTools mcp__roundtable, plus --add-dir for the
+  prompt-file folder); Codex, Antigravity and OpenCode get no flag and keep
+  asking for every tool. No blanket bypass (--dangerously-skip-permissions,
+  --yolo, --auto) is ever passed: persona text is untrusted input. Edit the
+  Allow field in the $Clis table in scripts\lib\spawn-agents.ps1 to add one.
 
 .PARAMETER DryRun
   Do everything EXCEPT spawn the CLI windows. Prints the seed result, the
@@ -220,7 +222,7 @@ $CastPersonas = (-not $IsCollab) -or [bool]$Personalities -or [bool]$Group
 . $SpawnLib
 
 # The CLI registry ($Clis) — binaries, launch dirs, prompt-arg shapes, and
-# skip-permission flags — now lives in scripts/lib/spawn-agents.ps1 (dot-sourced
+# tool-allowlist flags — now lives in scripts/lib/spawn-agents.ps1 (dot-sourced
 # above) so debate.ps1 and orchestrate-debate.ps1 share one source of truth.
 
 function Write-Step { param([string]$m) Write-Host "[debate] $m" -ForegroundColor Cyan }

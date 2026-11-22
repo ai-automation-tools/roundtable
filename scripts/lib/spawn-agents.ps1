@@ -27,27 +27,37 @@
 #   Dir       : working directory the CLI must launch from (per-folder MCP config).
 #   Exe       : the launcher binary on PATH.
 #   PromptArg : how the CLI takes an INITIAL prompt. {0} is the quoted opening prompt.
-#   SkipPerm  : flag to bypass tool-approval prompts (used only with -SkipPermissions).
+#   Allow     : flags that allowlist ONLY the roundtable MCP tools (used only with
+#               -SkipPermissions); {0} is the quoted prompt-file folder. Appended
+#               AFTER the prompt, because Claude Code's --allowedTools/--add-dir
+#               are variadic and would swallow a prompt placed after them.
+#               Empty = this CLI has no per-tool allowlist flag we have verified,
+#               so it launches with no flag at all and keeps asking. A blanket
+#               bypass (--dangerously-skip-permissions, --yolo, --auto) is never
+#               passed: persona and topic text is untrusted input to the agent
+#               (owner's security audit 2026-10-30, Roadmap row "Default
+#               orchestrated agents to approvals on").
 # The opening prompt is intentionally tiny (it just points at a file), so
 # embedding it as a CLI arg is safe regardless of persona length/content.
 # CLI preference order = key order below; the first N are used, first = --first.
 # --------------------------------------------------------------------------
 $Clis = [ordered]@{
-    'claude-code' = @{ Dir = 'agents\CLIs\claude-code_agent1'; Exe = 'claude'; PromptArg = '{0}';        SkipPerm = '--dangerously-skip-permissions' }
-    'antigravity' = @{ Dir = 'agents\CLIs\antigravity_agent1'; Exe = 'agy';    PromptArg = '-i {0}';     SkipPerm = '--dangerously-skip-permissions' }
-    'codex'       = @{ Dir = 'agents\CLIs\codex_agent1';       Exe = 'codex';  PromptArg = '{0}';         SkipPerm = '--yolo' }
+    # mcp__roundtable is the server-wide rule add_agent_seat.py writes for seat
+    # 2+; --add-dir lets the seat Read its prompt file under db\launch without a
+    # prompt (read-only tools are allowed inside working directories).
+    'claude-code' = @{ Dir = 'agents\CLIs\claude-code_agent1'; Exe = 'claude'; PromptArg = '{0}';        Allow = '--allowedTools mcp__roundtable --add-dir {0}' }
+    'antigravity' = @{ Dir = 'agents\CLIs\antigravity_agent1'; Exe = 'agy';    PromptArg = '-i {0}';     Allow = '' }
+    'codex'       = @{ Dir = 'agents\CLIs\codex_agent1';       Exe = 'codex';  PromptArg = '{0}';         Allow = '' }
     # opencode: auto-loads opencode.json from the launch dir (no config flag).
     # `opencode run "<prompt>"` is the headless agent loop (no TUI) — it keeps
     # executing tool calls (wait_for_turn -> send_message -> ...) until the agent
     # stops, which sustains the multi-turn debate. The Exe carries the `run`
-    # subcommand so the SkipPerm flag lands after it (`opencode run --auto
-    # "<prompt>"`). `--auto` is the documented skip-permissions flag as of the
-    # 2026-08-29 CLI-docs audit (`--dangerously-skip-permissions` still works but
-    # is an undocumented/hidden alias — see opencode.md). Appended last so
-    # 2/3-agent runs are unchanged; only -Agents 4 uses it. Auth via `opencode
-    # auth login` (provider creds, no API-key env var assumed). Wired per the
-    # opencode docs, not yet live-validated.
-    'opencode'    = @{ Dir = 'agents\CLIs\opencode_agent1';    Exe = 'opencode run'; PromptArg = '{0}';    SkipPerm = '--auto' }
+    # subcommand. Its only unattended switch is `--auto`, which approves every
+    # tool, so it gets no Allow flag. Appended last so 2/3-agent runs are
+    # unchanged; only -Agents 4 uses it. Auth via `opencode auth login`
+    # (provider creds, no API-key env var assumed). Wired per the opencode docs,
+    # not yet live-validated.
+    'opencode'    = @{ Dir = 'agents\CLIs\opencode_agent1';    Exe = 'opencode run'; PromptArg = '{0}';    Allow = '' }
 }
 
 # --------------------------------------------------------------------------
@@ -63,7 +73,7 @@ $Clis = [ordered]@{
 # Splitting on the registered CLI names (longest first) rather than on trailing
 # digits keeps a tool whose own name ends in a digit unambiguous.
 #
-# Returns @{ Cli; Seat; AgentId; Dir; Exe; PromptArg; SkipPerm; EnvPrefix },
+# Returns @{ Cli; Seat; AgentId; Dir; Exe; PromptArg; Allow; EnvPrefix },
 # where EnvPrefix is a pwsh statement to run before the CLI (Codex seat 2+ needs
 # CODEX_HOME relocated; everything else is empty). Throws on an id that is
 # neither a registered CLI nor a seat on one.
@@ -108,7 +118,7 @@ function Resolve-AgentSeat {
 
     @{
         Cli = $cli; Seat = $seat; AgentId = $AgentId; Dir = $dir
-        Exe = $spec.Exe; PromptArg = $spec.PromptArg; SkipPerm = $spec.SkipPerm
+        Exe = $spec.Exe; PromptArg = $spec.PromptArg; Allow = $spec.Allow
         EnvPrefix = $envPrefix
     }
 }
@@ -354,8 +364,8 @@ function New-AgentLaunchPlan {
 
         $dir     = Join-Path $RepoRoot $spec.Dir
         $argPart = $spec.PromptArg -f ('"' + $opening + '"')
-        $skip    = if ($SkipPermissions -and $spec.SkipPerm) { " $($spec.SkipPerm)" } else { '' }
-        $cmd     = "Set-Location -LiteralPath '$dir'; $($spec.EnvPrefix)$($spec.Exe)$skip $argPart"
+        $allow   = if ($SkipPermissions -and $spec.Allow) { ' ' + ($spec.Allow -f "'$LaunchDir'") } else { '' }
+        $cmd     = "Set-Location -LiteralPath '$dir'; $($spec.EnvPrefix)$($spec.Exe) $argPart$allow"
 
         [pscustomobject]@{ Cli = $a.Cli; PromptFile = $promptFile; LaunchDir = $dir; Command = $cmd }
     }

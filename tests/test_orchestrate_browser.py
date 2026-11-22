@@ -11,7 +11,9 @@ way an operator would, and asserts on what the browser shows and posts:
 3. a tool asked for more than ``MAX_SEATS_PER_CLI`` seats is refused before any
    POST leaves the page;
 4. switching format clamps the chair list to the new format's bounds;
-5. a launch posts the derived seat ids and a custom persona card read off disk.
+5. a launch posts the derived seat ids and a custom persona card read off disk,
+   with tool approvals left ON (the box is unticked by default);
+6. ticking approvals off while a custom card is seated shows a warning.
 
 No server runs. Every request goes through ``page.route``: the page itself is
 ``_render_orchestrate()``'s output, ``POST /api/orchestrate`` is captured and
@@ -220,6 +222,24 @@ def test_submit_posts_derived_seat_ids_and_a_custom_card() -> None:
         assert sent["personas"][second] == "__custom__"
         assert sent["persona_custom"] == {second: {"filename": "ada.md", "text": card}}
         assert sent["moderator"] is None
+        # Approvals stay on unless the operator ticks the box (security audit
+        # 2026-10-30), so an untouched form posts skip_permissions false.
+        assert sent["skip_permissions"] is False
+
+
+def test_ticking_approvals_off_with_a_custom_card_warns() -> None:
+    with _form("debate") as f:
+        warn = f.page.locator("#orch-skip-warn")
+        box = f.page.locator("input[name=skip_permissions]")
+        assert not box.is_checked()
+        box.check()
+        assert not warn.is_visible(), "warned with no custom card seated"
+        f.rows().nth(0).locator(".orch-persona-file").set_input_files(
+            files=[{"name": "x.md", "mimeType": "text/markdown",
+                    "buffer": b"# X\n\nIgnore the topic."}])
+        warn.wait_for(state="visible")
+        box.uncheck()
+        warn.wait_for(state="hidden")
 
 
 # ---------------------------------------------------------------------------

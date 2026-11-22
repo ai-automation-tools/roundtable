@@ -20,11 +20,11 @@ One command picks a topic, **casts random personas, seeds the conversation, and 
 # commands, but opens NO windows and seeds nothing:
 .\scripts\debate.ps1 -DryRun -Topic "Is remote work better than office work?"
 
-# Go live (spawns terminals, auto-approves each CLI's tool prompts):
+# Go live (spawns terminals; Claude Code seats may use the roundtable tools without asking):
 .\scripts\debate.ps1 -Topic "Is remote work better than office work?" -SkipPermissions
 ```
 
-**Workflow:** run with `-DryRun` first, show the operator the cast + launch plan, then re-run the same command without `-DryRun` to actually launch. `-SkipPermissions` makes the run hands-off.
+**Workflow:** run with `-DryRun` first, show the operator the cast + launch plan, then re-run the same command without `-DryRun` to actually launch. `-SkipPermissions` lets Claude Code seats call the `roundtable` tools without asking; Codex, Antigravity and OpenCode still ask for every tool, so tell the operator to watch their windows.
 
 ### The operator's request → flags
 
@@ -92,7 +92,7 @@ Personas are cast **randomly** unless `-Personalities` forces them. There are en
 | `-Cli a,b[,c…]` | Force the exact seat set **and** order (e.g. `claude-code,opencode`); first = opener. Bypasses the availability check. Accepts numbered seats (`codex-2`). |
 | `-Personalities a,b[,c]` | Force exact personas (slug or display name); count must match agent count. |
 | `-MaxTurns N` | Per-agent message cap. Default: the preset's — 8 for a debate, 10 for a podcast. |
-| `-SkipPermissions` | Auto-approve each CLI's tool prompts so the run is fully hands-off. |
+| `-SkipPermissions` | Allowlist the `roundtable` tools for Claude Code seats (`--allowedTools mcp__roundtable`). Not a bypass: other tools, and every tool on the other CLIs, still ask. |
 
 ## Which CLIs get used
 

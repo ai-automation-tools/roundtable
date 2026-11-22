@@ -69,11 +69,14 @@ whether a token is required. Worth a look before you go hunting in Settings.
 
   Then `about:debugging#/runtime/this-firefox` → **Load Temporary Add-on** → pick `extension\dist\firefox\manifest.json`. The panel opens in the sidebar from the toolbar button.
 
-**3. Optional — require a token.** If you'd rather the bridge not accept unauthenticated calls, set it before starting the web UI and paste the same value into the panel's Settings:
+**3. Name the extension and set a token** (both required since 2026-11-12). In the `.env` at the repo root, then paste the same token into the panel's Settings:
 
-```powershell
-$env:AGENT_CHAT_BATTLEGROUND_TOKEN = "some-long-random-string"
+```ini
+AGENT_CHAT_BATTLEGROUND_TOKEN=some-long-random-string
+AGENT_CHAT_EXTENSION_IDS=<the ID on chrome://extensions, or Firefox's Internal UUID>
 ```
+
+Any other extension is refused like a website, and with no token the bridge refuses everything. The panel's setup notice prints this install's id.
 
 ## Use it
 
@@ -258,7 +261,7 @@ The next improvements should preserve the core invariant: **the extension drafts
 ### Highest priority
 
 - **Firefox shakedown.** The **Chrome** loop is verified — five drafts in `battleground_drafts` reached `posted` on real Reddit threads (2026-08-01 and 2026-08-13), on the same `extension/src/` that is checked in today, and `posted` is only reachable by approving, posting on the site, and coming back to click *I posted it*. **Firefox is not.** Loading the staged build there found the panel dead on init (fixed 2026-09-08, see [Files](#files)), and everything behind that failure is still unexercised on Gecko: `sidebarAction.open()` from the toolbar click, the first-capture permission prompt, and composer insertion. Do that run. Four Chrome sub-paths the DB can't evidence are also still open: replace/append/prepend into a non-empty box, insertion into a Disqus frame's composer, auto re-capture merging new replies, and the **Include …** button on a Disqus-backed page.
-- **Finish the token story.** The panel now warns when the bridge accepts unauthenticated calls and gives the setup line ([`/healthz`](../docs/app/battleground.md#bridge-api--apibattleground) reports `token_required`). Still open: a token generator, and restricting CORS to the installed extension id rather than any `chrome-extension://` origin.
+- **Finish the token story.** Since 2026-11-12 the token is required and only the extension ids in `AGENT_CHAT_EXTENSION_IDS` are trusted, on the bridge routes only ([Auth + CORS](../docs/app/battleground.md#auth--cors)). Still open: a token generator.
 
 > [!NOTE]
 > **The local `/battleground` page shipped 2026-08-20** and is no longer on this
@@ -294,7 +297,7 @@ The next improvements should preserve the core invariant: **the extension drafts
 - **Draft scoring** — local pre-flight checks above the Approve button.
 - **Notifications** — amber toolbar badge when a draft is waiting.
 - **Token setup UX** — a warning and the setup line when the bridge runs without a token.
-- **`/healthz`** — `{ok, db, schema, readonly, token_required}`, answered without a token so it can explain why the other calls fail.
+- **`/healthz`** — `{ok, db, schema, readonly, token_required, token_configured}`, answered without a token so it can explain why the other calls fail.
 - **Split `panel.js`** — nine modules under `src/panel/lib/`.
 
 </details>
