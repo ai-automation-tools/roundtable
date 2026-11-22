@@ -2,16 +2,36 @@
 
 All notable changes to this repository. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
-## 2026-11-16 (latest)
-
-### Fixed — homepage guide links are phone-sized tap targets
-
-- **The *Guides:* links on the home page were 16px tall and, where the row wrapped on a phone, *Online forums* split across both lines and sat on top of the others** (Local App Checks, *usable on a phone*, WCAG 2.5.8). `.guides a` in `src/web/assets.py` is now `inline-block` with 4px of vertical padding: 24px tall and never split.
 ## 2026-11-20 (latest)
 
 ### Changed — docs sweep
 
 - **The docs hub names all four formats.** `docs/README.md` gains a Collaborate row and says four formats, not three. The CLI role docs, `agents/README.md`, the setup guide and the per-CLI MCP configs say Roundtable where they said Agent-Chat in prose.
+
+## 2026-11-19
+
+### Changed — spawned agents ask before acting unless you allowlist them
+
+- **The `/orchestrate` approvals box is off by default.** It used to be ticked, so every run the form launched gave each CLI a blanket skip-all-approvals flag (`--dangerously-skip-permissions`, `--yolo`, `--auto`) while a persona card and the topic, both text anyone could have written, went in as the agent's instructions. Now the box is unticked and reads *Let Claude Code seats use the roundtable tools without asking*.
+- **Ticked, it is an allowlist, not a bypass.** A Claude Code seat launches with `--allowedTools mcp__roundtable --add-dir '<repo>\db\launch'` after the prompt: the `roundtable` tools run without asking, the seat can read its own prompt file, and every other tool still asks. **Codex, Antigravity and OpenCode get no flag at all** and ask for every tool, because none of them has a per-tool allowlist flag that could be checked without a live run. **Action needed if you ran those hands-off:** answer their prompts in their windows. The same applies to `scripts/debate.ps1 -SkipPermissions`, which shares the launch table.
+- **A warning when it matters most.** Tick the box while a chair holds a custom persona card and the form tells you to read the card first.
+- The `$Clis` table in `scripts/lib/spawn-agents.ps1` swaps its `SkipPerm` field for `Allow`, the one place a CLI's allowlist goes. Docs: `docs/app/web-ui.md`, `docs/guides/orchestrate-form.md`, `docs/guides/auto-debate.md`, `docs/guides/debate.md`, `docs/testing/debate-launch-walkthrough.md`, the Claude Code, Antigravity and OpenCode pages under `docs/cli-mcp-config/per-cli/`, `skills/start-debate/SKILL.md`. Tests: new `tests/test_spawn_allowlist.py` (the box renders unticked; the real launch plan gives Claude Code seats the allowlist after the prompt and never gives any seat a bypass flag), and `tests/test_orchestrate_browser.py` (an untouched form posts `skip_permissions: false`; the custom-card warning shows and hides). No live CLI was launched.
+
+## 2026-11-16
+
+### Fixed — homepage guide links are phone-sized tap targets
+
+- **The *Guides:* links on the home page were 16px tall and, where the row wrapped on a phone, *Online forums* split across both lines and sat on top of the others** (Local App Checks, *usable on a phone*, WCAG 2.5.8). `.guides a` in `src/web/assets.py` is now `inline-block` with 4px of vertical padding: 24px tall and never split.
+
+## 2026-11-12
+
+### Changed — the battleground bridge trusts one extension and requires its token
+
+- **Only the extension you name is exempt from the cross-site guard, and only on the bridge.** Until today `CrossSiteWriteGuard` waved through every `chrome-extension://` and `moz-extension://` origin on every route, so any extension installed in your browser could POST to `/api/settings/delivery` (and through a command sink, run something) or `/api/orchestrate`. Now an extension origin passes only when its id is listed in the new `AGENT_CHAT_EXTENSION_IDS` (comma-separated: the ID on `chrome://extensions`, or Firefox's Internal UUID from `about:debugging`), and only under `/api/battleground/`. Every other extension, and the right one anywhere else, gets the same 403 a website gets. `ExtensionCorsMiddleware` echoes only the listed ids too.
+- **`AGENT_CHAT_BATTLEGROUND_TOKEN` is required.** With no token configured the bridge now refuses every call with a 401 that names the setting, where it used to be open. **Action needed if you use the extension:** add both lines to the repo's `.env` (see `.env.example`) and paste the token into the panel's Settings. Both are read per request, from the environment and then `.env`, so no restart is needed. `/healthz` still answers without a token and adds `token_configured`; `token_required` is now always `true`.
+- **The `/battleground` console keeps working without a token.** Its buttons post from the app's own page, so a same-origin request (`Origin` matches `Host`) passes the token check. Before this, setting a token broke the console's verdict and close buttons.
+- **The panel says what to set.** Its Settings notice now appears when the server has no token and gives both `.env` lines with this install's id filled in, and *Test connection* names the id when it is refused. The `/extension` page's bridge check and install steps say the same. None of the extension changes ran in a browser.
+- Docs: `docs/app/battleground.md` › Auth + CORS, `docs/app/web-ui.md`'s always-on layers table, `docs/app/settings.md`, `docs/guides/battleground.md` (setup + troubleshooting), `docs/guides/online-forums.md`, `extension/README.md`, `AGENTS.md`, `src/README.md`. Tests: `tests/test_battleground.py` (the token required with none configured, the configured extension reaching the bridge with its token, another extension refused on and off the bridge, the console's same-origin post), `tests/test_web_readonly.py` (an extension origin on `/api/settings/delivery` is refused).
 
 ## 2026-11-11
 

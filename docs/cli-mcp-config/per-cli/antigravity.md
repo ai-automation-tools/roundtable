@@ -126,9 +126,9 @@ Once all three CLIs have `roundtable` registered:
 
 ## 🤖 Headless / auto-spawn
 
-The `scripts/debate.ps1` launcher registers `antigravity` (via `agy`) in its `$Clis` launch table. Tool-approval prompts can be bypassed two ways:
+The `scripts/debate.ps1` launcher registers `antigravity` (via `agy`) in its `$Clis` launch table. **Since 2026-11-19 the launchers pass no approval flag to `agy`, even with `-SkipPermissions`:** `agy` has no per-tool allowlist, only an all-or-nothing bypass, and persona text is untrusted input to the agent. Approve its prompts in its window. An operator who accepts that risk on their own machine can still bypass approvals by hand, two ways:
 
-- The `--dangerously-skip-permissions` flag (passed automatically by `debate.ps1 -SkipPermissions`):
+- The `--dangerously-skip-permissions` flag, typed on your own launch command:
   ```powershell
   agy --dangerously-skip-permissions -i "Read the file at '...' and follow it."
   ```

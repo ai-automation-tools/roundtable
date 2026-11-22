@@ -43,22 +43,41 @@ from web import db as web_db  # noqa: E402
 # Harness
 # ---------------------------------------------------------------------------
 
+TOKEN = "test-bridge-token"
+EXT_ID = "abcdefghijklmnopabcdefghijklmnop"
+EXT = f"chrome-extension://{EXT_ID}"
+
+# Set for the length of an _Env, restored after: the bridge token is required
+# (since 2026-11-12) and only the listed extension id is trusted.
+_BRIDGE_ENV = {"AGENT_CHAT_BATTLEGROUND_TOKEN": TOKEN, "AGENT_CHAT_EXTENSION_IDS": EXT_ID}
+
+
 class _Env:
-    """Temp DB + TestClient, restoring the module's DB path on exit."""
+    """Temp DB + TestClient carrying the bridge token, restoring the module's
+    DB path and the bridge env vars on exit."""
 
     def __init__(self) -> None:
         self._tmp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
         self._saved_db = web_db.DB_PATH
         self._saved_env = os.environ.get("AGENT_CHAT_DB")
+        self._saved_bridge = {k: os.environ.get(k) for k in _BRIDGE_ENV}
         self.db_path = str(Path(self._tmp.name) / "chat.db")
 
     def __enter__(self) -> _Env:
+        os.environ.update(_BRIDGE_ENV)
         web_ui.set_db_path(self.db_path)
         web_ui.db_init()
-        self.client = TestClient(web_ui.app, base_url=LOCAL)
+        self.client = TestClient(
+            web_ui.app, base_url=LOCAL, headers={"Authorization": f"Bearer {TOKEN}"}
+        )
         return self
 
     def __exit__(self, *exc) -> None:
+        for k, v in self._saved_bridge.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
         if self._saved_db:
             web_ui.set_db_path(self._saved_db)
         elif self._saved_env is None:
@@ -275,23 +294,95 @@ def test_healthz_answers_without_a_token():
     or missing token must not be able to silence it."""
     with _Env() as env:
         os.environ["AGENT_CHAT_BATTLEGROUND_TOKEN"] = "s3cret"
-        try:
-            # Every other route is now challenged...
-            assert env.client.get("/api/battleground/roster").status_code == 401
-            # ...but health still answers, and says a token is in play.
-            resp = env.client.get("/api/battleground/healthz")
-            assert resp.status_code == 200
-            body = resp.json()
-            assert body["ok"] is True
-            assert body["db"] is True and body["schema"] is True
-            assert body["token_required"] is True
-            assert body["readonly"] is False
-        finally:
-            os.environ.pop("AGENT_CHAT_BATTLEGROUND_TOKEN", None)
+        # Every other route is now challenged (the client sends TOKEN)...
+        assert env.client.get("/api/battleground/roster").status_code == 401
+        # ...but health still answers, and says a token is in play.
+        resp = env.client.get("/api/battleground/healthz")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ok"] is True
+        assert body["db"] is True and body["schema"] is True
+        assert body["token_required"] is True
+        assert body["token_configured"] is True
+        assert body["readonly"] is False
 
-        assert env.client.get(
-            "/api/battleground/healthz"
-        ).json()["token_required"] is False
+        # No token configured: health says so, everything else is refused.
+        os.environ["AGENT_CHAT_BATTLEGROUND_TOKEN"] = ""
+        body = env.client.get("/api/battleground/healthz").json()
+        assert body["token_required"] is True and body["token_configured"] is False
+
+
+def test_token_is_required_even_when_none_is_configured():
+    """An unset token used to mean an open bridge, so any extension on the
+    machine could drive it. Now it means a closed one, with the fix named."""
+    with _Env() as env:
+        os.environ["AGENT_CHAT_BATTLEGROUND_TOKEN"] = ""
+        bare = TestClient(web_ui.app, base_url=LOCAL)
+        for path in ("/api/battleground/roster", "/api/battleground/arenas"):
+            r = bare.get(path)
+            assert r.status_code == 401, (path, r.status_code)
+            assert "AGENT_CHAT_BATTLEGROUND_TOKEN" in r.json()["error"]
+        r = bare.post("/api/battleground/arenas", json={"url": "x", "thread": []})
+        assert r.status_code == 401
+        # Any bearer at all is refused too: there is nothing to match it against.
+        assert env.client.get("/api/battleground/roster").status_code == 401
+
+
+def test_configured_extension_reaches_the_bridge_with_its_token():
+    with _Env() as env:
+        r = env.client.post(
+            "/api/battleground/arenas",
+            headers={"Origin": EXT},
+            json={"url": "https://example.com/t", "site": "generic", "thread": _THREAD},
+        )
+        assert r.status_code == 201, r.text
+        assert r.headers["access-control-allow-origin"] == EXT
+        # The right extension without the token is still refused.
+        bare = TestClient(web_ui.app, base_url=LOCAL)
+        assert bare.get("/api/battleground/roster", headers={"Origin": EXT}).status_code == 401
+
+
+def test_other_extensions_are_just_another_site():
+    """The extension exemption is one configured id, on the bridge only."""
+    with _Env() as env:
+        other = "chrome-extension://otheridotheridotheridotherid"
+        # Another extension on the bridge — even holding the token — is refused,
+        # and the refusal names the setting that would let it in.
+        r = env.client.post(
+            "/api/battleground/arenas", headers={"Origin": other},
+            json={"url": "https://example.com/t", "thread": _THREAD},
+        )
+        assert r.status_code == 403
+        assert "AGENT_CHAT_EXTENSION_IDS" in r.json()["error"]
+        # Firefox's scheme is held to the same list.
+        r = env.client.post(
+            "/api/battleground/arenas", headers={"Origin": "moz-extension://1234-uuid"},
+            json={"url": "https://example.com/t", "thread": _THREAD},
+        )
+        assert r.status_code == 403
+        # Off the bridge, no extension is exempt — not even the configured one.
+        for origin in (other, EXT):
+            r = env.client.post(
+                "/api/settings/delivery", headers={"Origin": origin}, json={}
+            )
+            assert r.status_code == 403, (origin, r.status_code)
+            assert r.json()["error"] == "cross-site request refused"
+
+
+def test_console_posts_same_origin_without_a_token():
+    """The /battleground console's buttons post from this app's own page with
+    no bearer token; that must keep working now the token is required."""
+    with _Env() as env:
+        arena = _open_arena(env.client)
+        bare = TestClient(web_ui.app, base_url=LOCAL)
+        r = bare.post(
+            f"/api/battleground/arenas/{arena['id']}",
+            headers={"Origin": LOCAL}, json={"status": "closed"},
+        )
+        assert r.status_code == 200, r.text
+        # Same request with no Origin (not a browser page): token needed.
+        r = bare.post(f"/api/battleground/arenas/{arena['id']}", json={"status": "open"})
+        assert r.status_code == 401
 
 
 def test_roster_launch_commands_match_the_spawn_registry():
@@ -612,9 +703,16 @@ def test_no_persona_still_means_no_persona():
 
 def test_cors_only_for_extension_origins_on_battleground_paths():
     with _Env() as env:
-        ext = "chrome-extension://abcdefghijklmnop"
+        ext = EXT
         resp = env.client.get("/api/battleground/roster", headers={"Origin": ext})
         assert resp.headers.get("access-control-allow-origin") == ext
+
+        # Nor is any extension but the configured one.
+        stranger = env.client.get(
+            "/api/battleground/roster",
+            headers={"Origin": "chrome-extension://otheridotheridotheridotherid"},
+        )
+        assert "access-control-allow-origin" not in stranger.headers
 
         # A web page's origin is never echoed, so no site can read the bridge.
         page = env.client.get(
@@ -629,7 +727,7 @@ def test_cors_only_for_extension_origins_on_battleground_paths():
 
 def test_cors_preflight_answered():
     with _Env() as env:
-        ext = "chrome-extension://abcdefghijklmnop"
+        ext = EXT
         resp = env.client.options(
             "/api/battleground/arenas",
             headers={

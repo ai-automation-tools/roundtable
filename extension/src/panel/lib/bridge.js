@@ -6,7 +6,7 @@
  * idle, which would kill the poll mid-wait.
  */
 
-import { CUSTOM_PERSONA, RANDOM_PERSONA, $, state } from './state.js';
+import { CUSTOM_PERSONA, RANDOM_PERSONA, $, ext, state } from './state.js';
 import { syncCustomPersona } from './settings.js';
 
 /** One request against `/api/battleground<path>`. Throws on a non-2xx. */
@@ -44,11 +44,20 @@ export function bridgeUp() {
 }
 
 /**
+ * This install's id as the bridge sees it: the host of the origin the browser
+ * sends. Chrome's extension id; on Firefox the per-profile Internal UUID, not
+ * the gecko id. It goes in the server's `AGENT_CHAT_EXTENSION_IDS`.
+ */
+export function extensionId() {
+  return new URL(ext.runtime.getURL('')).host;
+}
+
+/**
  * Read `/healthz` — the one endpoint that answers without a token, so it can
  * tell us *why* everything else is failing.
  *
- * Also drives the Settings nudge: a bridge running with no token is fine on a
- * single-user machine and worth knowing about, not worth nagging over.
+ * Also drives the Settings nudge: since 2026-11-12 a bridge with no token
+ * configured refuses every call, so that is first-run setup, spelled out.
  */
 export async function loadHealth() {
   try {
@@ -64,16 +73,15 @@ function renderHealthNotice() {
   const node = $('token-warn');
   if (!node) return;
   const health = state.health;
-  if (!health || health.token_required) {
+  if (!health || health.token_configured !== false) {
     node.classList.add('hidden');
     return;
   }
   node.classList.remove('hidden');
   node.textContent =
-    'This bridge accepts calls without a token. Fine for a machine only you ' +
-    'use. To lock it down, stop the web UI and restart it with ' +
-    '$env:AGENT_CHAT_BATTLEGROUND_TOKEN = "<a long random string>", then ' +
-    'paste the same value above.';
+    'This bridge has no token, so it refuses every call. In the repo’s .env ' +
+    'add AGENT_CHAT_BATTLEGROUND_TOKEN=<a long random string> and ' +
+    `AGENT_CHAT_EXTENSION_IDS=${extensionId()}, then paste the same token above.`;
 }
 
 /** Personas + CLI ids + launch commands, in one round trip, into the pickers. */

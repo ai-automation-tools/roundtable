@@ -215,16 +215,35 @@ def test_cross_site_post_is_refused():
     assert r.status_code == 403, r.status_code
 
 
-def test_same_origin_extension_and_originless_posts_pass():
+def test_same_origin_and_originless_posts_pass():
     c = _guarded_client()
     for headers in (
         {"Origin": "http://127.0.0.1:8765"},
-        {"Origin": "chrome-extension://abcdef"},
         {"Origin": "https://box.tailnet.ts.net", "X-Forwarded-Host": "box.tailnet.ts.net"},
         {},
     ):
         r = c.post("/api/settings/delivery", headers=headers)
         assert r.status_code == 200, (headers, r.status_code)
+
+
+def test_extension_origin_is_refused_off_the_bridge():
+    """Until 2026-11-12 every chrome-extension:// / moz-extension:// origin was
+    exempt on every route, so any installed extension could rewrite delivery
+    settings (and through them run commands). Now only the configured
+    AgentBattleground id is exempt, and only under /api/battleground/."""
+    saved = os.environ.get("AGENT_CHAT_EXTENSION_IDS")
+    os.environ["AGENT_CHAT_EXTENSION_IDS"] = "abcdef"
+    try:
+        c = _guarded_client()
+        for origin in ("chrome-extension://otherid", "moz-extension://otherid",
+                       "chrome-extension://abcdef"):
+            r = c.post("/api/settings/delivery", headers={"Origin": origin})
+            assert r.status_code == 403, (origin, r.status_code)
+    finally:
+        if saved is None:
+            os.environ.pop("AGENT_CHAT_EXTENSION_IDS", None)
+        else:
+            os.environ["AGENT_CHAT_EXTENSION_IDS"] = saved
 
 
 def test_security_headers_are_set():

@@ -16,7 +16,7 @@ does the whole thing for you.
 # writes nothing:
 .\scripts\debate.ps1 -DryRun
 
-# For real — seed, check the topic off the list, and launch every CLI hands-off:
+# For real — seed, check the topic off the list, and launch every CLI:
 .\scripts\debate.ps1 -SkipPermissions
 
 # The same, as a podcast: a host plus the topic's guests, from Podcast-Topics.md
@@ -26,8 +26,13 @@ does the whole thing for you.
 .\scripts\debate.ps1 -Format collaborate -SkipPermissions
 ```
 
-`-SkipPermissions` is what makes it truly hands-off — without it, Claude Code
-will prompt you to approve the `roundtable` tools on the first turn.
+`-SkipPermissions` lets Claude Code seats call the `roundtable` tools without
+asking (`--allowedTools mcp__roundtable`); without it, Claude Code prompts you
+to approve them on the first turn. It is an allowlist, not a bypass: any other
+tool still asks. Codex, Antigravity and OpenCode have no per-tool allowlist
+flag, so they ask for every tool either way. Since 2026-11-19 no CLI is
+launched with a skip-all-approvals flag, because persona text is untrusted
+input to the agent.
 
 ---
 
@@ -44,11 +49,12 @@ Same as a manual run — see [`start-new-chat.md` Prerequisites](start-new-chat.
   about a debate depends on it.
 
 > [!NOTE]
-> The launch step depends on each CLI's exact flags. As wired today:
-> `claude --dangerously-skip-permissions "<prompt>"`,
-> `agy --dangerously-skip-permissions -i "<prompt>"`, `codex --yolo "<prompt>"`. If a CLI
-> upgrade changes a flag, edit the `$Clis` table at the top of
-> `scripts/debate.ps1` — every per-CLI launch detail lives there.
+> The launch step depends on each CLI's exact flags. As wired today, with
+> `-SkipPermissions`:
+> `claude "<prompt>" --allowedTools mcp__roundtable --add-dir '<repo>\db\launch'`,
+> `agy -i "<prompt>"`, `codex "<prompt>"`, `opencode run "<prompt>"`. If a CLI
+> upgrade changes a flag, edit the `$Clis` table in
+> `scripts/lib/spawn-agents.ps1`, where every per-CLI launch detail lives.
 
 ---
 
@@ -162,7 +168,7 @@ topic: Has social media made people less happy overall?
 | `-Preset <name>` | `-Format collaborate` only. Override the sub-type (`brainstorm`, `plan`, `decide`, `solve`, `code-review`, `audit`, `design`, `validate`, `collaborate`). Default: the task's `Preset:` line, else `collaborate`. |
 | `-HostPersona <name>` | `-Format podcast` only. Force the host's persona (slug or display name, any group) instead of a random draw. |
 | `-DryRun` | Do everything except seed + open windows. Prints the topic, persona→CLI mapping, prompt-file paths, and the exact launch command per agent. Writes nothing. **Run this first.** |
-| `-SkipPermissions` | Append each CLI's skip-approval flag so the run is fully hands-off. |
+| `-SkipPermissions` | Let Claude Code seats call the `roundtable` tools without asking (an allowlist, not a bypass). Other CLIs still ask. |
 | `-Topic "..."` | Force a topic instead of random selection. (A forced topic is **not** checked off, since it may not be in the file.) |
 | `-Agents 2\|3\|4\|5` | Force the debater count, overriding the topic's `Debaters:` line. `4` adds `opencode`; `5` has no 5th tool to reach for, so the seat planner deals a second seat on a tool already in play (e.g. `claude-code-2`). Both wired but not yet field-validated. |
 | `-Cli a,b[,c…]` | Force the exact seat set **and** order (e.g. `claude-code,opencode`), bypassing the availability check and the round-robin seat plan. First entry = `--first` speaker; sets the debater count from its length (don't also pass a conflicting `-Agents`). Each id must be a registered CLI (`claude-code`, `antigravity`, `codex`, `opencode`) or a numbered seat on one (`codex-2`). |
@@ -233,6 +239,7 @@ By default the random cast is drawn from **every** persona group in the DB
 | A CLI window opens then errors on the launch command | That CLI's flag/initial-prompt syntax changed | Edit the `$Clis` table at the top of `scripts/debate.ps1` |
 | "could not parse conversation id" | `start.ps1` seed failed (e.g. >1 sidecar running without `-Force`) | Re-run with `-ForceSidecar`, or check the `start.ps1` output above the error |
 | "all N topics ... are marked used" | The list is exhausted | Remove ✅ markers in `Debate-Topics.md` to recycle |
-| Claude keeps prompting for tool approval | Ran without `-SkipPermissions` | Add `-SkipPermissions` |
+| Claude keeps prompting for tool approval | Ran without `-SkipPermissions`, or the agent wants a tool other than `roundtable`'s | Add `-SkipPermissions`; approve anything else by hand |
+| Codex, Antigravity or OpenCode prompts for every tool | They have no per-tool allowlist flag, and no blanket bypass is passed | Approve in their windows |
 | Window opens in the wrong folder / MCP server missing | CLI launched outside its `agents/CLIs/<name>_agent1/` folder | The script `cd`s for you; confirm the folder + its MCP config still exist |
 | Agent breaks character | Persona injection is a launch-time prompt, not enforced | Lower `-MaxTurns`, or pick stronger-voiced personas from `Debate-Agents/Unique-Personas` |
