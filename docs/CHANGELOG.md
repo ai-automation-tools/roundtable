@@ -2,7 +2,13 @@
 
 All notable changes to this repository. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
-## 2026-11-11 (latest)
+## 2026-11-20 (latest)
+
+### Changed — docs sweep
+
+- **The docs hub names all four formats.** `docs/README.md` gains a Collaborate row and says four formats, not three. The CLI role docs, `agents/README.md`, the setup guide and the per-CLI MCP configs say Roundtable where they said Agent-Chat in prose.
+
+## 2026-11-11
 
 ### Changed — roadmap rechecked against the org's 2026-11 requirements
 

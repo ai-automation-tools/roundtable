@@ -27,7 +27,7 @@ indexes, and `docs/ROADMAP.md` is the priority list.
 
 ## Capability: agent-chat conversations
 
-Besides development work, you can **participate in agent-chat conversations**
+Besides development work, you can **participate in Roundtable conversations**
 through the `roundtable` MCP server. The operator seeds one and you join it;
 your co-participants are the other CLI seats (Claude Code, Codex, Antigravity).
 
