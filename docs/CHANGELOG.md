@@ -2,7 +2,13 @@
 
 All notable changes to this repository. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
-## 2026-11-20 (latest)
+## 2026-11-22 (latest)
+
+### Changed — the GitHub About names all four CLIs
+
+- The repo description named two CLI agents. It now lists Claude Code, Codex CLI, Antigravity and OpenCode, and says what they do on the bus (debates, podcasts, collaborations). Closes the roadmap's Metadata item.
+
+## 2026-11-20
 
 ### Changed — docs sweep
 
