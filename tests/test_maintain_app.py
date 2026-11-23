@@ -10,6 +10,7 @@ paths; needs ``pwsh`` and the project venv, and skips without them.
 
 from __future__ import annotations
 
+import contextlib
 import os
 import shutil
 import sqlite3
@@ -64,7 +65,7 @@ def test_a_good_backup_prunes_only_nightly_copies() -> None:
         assert manual.exists(), "a hand-made snapshot must never be pruned"
         fresh = [p for p in backups.glob("chat-*.db") if p not in (manual,)]
         assert len(fresh) == 1, fresh
-        with sqlite3.connect(fresh[0]) as conn:
+        with contextlib.closing(sqlite3.connect(fresh[0])) as conn:
             assert conn.execute("SELECT COUNT(*) FROM conversations").fetchone()[0] == 1
 
 
