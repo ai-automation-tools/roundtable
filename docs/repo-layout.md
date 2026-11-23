@@ -24,7 +24,8 @@ roundtable/
 │   ├── web/                      # Web-UI implementation package (split out of web_ui.py 2026-07-10)
 │   │   ├── db.py                 #   connection + db_init() + SQL helpers + set_db_path()
 │   │   ├── security.py           #   BasicAuth / ReadOnly middleware + _build_middleware()
-│   │   ├── assets.py             #   CSS/JS/SVG constants (BASE_CSS, HOME_CSS, _CONV_CSS, …)
+│   │   ├── assets.py             #   tags for static/ (stylesheets · script+nonce · json_script) + SVG mark
+│   │   ├── static/               #   every page's CSS (css/) and JS (js/), served at /static?v=<hash>
 │   │   ├── avatars.py            #   persona avatar resolution (DB upload → PNG/SVG; GET /avatars/{slug})
 │   │   ├── topics.py             #   topic → logo classifier (TOPICS keyword/glyph/gradient table)
 │   │   ├── render/               #   per-page HTML: common · home · conversations · orchestrate

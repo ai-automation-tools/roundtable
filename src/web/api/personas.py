@@ -50,7 +50,7 @@ def _parse_avatar(payload: dict[str, Any]) -> str | None:
 def api_persona_list(request: Request) -> Response:
     """GET /api/personas — every persona as ``{slug, name, group}``.
 
-    Index for the topbar command palette (see assets.SHELL_JS), which fetches
+    Index for the topbar command palette (see js/shell.js), which fetches
     it lazily on first open. Deliberately omits card bodies: the palette only
     matches on name and group, and shipping every body would turn a keystroke
     into a megabyte.

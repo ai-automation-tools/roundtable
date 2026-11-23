@@ -15,7 +15,8 @@ the [`src/web/`](../../src/web/) package:
 |:---|:---|
 | `web/db.py` | Connection, `SCHEMA` + migrations, every SQL helper, `set_db_path()` |
 | `web/security.py` | `BasicAuthMiddleware`, `ReadOnlyMiddleware`, `_build_middleware()` |
-| `web/assets.py` | CSS / JS / SVG constants (`BASE_CSS`, `HOME_CSS`, `_CONV_CSS`, `_PERSONAS_CSS`, favicon) |
+| `web/assets.py` | The tags that load `web/static/`: `stylesheets()`, `script()` (carries the CSP nonce), `json_script()` (escaped per-page data), `static_url()` (`?v=<hash>`), `CachedStaticFiles`; plus the favicon / mark SVG |
+| `web/static/` | Every stylesheet (`css/`) and script (`js/`) the pages use — see [Static assets and the CSP](#static-assets-and-the-csp) |
 | `web/avatars.py` | Persona avatar resolution: `avatar_url(slug)`, `avatar_response(slug)`, `AVATARS_DIR`, `uploaded_index()` / `invalidate_index()`, the uploaded-image → file-art → default-silhouette chain (`GET /avatars/{slug}`) |
 | `web/render/` | Per-page HTML: `common` (shell, Markdown, icons), `home`, `conversations`, `orchestrate`, `personas`, `setup`, `extension`, `battleground` (the arena console) |
 | `web/api/` | `/api/*` handlers: `conversations` (JSON/export/stop/delete/stream), `sync` (ingest/since), `orchestrate`, `personas`, `setup`, `battleground` (the extension bridge) |
@@ -24,6 +25,51 @@ This doc is the per-feature reference for the Web UI: route map, the
 homepage design system, the conversations list and transcript views, the
 SSE channel, the force-stop and Markdown export endpoints, the ingest
 endpoint used by the optional mirror sidecar, and the auth model.
+
+---
+
+## Static assets and the CSP
+
+Since 2026-11-23 (audit RT-34) no page carries inline CSS or JS. Every
+stylesheet and script is a file under [`src/web/static/`](../../src/web/static/),
+served at `/static/…` by `CachedStaticFiles`:
+
+| Path | Loaded by |
+|:---|:---|
+| `css/tokens.css`, `css/topbar.css`, then `css/base.css` (or `css/home.css`), the page's own sheets, `css/light.css` last | every page, through `head_assets()` in `web/render/common.py` |
+| `js/boot.js` | every page, first in `<head>`, synchronous: theme, the `js` class, the collapsed rail, the font stylesheet, and the image-fallback and `data-autosubmit` listeners |
+| `js/shell.js` | every page, after the topbar: palette, live pill, reveals, rail toggle, theme buttons, `[data-focus-on-load]` |
+| one `js/<page>.js` per interactive page | `conversation`, `conversations-rail`, `highlight`, `orchestrate`, `personas`, `setup`, `notifications`, `delivery-settings`, `extension`, `battleground-arena` |
+
+- **Cache busting.** `static_url()` appends `?v=<first 12 hex of the file's
+  SHA-256>`, and a versioned URL is served `public, max-age=31536000,
+  immutable`; a bare `/static/…` URL is `no-cache`. A deploy that changes a
+  file changes its URL, so nothing stale survives it.
+- **CSP.** `SecurityHeadersMiddleware` makes a fresh nonce per request (a
+  `ContextVar` the threadpooled handler inherits) and sends, on every HTML
+  response, local and hosted alike:
+
+  ```
+  default-src 'self'; script-src 'self' 'nonce-<n>';
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com;
+  font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:;
+  connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';
+  frame-ancestors 'none'
+  ```
+
+  Every `<script>` tag carries the nonce (`web.assets.script()`); non-HTML
+  responses keep `frame-ancestors 'none'`. Styles keep `'unsafe-inline'`:
+  markup still carries computed `style=` attributes (avatar colours, thread
+  indents) and the hosted consent banner injects a `<style>` into its shadow
+  root.
+- **Server values reach a script as data**, never as code: a
+  `json_script(id, data)` block (`<script type="application/json">`, with `<`,
+  `>` and `&` \u-escaped so the data can't close the tag) or a `data-*`
+  attribute on the script's own tag, read through `document.currentScript`.
+- **No inline handlers.** An image fallback is `data-fallback="<url>"` or
+  `data-on-error="hide|remove"`; a select that submits its form is
+  `data-autosubmit`. `tests/test_static_csp.py` fails any page with an
+  `on*=` attribute, a `<style>` block, or a `<script>` without the nonce.
 
 ---
 
@@ -73,6 +119,7 @@ endpoint used by the optional mirror sidecar, and the auth model.
 | `GET` | `/api/conversations` | Every conversation row as JSON. `?fields=id,topic,status,participants` trims each row to those keys (what the chrome's 30 s poll asks for), and an `ETag` turns an unchanged poll into a body-less `304`. |
 | `POST`, `GET` | `/api/since` | Bearer-token pull endpoint used by [`scripts/db_sync.py`](../../scripts/db_sync.py). The sidecar **POSTs** a JSON body — `conversations_updated_after` (required) + `known_ids` (optional list) — because the id list grows with the DB and a query string past ~64 KB is refused before the app sees it; `GET` with the same names as query params (CSV) still works for an older sidecar. Optional `personas_updated_after` + `known_persona_keys` for persona deltas (the current sidecar doesn't send them: it ignores pulled personas). A read, so the read-only mirror and the write secret let the POST through. Returns `{conversations, deleted_conversation_ids, personas, deleted_persona_keys, server_time}`. **Messages excluded** — they flow local-only-origin. Same auth realm as `/api/ingest`. Returns `404 sync disabled` when `AGENT_CHAT_INGEST_TOKEN` is unset. |
 | `GET` | `/favicon.svg` | Two cyan speech bubbles on a near-black plate inside a thin cyan ring (the shared icon family). Same artwork as the topbar mark in the page's top-left corner — see [Favicon / brand mark](#favicon--brand-mark). |
+| `GET` | `/static/{path}` | **Every stylesheet and script** (`src/web/static/`). Pages link them as `?v=<content hash>`, served `public, max-age=31536000, immutable`; a bare URL is `no-cache`. Also served on the registry host. See [Static assets and the CSP](#static-assets-and-the-csp). |
 | `GET` | `/avatars/{slug}` | **Persona avatar image.** Serves `images/AgentChat-Avatars/<slug>-avatar.png` for a valid persona slug, else a neutral head-and-shoulders **default silhouette** (`default-avatar.svg`, embedded fallback in `web/avatars.py`). Convention-based — no schema, no DB column; the slug comes from `participant_personas` / the persona registry. Path-traversal-safe (slug is regex-gated). Read-only, so it passes the hosted read-only middleware; exempted from basic-auth alongside `/favicon.svg`. See [Persona avatars](#persona-avatars-webavatars). |
 
 > [!NOTE]
@@ -92,7 +139,7 @@ Three surfaces, three rules — the whole layout follows from this:
 | **Reading pages** (`/`, `/orchestrate`, `/settings`, `/battleground`, 404) | Centred column, margins | A landing page set edge-to-edge reads badly. `/` centres on `--page`; every inner page is `.orch-shell` plus a class that only re-points `max-width` to one of the three **shell tokens** below. |
 | **App surfaces** (`/conversations`, `/personas/manage`) | Panes edge-to-edge | These are consoles, not documents — their rails and panes should use the screen. They zero `<main>`'s padding via `main:has(.cv2)` / `main:has(.pm3)`. |
 
-Tokens in `assets.DESIGN_TOKENS`:
+Tokens in `css/tokens.css`:
 
 | Token | Value | Role |
 |:---|:---|:---|
@@ -128,17 +175,17 @@ the full width of a 1600px pane it's unreadable however much screen there is.
 > left ~900px of the pane empty.
 
 > [!NOTE]
-> `DESIGN_TOKENS` and `TOPBAR_CSS` are **composed into both stylesheets**
-> (`BASE_CSS = DESIGN_TOKENS + TOPBAR_CSS + …`, and `HOME_CSS` likewise). The
-> homepage never loads `BASE_CSS`, so before this it carried a hand-copied
-> duplicate of the nav rules — which drifted. Add chrome/token rules in those
-> two constants only.
+> `css/tokens.css` and `css/topbar.css` are **linked by both shells**, ahead of
+> `css/base.css` (every app page) or `css/home.css` (the homepage) —
+> `head_assets()` in `web/render/common.py` emits the set. The homepage never
+> loads `css/base.css`, so before this it carried a hand-copied duplicate of the
+> nav rules — which drifted. Add chrome/token rules in those two files only.
 
 > [!WARNING]
 > **`min-width:auto` is the trap on this page.** Grid and flex items refuse to
 > size below their content's min-content, so one `white-space:nowrap` string
 > deep inside a card can size its whole track and scroll the *page* sideways.
-> `HOME_CSS` carries a `.wrap .grid > *, .wrap .flex > * { min-width: 0 }`
+> `css/home.css` carries a `.wrap .grid > *, .wrap .flex > * { min-width: 0 }`
 > guard for exactly this. Note that `min-w-0` on the inner truncating span is
 > **not** sufficient — that only lifts the auto-minimum during flexing, while
 > the track's intrinsic sizing still asks for the span's min-content. The floor
@@ -150,7 +197,7 @@ the full width of a 1600px pane it's unreadable however much screen there is.
 
 Navigation is a **rail down the left**, the same on every page:
 `_sidebar(active, extra_nav)` in `web/render/common.py`, styled by
-`.siderail` in `assets.TOPBAR_CSS`. **Expanded by default** (240px, titles
+`.siderail` in `css/topbar.css`. **Expanded by default** (240px, titles
 showing); collapses to a 64px icon rail.
 
 It's `position:fixed`, not a grid column, because `/conversations` and
@@ -183,7 +230,7 @@ keeps **one** icon in both states — a panel glyph, not a chevron that has to
 point the right way — and the state name lives on `aria-label` + `title` (a
 native tooltip; it is no longer a `.rail-btn`, so it doesn't inherit the rail's
 `data-tip` machinery). State persists in `localStorage` under
-`ab-rail` (`'0'` = collapsed) and is applied by **`_BOOT_JS`**, not `SHELL_JS`
+`ab-rail` (`'0'` = collapsed) and is applied by **`js/boot.js`**, not `js/shell.js`
 — it has to land before first paint or the rail flashes open and snaps shut on
 `DOMContentLoaded`.
 
@@ -203,7 +250,7 @@ inset, because otherwise "full screen" would be a lie.
 ## Topbar
 
 One definition, every page: `_topbar(crumbs_html)` in `web/render/common.py`,
-styled by `assets.TOPBAR_CSS`, scripted by `assets.SHELL_JS`. `_layout()` calls
+styled by `css/topbar.css`, scripted by `js/shell.js`. `_layout()` calls
 it and so does the homepage template — they can no longer drift apart (they were
 two near-identical hand-maintained copies until 2026-07-15).
 
@@ -234,17 +281,17 @@ noise). `.cmdk-trigger` itself never hides.
 
 **Theme switch** (`_THEME_TOGGLE`). A two-button pill, Sun (light) then Moon
 (dark), at the right end of the bar on every page. **Dark is the default** and
-is the app exactly as it was: every rule in `web/assets.py` above `LIGHT_CSS` is
-the dark theme. Light is `LIGHT_CSS`, an override layer keyed on `html.light`
+is the app exactly as it was: every stylesheet but `css/light.css` is
+the dark theme. Light is `css/light.css`, an override layer keyed on `html.light`
 that both document shells emit **last** in `<head>`, after the page CSS, so it
 outranks whatever it re-colours. The choice persists in `localStorage` under
-`agent-chat.theme` (`light` | `dark`); `THEME_BOOT_JS` applies it to `<html>`
-before first paint, and `initTheme()` in `SHELL_JS` wires the buttons. The two
+`agent-chat.theme` (`light` | `dark`); `js/boot.js` applies it to `<html>`
+before first paint, and `initTheme()` in `js/shell.js` wires the buttons. The two
 default to `dark` independently and must agree. Code blocks (transcript `<pre>`,
 the homepage steps, the extension and hosted-orchestrate snippets) stay dark in
 both themes, since the transcript's highlight.js theme is `github-dark`. A new
 hard-coded colour in any page CSS needs its `html.light` counterpart in
-`LIGHT_CSS`, or it ships dark-on-light. The fullscreen reader hides the topbar
+`css/light.css`, or it ships dark-on-light. The fullscreen reader hides the topbar
 and the switch with it.
 
 ---
@@ -253,7 +300,7 @@ and the switch with it.
 
 Fuzzy-jump to any conversation, persona, or page from anywhere. Markup is
 `_CMDK_HTML` in `web/render/common.py` (emitted by `_topbar()`); behaviour is
-`assets.SHELL_JS`.
+`js/shell.js`.
 
 - **Open**: `Ctrl+K` / `⌘K`, a bare `/` (ignored while typing in any field), or
   the topbar Search button. **Escape** closes; `↑` `↓` move; `↵` opens;
@@ -270,18 +317,18 @@ Fuzzy-jump to any conversation, persona, or page from anywhere. Markup is
   exemption keeps real acronym queries (`bci`) working.
 - Personas link to their explorer page, `/personas/<slug>?group=<g>`.
 
-`SHELL_JS` reads its external URL (the repo) from `window.__AB_LINKS` rather than
-being `.format()`-ed, so no brace in that JS has to be doubled.
+`js/shell.js` reads its external URL (the repo) from `data-github` on its own
+`<script>` tag, so the file carries no server value.
 
 ---
 
 ## Motion
 
-- **The ground and the spotlight** (2026-10-05, `TOPBAR_CSS`, so every page).
+- **The ground and the spotlight** (2026-10-05, `css/topbar.css`, so every page).
   `<body>` paints a 24px dot grid at 3.5% white over the canvas with one
   emerald bloom behind the top of the page — paint, not layout. Any element
   with `.spot` draws a 1px ring of its `--c` hue (emerald unless the card sets
-  its own) where the pointer is, plus a faint wash inside; `SHELL_JS`'s
+  its own) where the pointer is, plus a faint wash inside; `js/shell.js`'s
   `initSpot` is **one delegated `pointermove` listener** that writes
   `--mx`/`--my` onto the card, so a page of sixty cards costs one handler and
   nothing re-binds when SSE appends a row. Off under `(hover: none)`. Carried
@@ -292,18 +339,18 @@ being `.format()`-ed, so no brace in that JS has to be doubled.
   Pure CSS animation, so it can't fail open.
 - `.reveal` — below-the-fold sections fade up on scroll via `IntersectionObserver`
   (falls back to instantly-visible without one).
-- **`prefers-reduced-motion`** — a single global block in `TOPBAR_CSS` collapses
+- **`prefers-reduced-motion`** — a single global block in `css/topbar.css` collapses
   every animation and transition site-wide, including the pills, palette spring,
   and both systems above. The site previously animated pulses with no opt-out.
 
 > [!WARNING]
 > **Never hide content in CSS that only a script can un-hide.** `.reveal` is
-> scoped to `html.js` — a class `_BOOT_JS` sets before first paint — so the
+> scoped to `html.js` — a class `js/boot.js` sets before first paint — so the
 > hiding half only exists when the showing half is guaranteed. This is not
-> theoretical: `SHELL_JS` is emitted *with the topbar*, i.e. before `<main>` is
+> theoretical: `js/shell.js` is emitted *with the topbar*, i.e. before `<main>` is
 > parsed, so its `querySelectorAll('.reveal')` matched nothing, the observer
 > watched nothing, and **six homepage sections sat at `opacity: 0` forever**.
-> `SHELL_JS` now defers all DOM work to `DOMContentLoaded`, and wires each
+> `js/shell.js` now defers all DOM work to `DOMContentLoaded`, and wires each
 > feature (`initPill`, `initPalette`, `initReveals`, `initRail`) independently
 > inside its own `try` — one missing element or one throw must not take the
 > rest of the chrome down with it, which is exactly what the palette's old
@@ -320,7 +367,7 @@ and the top 5 rows of `list_conversations()`.
 The page body does **not** use the shared `_layout()` shell — it ships its own
 template. Its **chrome is shared anyway**: since 2026-07-15 it calls the same
 `_topbar()` and `FONTS_HEAD` from `web/render/common.py` as every other page,
-and its stylesheet composes the same `DESIGN_TOKENS` + `TOPBAR_CSS` constants.
+and it links the same `css/tokens.css` + `css/topbar.css` before `css/home.css`.
 Only the page template below the bar is homepage-only. Since **2026-10-05 the
 page is self-contained**: it no longer loads Tailwind from a CDN, so it renders
 with no network and nothing restyles it after first paint.
@@ -360,14 +407,14 @@ whitespace. Editorial, intentional, no fluff.
 
 **Build.** The page template (`_HOMEPAGE_TEMPLATE`, rendered by
 `_render_homepage()`) is homepage-only, **plain markup with semantic class
-names over `HOME_CSS`** — no framework, no CDN, no utility classes. Until
+names over `css/home.css`** — no framework, no CDN, no utility classes. Until
 2026-10-05 it was driven by the Tailwind CDN and inline utilities, which meant
 the local operator's page needed a 300 KB JIT compiler from the network before
 a single class applied (the nav icons had been inlined for exactly that reason;
 the stylesheet had not), and the browser performed its anchor jump against the
 unstyled layout and reflowed underneath it a moment later. Its **chrome is
-not** homepage-only: `HOME_CSS` composes the shared `DESIGN_TOKENS` +
-`TOPBAR_CSS`, and the bar itself comes from the shared `_topbar()` — see
+not** homepage-only: `css/home.css` composes the shared `css/tokens.css` +
+`css/topbar.css`, and the bar itself comes from the shared `_topbar()` — see
 [Layout](#layout) and [Topbar](#topbar).
 
 Sections use `.wrap` — a centred `--page` column, so the landing page keeps
@@ -407,7 +454,7 @@ panel is the homepage's only above-the-fold route into the archive, so the
 footer renders in the **empty state too** (fresh DB / no completed runs), where
 the body just says nothing has finished yet.
 
-**What `HOME_CSS` carries** — everything the page needs, grouped by section:
+**What `css/home.css` carries** — everything the page needs, grouped by section:
 
 | Rules | Role |
 |:---|:---|
@@ -425,16 +472,16 @@ the body just says nothing has finished yet.
 | `.rise` / `.reveal` | Page-load stagger + scroll reveals. See [Motion](#motion). |
 
 The ground (dot grid + bloom), `.spot` (the spotlight ring + wash) and the
-thin scrollbars are **not** here: they live in `TOPBAR_CSS`, the one block both
-stylesheets compose, so the shell pages carry them too.
+thin scrollbars are **not** here: they live in `css/topbar.css`, the one sheet
+both shells link, so the shell pages carry them too.
 
 > [!NOTE]
 > The **console-arena** build's CSS-variable tokens, the `body.home`
 > `::before` / `::after` grain + gradient layers, and its `rise` / `rise-clip`
 > hero reveal were removed when the homepage moved to the Tailwind layout. Two
 > of the three are back in different form: there **is** a token block again
-> (the shared `DESIGN_TOKENS`), and the ground now carries a dot grid and a
-> bloom (on `<body>`, in `TOPBAR_CSS`, so every page has it). The `.rise`
+> (the shared `css/tokens.css`), and the ground now carries a dot grid and a
+> bloom (on `<body>`, in `css/topbar.css`, so every page has it). The `.rise`
 > stagger is the 2026-07 one, with the `prefers-reduced-motion` opt-out the
 > old one lacked.
 
@@ -499,7 +546,7 @@ drift apart:
 
 The corner mark used to be a `<span>` holding the letter `A` on an emerald
 tile; it is now the icon itself, so the tab and the page corner show the same
-thing. `.topbar .mark .glyph` in `BASE_CSS` therefore only **sizes** the SVG
+thing. `.topbar .mark .glyph` in `css/base.css` therefore only **sizes** the SVG
 (26×26) — the plate, the ring and the rounding come from the artwork.
 
 A **thin ring in a darker cyan (`#137483`) runs just inside the edge**. Without
@@ -516,7 +563,7 @@ change both together.
 A **two-pane inbox** (2026-07-10 redesign — it replaced the short-lived
 tri-pane browser, whose preview pane duplicated the list and buried the
 transcript behind a second click). Rendered by
-`web/render/conversations.py`; styled by `_CONV_CSS` (in `web/assets.py`),
+`web/render/conversations.py`; styled by `web/static/css/conversations.css`,
 scoped to `.cv2`; full-bleed below the topbar via `main:has(.cv2)`. Each
 pane scrolls independently inside a `calc(100dvh - var(--topbar-h))` shell.
 
@@ -623,8 +670,8 @@ on the right form; an unknown value falls back to `DEFAULT_CONV_TYPE`, and the
 form's `updateConvType()` runs on load, so every label follows the checked
 radio. Sits inside the shared `_layout()` shell so it picks up
 the icon rail (`Orchestrate` lit via `active="orchestrate"`), the topbar,
-favicon, and BASE_CSS. Page-specific
-styles live in `ORCHESTRATE_CSS`, scoped under `.orch-shell`.
+favicon, and css/base.css. Page-specific
+styles live in `css/orchestrate.css`, scoped under `.orch-shell`.
 
 **Page-load preflight.** The handler calls `run_preflight()` once on render
 over `availability.available_seats()`, and the form keeps **seat 1 of each
@@ -984,7 +1031,7 @@ each with a keyword list, a stroke glyph (24×24 Feather/Lucide idiom) and a
 gradient pair. `classify_topic()` scores the topic against every category and
 `_conversation_mark()` in `web/render/conversations.py` draws the winner on a
 rounded tile at three sizes (`rail` 34px · `recent` 32px · `hero` 76px, via
-`.cv-mark-*` in `_CONV_CSS`; glyph stroke comes from `.cv-mark-glyph`).
+`.cv-mark-*` in `css/conversations.css`; glyph stroke comes from `.cv-mark-glyph`).
 
 Scoring rules that matter when editing the table: keywords match on word
 boundaries (case-insensitive, and a space also matches a hyphen, so
@@ -1035,10 +1082,11 @@ payload).
 
 Fenced code blocks (`` ```python ``, `` ```javascript ``, etc.) are
 highlighted client-side by [highlight.js v11.10.0](https://highlightjs.org/),
-loaded from cdnjs in `<head>` via the `HIGHLIGHT_JS_HEAD` constant
-passed through `_layout()`'s optional `head_extras=` parameter. Scoped
-to the conversation detail page only — the homepage and the
-conversations list don't load the library.
+fetched from cdnjs (integrity-checked) by `js/highlight.js` the first time a
+code block is on the page; the loader rides in through `_layout()`'s optional
+`head_extras=` parameter and copies the page's CSP nonce onto the CDN script
+it injects. Scoped to the conversation detail page only — the homepage and
+the conversations list don't load the library.
 
 - **Theme:** `github-dark` from highlight.js's bundled stylesheets.
   One small CSS override
@@ -1049,8 +1097,8 @@ conversations list don't load the library.
   `<code class="language-X">` for `` ```X `` fences; highlight.js reads
   that class and skips its auto-detector. Unhinted fences (just ` ``` `)
   fall through to highlight.js's auto-detection.
-- **Live append:** the SSE handler in `_render_conversation()`'s
-  inline JS calls `hljs.highlightElement()` on each newly-inserted
+- **Live append:** the SSE handler in `js/conversation.js`
+  calls `hljs.highlightElement()` on each newly-inserted
   message node, so mid-conversation arrivals look the same as the
   initial server-rendered batch.
 
@@ -1223,7 +1271,7 @@ and each message header is also labelled with the persona name (e.g.
 and the live SSE-appended ones (a `PERSONAS` JS map carries `agent_id →
 persona_name` to the client, while `AGENT_VISUALS` carries each agent's avatar
 **initials, gradient style, and persona slug** so live messages render the same
-image the server did). Styling is in `_CAST_CSS`.
+image the server did). Styling is in `css/cast.css`.
 
 **Fallback for conversations with no recorded cast.** Plenty of rows predate the
 persona system (any plain non-debate run, plus most conversations below #23), and
@@ -1293,9 +1341,10 @@ shipped file art, then the default silhouette — all behind `GET /avatars/{slug
   edge before upload (PNG, falling back to JPEG when the PNG is still large), and
   ships images under 400 KB byte-for-byte so animated GIFs keep animating.
 - **Layered rendering.** The `<img class="avatar-img">` overlays the existing
-  initials-on-gradient chip (`.avatar-has-img` + `.avatar-img` in `assets.py`,
-  `object-fit:cover`, `border-radius:inherit`). If the image fails to load,
-  `onerror` hides it and the monogram underneath shows through. The plain
+  initials-on-gradient chip (`.avatar-has-img` + `.avatar-img` in
+  `css/conversations.css`, `object-fit:cover`, `border-radius:inherit`). If the image
+  fails to load, `data-on-error="hide"` (handled by `js/boot.js`) hides it and
+  the monogram underneath shows through. The plain
   (non-`-rounded`) PNGs are used everywhere; each chip's own border-radius does
   the circle/rounded-square crop.
 - **Live messages.** `AGENT_VISUALS` carries each agent's `persona_slug` to the
@@ -1332,7 +1381,7 @@ Fly so the new file ships.
 
 The **public, read-only** way in to the cast — it replaced the static Persona
 Registry on the AI-Automation-Library site on 2026-11-06. Rendered by
-`web/render/persona_explorer.py`, styled by `EXPLORER_CSS` (shared tokens only,
+`web/render/persona_explorer.py`, styled by `css/explorer.css` (shared tokens only,
 so light mode needs no rules of its own). Nothing on it POSTs, so the hosted
 demo serves all of it.
 
@@ -1366,11 +1415,11 @@ demo serves all of it.
 A **three-pane management console** for the debate personality roster (the
 2026-06-29 redesign replaced the single-column accordion). Emerald-accented to
 match the homepage brand and the favicon, scoped to a `.pm3` wrapper so it
-doesn't disturb the `BASE_CSS` the other app pages use. Fills the viewport
+doesn't disturb the `css/base.css` the other app pages use. Fills the viewport
 below the topbar via `main:has(.pm3)`, which zeroes `<main>`'s padding. (That
 override is still needed — `main` carries `--gutter` padding this page zeroes,
 and a `--rail-w` margin it must keep so the panes clear the
-[icon rail](#navigation-the-icon-rail).) Styled by `_PERSONAS_CSS`; rendered by
+[icon rail](#navigation-the-icon-rail).) Styled by `css/personas.css`; rendered by
 `_render_personas_page`.
 
 **Deep-links.** Accepts `?group=<group>&q=<text>` — selects the group, then
@@ -1667,12 +1716,12 @@ the DDL was copied into four modules; now there is one, and a test fails on a
 | Concern | File / function |
 |:---|:---|
 | Add or rename a route | `routes` list in `web_ui.py`, plus an entry in this table. |
-| Tweak the homepage layout | `web/render/home.py` (`_render_homepage()` + `_HOMEPAGE_TEMPLATE`), styled by `HOME_CSS` in `web/assets.py`. |
-| Tweak the conversations browser or reader | `web/render/conversations.py` (`_conversations_rail()` / `_render_conversations_overview()` / `_render_conversation_main()`), styled by `_CONV_CSS` in `web/assets.py` (+ `BASE_CSS` for `.msg` cards). |
+| Tweak the homepage layout | `web/render/home.py` (`_render_homepage()` + `_HOMEPAGE_TEMPLATE`), styled by `web/static/css/home.css`. |
+| Tweak the conversations browser or reader | `web/render/conversations.py` (`_conversations_rail()` / `_render_conversations_overview()` / `_render_conversation_main()`), styled by `web/static/css/conversations.css` (+ `css/base.css` for `.msg` cards); behaviour in `js/conversations-rail.js` and `js/conversation.js`. |
 | Adjust Markdown rendering | `_md` instance + the `_link_open_renderer` rule in `web/render/common.py`. |
-| Swap syntax-highlighting theme or version | `HIGHLIGHT_JS_HEAD` in `web/assets.py` (CDN URLs + `.hljs` background override). Restart `web_ui.py` (or redeploy) — clients pick up the new CDN on next page load. |
+| Swap syntax-highlighting theme or version | `web/static/js/highlight.js` (CDN URLs + integrity hashes) and the `.hljs` background override at the top of `css/cast.css`. The `?v=` hash changes with the file, so clients pick it up on next page load. |
 | Change the export format | `render_export_markdown()` in `src/orchestrator/export.py` — but read [`export-format.md`](export-format.md) first; the format is a contract with whatever parses the downloads and delivered folders. |
-| Touch SSE behavior | `api_stream()` in `web/api/conversations.py` + the inline JS in `_render_conversation_main()`. |
+| Touch SSE behavior | `api_stream()` in `web/api/conversations.py` + `web/static/js/conversation.js` (its per-page values come from the `#cv-data` block `_render_conversation_main()` renders). |
 | Force-stop semantics | `stop_conversation()` in `web/db.py` + `api_stop()` in `web/api/conversations.py`. Mirror in `inspect_conversations.cmd_stop`. |
 | Auth | `web/security.py` (`BasicAuthMiddleware` + `_build_middleware()`). |
 | Ingest | `ingest_payload()` in `web/db.py` + `api_ingest()` in `web/api/sync.py`. Client: `scripts/db_sync.py`. |

@@ -1,0 +1,74 @@
+/* --- Persona explorer (/personas, /personas/{slug}) ---------------------
+   Built only on the shared tokens (--panel, --text, --muted, --border,
+   --accent), so css/light.css re-themes it with no html.light rules of its own. */
+.px { max-width: var(--w-list); margin: 0 auto; }
+.px .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+.px-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+.px-head .page-sub { margin-bottom:20px; max-width:var(--measure); }
+.px .btn { min-height:36px; }
+.px-controls { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.px-controls input, .px-controls select {
+  font:inherit; font-size:14px; min-height:38px; padding:7px 10px; border-radius:6px;
+  border:1px solid var(--border-strong); background:var(--panel); color:var(--text); }
+.px-search { flex:1 1 260px; display:flex; }
+.px-search input { width:100%; }
+.px-cloud { display:flex; flex-wrap:wrap; gap:6px; margin:14px 0 6px; }
+.px-tag { display:inline-flex; align-items:center; gap:6px; min-height:30px; padding:3px 10px;
+  border:1px solid var(--border-strong); border-radius:999px; font-size:12px; color:var(--muted);
+  text-decoration:none; }
+.px-tag span { font-size:11px; color:var(--muted-2); }
+.px-tag:hover { color:var(--text); border-color:var(--accent); text-decoration:none; }
+.px-tag.on { color:var(--accent); border-color:var(--accent); }
+.px-count { font-size:13px; color:var(--muted); margin:10px 0 16px; }
+.px-grid { display:grid; gap:16px; grid-template-columns:repeat(auto-fill, minmax(176px, 1fr)); }
+.px-card { display:flex; flex-direction:column; border:1px solid var(--border); border-radius:10px;
+  overflow:hidden; background:var(--panel); color:var(--text); text-decoration:none;
+  transition:border-color .15s ease, transform .15s ease; }
+.px-card:hover { border-color:var(--accent); transform:translateY(-2px); text-decoration:none; }
+.px-cover { display:block; aspect-ratio:2/3; background:var(--panel-2); overflow:hidden; }
+.px-cover img { width:100%; height:100%; object-fit:cover; display:block; }
+/* No cover: the square avatar, centred on the frame rather than cropped. */
+.px-cover.is-avatar { display:flex; align-items:center; justify-content:center; }
+.px-cover.is-avatar img { width:62%; height:auto; aspect-ratio:1; border-radius:50%; }
+.px-cbody { display:flex; flex-direction:column; gap:3px; padding:10px 12px 12px; min-width:0; }
+.px-name { font-size:14px; font-weight:600; }
+.px-kick { font-family:'JetBrains Mono',ui-monospace,monospace; font-size:10px; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--muted-2); margin:0; }
+.px-ctags { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; }
+.px-ctags span { font-size:11px; color:var(--muted); background:var(--panel-2); border-radius:4px; padding:1px 6px; }
+.px-empty { color:var(--muted); padding:40px 0; text-align:center; }
+.px-back { margin:0 0 16px; font-size:13px; }
+.px-dgrid { display:grid; grid-template-columns:minmax(0, 320px) minmax(0, 1fr); gap:28px; align-items:start; }
+.px-dcover { border-radius:12px; border:1px solid var(--border); }
+.px-id { display:flex; gap:14px; align-items:center; }
+.px-id .page-title { margin:2px 0 0; }
+.px-av { width:64px; height:64px; border-radius:50%; object-fit:cover; border:1px solid var(--border-strong); flex:none; }
+.px-summary { color:var(--muted); max-width:var(--measure); margin:14px 0; }
+.px-tags { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 16px; }
+.px-actions { margin:6px 0 16px; }
+.px-dl { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:18px; }
+.px-dl-h { font-size:12px; color:var(--muted-2); text-transform:uppercase; letter-spacing:.1em; margin-right:4px; }
+.px-meta { display:grid; grid-template-columns:auto 1fr; gap:6px 16px; font-size:13px; margin:0 0 10px; }
+.px-meta dt { color:var(--muted-2); }
+.px-meta dd { margin:0; }
+.px-hint { font-size:12px; color:var(--muted-2); margin:6px 0 0; }
+.px-card-body { margin-top:32px; border-top:1px solid var(--border); padding-top:20px; max-width:var(--measure); }
+.px-card-body h2 { font-size:15px; margin:0 0 14px; }
+.px-card-body h2 span { font-weight:400; color:var(--muted-2); }
+@media (max-width: 760px) {
+  .px-dgrid { grid-template-columns:1fr; }
+  .px-dcover { max-width:240px; }
+  .px-grid { grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:12px; }
+  .px-controls > label:not(.px-search) { flex:1 1 30%; }
+  .px-controls select { width:100%; }
+  .px-tag { min-height:36px; }
+  /* 30 tags would push the grid off the first screen; the active tag is
+     repeated in .px-count, so trimming here never hides the filter in use. */
+  .px-cloud .px-tag:nth-child(n+9) { display:none; }
+}
+/* Three selects in one row truncated their labels on a phone (RT-42). */
+@media (max-width: 420px) {
+  .px-controls > label:not(.px-search) { flex:1 1 100%; }
+}
+.px-count:focus { outline:none; }
+.px-count:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }

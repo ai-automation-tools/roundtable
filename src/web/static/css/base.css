@@ -1,0 +1,465 @@
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  /* Background is painted by the shared ground rule in css/topbar.css. */
+  color: var(--text);
+  font: 14px/1.6 'Inter', system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Reading pages keep margins; only the header is full-bleed, and only the app
+   surfaces (/conversations, /personas) run their panes edge-to-edge — they
+   zero this out via `main:has(...)` in css/conversations.css / css/personas.css.
+   The centred --page column lives on the homepage's `.wrap` (css/home.css); the
+   shell's own pages already self-cap (.orch-shell at 760px, the 404 centres),
+   so there's nothing here to centre. */
+main {
+  padding: 36px var(--gutter) 72px;
+}
+.measure { max-width: var(--measure); }
+
+/* Keyboard focus, everywhere. The rail, the topbar and .orch-form each had
+   their own ring; everything else (settings tabs, arena chips, card links,
+   the conversation list) had none, so tabbing through them was invisible.
+   One low-specificity fallback — the scoped rules above still win where they
+   want a different offset or radius. */
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+
+/* Skip link — the rail is ~10 links deep and sits before <main> in the DOM,
+   so without this every keyboard visit starts by tabbing past the whole of
+   navigation. Off-screen until focused. */
+.skip-link {
+  position: absolute; left: 8px; top: -60px; z-index: 60;
+  padding: 9px 14px; border-radius: 0 0 8px 8px;
+  background: var(--panel-solid); border: 1px solid var(--accent);
+  color: var(--text); font-size: 13px; font-weight: 600; text-decoration: none;
+  transition: top 0.14s ease;
+}
+/* Below the fixed source bar (z 70), or the bar hides most of it. */
+.skip-link:focus { top: var(--srcbar-h); z-index: 80; text-decoration: none; }
+main .page-title {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 26px; font-weight: 800;
+  letter-spacing: -0.01em;
+  margin: 0 0 6px;
+  color: var(--text);
+}
+main p.page-sub {
+  color: var(--muted-2);
+  margin: 0 0 32px;
+  font-size: 14px;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; text-decoration-color: var(--accent-strong); }
+/* Conversation list table — apex aesthetic: zinc-900/40 panel surface,
+   zinc-800/60 dividers, emerald-400 row link, uppercase tracking-wider eyebrow. */
+.table-wrap {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--panel);
+  overflow: hidden;
+}
+table { width: 100%; border-collapse: collapse; }
+th, td {
+  padding: 12px 16px; text-align: left;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+th {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-weight: 500; color: var(--muted-2); font-size: 10.5px;
+  text-transform: uppercase; letter-spacing: 0.12em;
+  background: rgba(9, 9, 11, 0.5);
+}
+tr:last-child td { border-bottom: 0; }
+tbody tr { transition: background 0.15s ease; }
+tbody tr:hover td { background: rgba(24, 24, 27, 0.6); }
+td a { color: var(--text); text-decoration: none; font-weight: 500; }
+td a:hover { color: var(--accent); }
+
+/* Status pill — emerald for active, muted for complete (apex's 'Live' tile
+   convention uses emerald-400). */
+.status-active, .status-complete {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+}
+.status-active { color: var(--accent); }
+.status-active::before {
+  content: ''; width: 6px; height: 6px;
+  border-radius: 50%; background: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+.status-complete { color: var(--muted-2); }
+.status-complete::before {
+  content: ''; width: 6px; height: 6px;
+  border-radius: 50%; background: var(--muted-2);
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  background: rgba(9, 9, 11, 0.6);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  font-family: 'JetBrains Mono', ui-monospace, "Cascadia Mono", "Consolas", monospace;
+}
+.muted { color: var(--muted-2); }
+.empty {
+  padding: 64px 24px;
+  text-align: center;
+  color: var(--muted-2);
+  border: 1px dashed var(--border);
+  border-radius: 4px;
+  background: var(--panel);
+}
+.empty code {
+  color: var(--good);
+  background: rgba(16, 185, 129, 0.08);
+  padding: 2px 8px; border-radius: 3px;
+  font-size: 12.5px;
+}
+
+/* Meta-grid — definition list of conversation metadata, styled as an
+   apex panel (zinc-900/40 + zinc-800/60 border). */
+.meta-grid {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 8px 20px;
+  margin: 0 0 20px;
+  padding: 20px 22px;
+  background: var(--panel);
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  font-size: 13px;
+}
+.meta-grid dt {
+  color: var(--muted-2);
+  text-transform: uppercase;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  align-self: center;
+  font-weight: 500;
+}
+.meta-grid dd { margin: 0; color: var(--text); }
+/* Transcript — column of zinc-900/40 message cards. Sender-colored left rule
+   uses emerald for an agent message and `signal=done`, red for
+   `signal=blocked`, muted zinc for system messages. */
+.transcript { display: flex; flex-direction: column; gap: 14px; }
+.msg {
+  padding: 16px 20px;
+  border-radius: 4px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--accent);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.msg:hover {
+  background: rgba(24, 24, 27, 0.55);
+  border-left-color: var(--accent-strong);
+}
+.msg.sender-system { border-left-color: var(--muted-2); }
+.msg.signal-done { border-left-color: var(--good); }
+.msg.signal-blocked { border-left-color: var(--bad); }
+/* `signal=result` is the conversation's DELIVERABLE — the artifact a
+   collaboration was convened to produce, as opposed to the transcript around
+   it. Given more weight than the other signals (amber rule, tinted card, a
+   heavier left edge) because in a collaboration it is the thing the reader
+   actually came for. Both render paths — the server one and the SSE one in
+   render/conversations.py — already emit `signal-<value>` generically, so this
+   is the whole visual treatment. */
+.msg.signal-result {
+  border-left-width: 3px;
+  border-left-color: var(--warn, #f59e0b);
+  background: rgba(245, 158, 11, 0.05);
+}
+.msg.signal-result:hover { border-left-color: #fbbf24; }
+/* A superseded result is a draft a later result replaced. It keeps its place
+   in the transcript — collapsing it is about which result the eye lands on,
+   not about hiding what was written — but it gives up the amber treatment so
+   exactly one message in the run reads as THE deliverable. Last-wins is
+   defined once, in orchestrator.export.final_result(). */
+.msg.signal-result.signal-superseded {
+  border-left-width: 2px;
+  border-left-color: var(--border);
+  background: transparent;
+  opacity: 0.72;
+}
+.msg.signal-result.signal-superseded:hover { opacity: 1; border-left-color: var(--muted-2); }
+.msg-head .signal.superseded {
+  background: rgba(9, 9, 11, 0.6);
+  border-color: var(--border);
+  color: var(--muted-2);
+}
+.msg-superseded > summary {
+  cursor: pointer; color: var(--muted-2); font-size: 12.5px;
+  padding: 6px 0; list-style: none; user-select: none;
+}
+.msg-superseded > summary::-webkit-details-marker { display: none; }
+.msg-superseded > summary::before { content: 'B8  '; }
+.msg-superseded[open] > summary::before { content: 'BE  '; }
+.msg-superseded > summary:hover { color: var(--text); }
+.msg-head {
+  display: flex; gap: 14px; align-items: baseline;
+  font-size: 12px; color: var(--muted-2);
+  margin-bottom: 10px;
+}
+.msg-head .who {
+  margin: 0; line-height: inherit;
+  color: var(--text);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: -0.005em;
+}
+.msg-head .time {
+  font-family: 'JetBrains Mono', ui-monospace, "Cascadia Mono", "Consolas", monospace;
+  font-size: 11px;
+}
+.msg-head .signal {
+  text-transform: uppercase; font-size: 10px;
+  padding: 2px 8px; border-radius: 3px;
+  letter-spacing: 0.08em; font-weight: 600;
+  background: rgba(9, 9, 11, 0.6);
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+.msg-head .signal.done {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.32);
+  color: var(--good);
+}
+.msg-head .signal.blocked {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.32);
+  color: var(--bad);
+}
+.msg-head .signal.result {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.32);
+  color: var(--warn);
+}
+.msg-body { word-wrap: break-word; overflow-wrap: anywhere;
+            color: #e4e4e7; font-size: 14.5px; line-height: 1.65; }
+.msg-body > :first-child { margin-top: 0; }
+.msg-body > :last-child { margin-bottom: 0; }
+.msg-body p { margin: 0 0 12px; }
+.msg-body p:last-child { margin-bottom: 0; }
+.msg-body strong { color: var(--text); font-weight: 600; }
+.msg-body em { font-style: italic; color: var(--text); }
+.msg-body a { color: var(--accent); text-decoration: underline;
+              text-decoration-color: rgba(16, 185, 129, 0.4);
+              text-underline-offset: 2px; }
+.msg-body a:hover { text-decoration-color: var(--accent); }
+.msg-body ul, .msg-body ol { margin: 8px 0 12px; padding-left: 26px; }
+.msg-body li { margin: 3px 0; }
+.msg-body li > p { margin: 0; }
+.msg-body blockquote {
+  margin: 10px 0; padding: 6px 16px;
+  border-left: 2px solid var(--border-strong);
+  color: var(--muted);
+  background: rgba(9, 9, 11, 0.4);
+}
+.msg-body code {
+  font: 13px/1.5 'JetBrains Mono', ui-monospace, "Cascadia Mono", "Consolas", monospace;
+  background: rgba(9, 9, 11, 0.6);
+  padding: 1px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  color: #f4f4f5;
+}
+.msg-body pre {
+  margin: 10px 0; padding: 14px 16px;
+  background: #09090b;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow-x: auto;
+}
+.msg-body pre code {
+  background: transparent; border: 0; padding: 0;
+  font-size: 12.5px;
+}
+.msg-body h1, .msg-body h2, .msg-body h3,
+.msg-body h4, .msg-body h5, .msg-body h6 {
+  margin: 16px 0 8px; font-weight: 600; color: var(--text);
+  letter-spacing: -0.01em;
+}
+/* Sized by the authored level (md-hN): rendered headings are shifted down to
+   nest under the page's outline (render_markdown, audit RT-40). */
+.msg-body h1, .msg-body .md-h1 { font-size: 19px; }
+.msg-body .md-h2 { font-size: 17px; }
+.msg-body .md-h3 { font-size: 15px; }
+.msg-body .md-h4, .msg-body .md-h5, .msg-body .md-h6 { font-size: 14px; }
+.msg-body table {
+  border-collapse: collapse; margin: 10px 0;
+  font-size: 13px;
+  border: 1px solid var(--border);
+}
+.msg-body th, .msg-body td {
+  border: 1px solid var(--border);
+  padding: 6px 12px;
+  text-align: left;
+}
+.msg-body th {
+  background: rgba(9, 9, 11, 0.5);
+  color: var(--muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+.msg-body hr { border: 0; border-top: 1px solid var(--border); margin: 14px 0; }
+.msg-body del { color: var(--muted-2); }
+
+/* Live indicator — emerald-400 pulse for active, muted dot for ended.
+   The 'stopped' class swap is set by the SSE 'complete' handler. */
+.live-indicator {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 11.5px; color: var(--accent);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  font-weight: 500;
+}
+.live-indicator .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+.live-indicator.stopped { color: var(--muted-2); }
+.live-indicator.stopped .dot {
+  background: var(--muted-2);
+  box-shadow: none;
+  animation: none;
+}
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+/* "Next: launch each CLI" panel on fresh conversations (status=active
+   + 0 messages). Disappears once the first SSE message lands. Subtle
+   emerald tint so it reads as a guide, not an alert. */
+.next-steps {
+  margin: 20px 0;
+  padding: 20px 22px;
+  background: rgba(16, 185, 129, 0.04);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 8px;
+}
+.next-steps h3 {
+  margin: 0 0 8px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--accent);
+}
+.next-steps p { margin: 0 0 14px 0; color: var(--muted); }
+.next-steps p:last-child { margin-bottom: 0; }
+.next-steps .ns-hint { font-size: 12px; color: var(--muted-2); margin-top: 16px; }
+.ns-list {
+  list-style: none;
+  margin: 0 0 4px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ns-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: rgba(24, 24, 27, 0.5);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.ns-agent {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 13px;
+  color: var(--text);
+}
+.ns-first {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  background: rgba(16, 185, 129, 0.12);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+.ns-spacer { flex: 1 1 auto; }
+
+/* Page header row — title on the left, primary CTA on the right.
+   Used on /conversations and any future list view that gets a "new"
+   action. Wraps gracefully on narrow viewports. */
+.page-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.page-header-row > div { flex: 1 1 auto; min-width: 0; }
+.page-header-row .btn { flex: 0 0 auto; }
+
+/* Buttons — apex CTA family. Default = ghost (zinc border, paper text).
+   .btn-primary = emerald solid. .btn-danger = red outline that inverts. */
+.btn {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  padding: 7px 14px;
+  border-radius: 4px;
+  border: 1px solid rgba(63, 63, 70, 0.7);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+.btn:hover {
+  background: rgba(24, 24, 27, 0.7);
+  border-color: var(--border-strong);
+  text-decoration: none;
+}
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-primary {
+  background: var(--good);
+  color: #09090b;
+  border-color: var(--good);
+  font-weight: 600;
+}
+.btn-primary:hover {
+  background: transparent;
+  color: var(--good);
+  box-shadow: inset 0 0 0 1px var(--good);
+}
+.btn-danger {
+  border-color: rgba(239, 68, 68, 0.5);
+  color: var(--bad);
+  background: rgba(239, 68, 68, 0.06);
+}
+.btn-danger:hover {
+  background: var(--bad);
+  color: #09090b;
+  border-color: var(--bad);
+}
+.header-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.detail-head {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 16px; gap: 16px; flex-wrap: wrap;
+}
+.detail-head h2 {
+  margin: 0;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}

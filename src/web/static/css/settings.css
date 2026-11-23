@@ -1,0 +1,25 @@
+/* The strip is a sibling ABOVE .orch-shell, not inside it, so it has to
+   repeat the shell's box or it renders hard-left while the tabs it labels sit
+   centred half a screen away. Same max-width, same auto margins, same 24px
+   inset as .orch-shell's padding — the tab labels and the form below them
+   then share one left edge. */
+.set-tabs {
+  box-sizing: border-box;
+  max-width: var(--w-form); margin: 32px auto 26px;
+  display: flex; gap: 2px; flex-wrap: wrap;
+  padding: 0 24px 1px;
+  border-bottom: 1px solid var(--border);
+}
+.set-tab {
+  padding: 9px 16px; font-size: 13.5px; font-weight: 550;
+  color: var(--muted); text-decoration: none;
+  border: 1px solid transparent; border-bottom: none;
+  border-radius: 8px 8px 0 0; margin-bottom: -1px;
+  transition: color .15s, background .15s, border-color .15s;
+}
+.set-tab:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+.set-tab.on {
+  color: var(--accent); background: var(--bg);
+  border-color: var(--border); border-bottom: 1px solid var(--bg);
+}
+.set-shell { max-width: var(--w-form); margin-top: 0; }

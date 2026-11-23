@@ -38,7 +38,9 @@ SECTION_IDS = ("what", "personas", "how", "latest", "extension", "resources")
 def test_no_cdn_or_utility_classes():
     """The page loads nothing from a CDN and carries no Tailwind utilities."""
     assert "cdn.tailwindcss.com" not in PAGE
-    assert "<script src=" not in PAGE, "every script on the homepage is inline"
+    # Every script is one of this app's own static files (audit RT-34).
+    srcs = re.findall(r'<script src="([^"]+)"', PAGE)
+    assert srcs and all(s.startswith("/static/js/") for s in srcs), srcs
     # A utility-class signature: responsive prefixes and the zinc/emerald palette
     # names Tailwind generates. None may survive in a class attribute.
     for cls in re.findall(r'class="([^"]*)"', PAGE):
@@ -58,25 +60,28 @@ def test_shared_chrome_and_anchors():
 
 
 def test_stylesheet_is_the_shared_one():
-    """HOME_CSS composes the tokens + chrome block, and carries every class the
-    template emits — a renamed class would otherwise style nothing, silently."""
-    assert assets.HOME_CSS.startswith(assets.DESIGN_TOKENS)
-    assert assets.TOPBAR_CSS in assets.HOME_CSS
-    assert "--ease:" in assets.DESIGN_TOKENS
+    """The homepage links the tokens + chrome sheets, then home.css, and they
+    carry every class the template emits — a renamed class would otherwise
+    style nothing, silently."""
+    sheets = re.findall(r'<link rel="stylesheet" href="/static/css/([\w-]+)\.css', PAGE)
+    assert sheets[:3] == ["tokens", "topbar", "home"], sheets
+    tokens, topbar = assets.static_text("css/tokens.css"), assets.static_text("css/topbar.css")
+    home_css = tokens + topbar + assets.static_text("css/home.css")
+    assert "--ease:" in tokens
     # The ground + spotlight live in the shared block so every page has them.
-    assert ".spot::before" in assets.TOPBAR_CSS
-    assert "background-image" in assets.TOPBAR_CSS
+    assert ".spot::before" in topbar
+    assert "background-image" in topbar
     # Every class the page uses has a rule. Dynamic ones (status words on the
     # latest rows, the stat colours) are listed by hand.
-    styled = set(re.findall(r"\.([a-zA-Z][\w-]*)", assets.HOME_CSS))
+    styled = set(re.findall(r"\.([a-zA-Z][\w-]*)", home_css))
     styled |= {"active", "complete", "spot"}
     used: set[str] = set()
     for cls in re.findall(r'class="([^"]*)"', PAGE):
         used.update(c for c in cls.split() if c)
     # Classes owned by the shared chrome (rail, topbar, palette, source bar)
-    # are styled by TOPBAR_CSS, which is inside HOME_CSS — so they pass too.
+    # are styled by topbar.css, which the homepage links — so they pass too.
     missing = sorted(c for c in used if c not in styled and not c.startswith(("btn-", "rail-", "cmdk", "live-", "src-", "mark")))
-    assert not missing, f"classes on the page with no rule in HOME_CSS: {missing}"
+    assert not missing, f"classes on the page with no rule in its stylesheets: {missing}"
 
 
 def test_empty_states_render():
@@ -139,23 +144,27 @@ def test_sample_debates_are_never_local_only():
 
 
 def test_spotlight_tracker_is_wired():
-    assert "initSpot" in assets.SHELL_JS
-    assert "closest('.spot')" in assets.SHELL_JS
+    shell = assets.static_text("js/shell.js")
+    assert "initSpot" in shell
+    assert "closest('.spot')" in shell
 
 
 def test_theme_switch_on_both_shells():
     """Homepage and the _layout shell both carry the switch, apply the stored
-    theme from <head> before any stylesheet, and emit LIGHT_CSS after the page
+    theme from <head> before any stylesheet, and link light.css after the page
     CSS (the layer only wins on order-independent specificity, but it must be
     on the page at all). Dark stays the default in the boot script."""
     from web.render.common import _render_generic_404
 
-    assert "var t='dark';" in assets.THEME_BOOT_JS
-    assert "initTheme" in assets.SHELL_JS and "agent-chat.theme" in assets.SHELL_JS
+    assert "var t = 'dark';" in assets.static_text("js/boot.js")
+    shell = assets.static_text("js/shell.js")
+    assert "initTheme" in shell and "agent-chat.theme" in shell
+    assert "html.light {" in assets.static_text("css/light.css")
     for page in (PAGE, _render_generic_404("/x")):
         head = page[: page.index("</head>")]
-        assert head.index("agent-chat.theme") < head.index("<style>"), "boot must precede CSS"
-        assert head.rindex("html.light {") > head.index("<style>")
+        first_css = head.index('<link rel="stylesheet" href="/static/css/')
+        assert head.index("/static/js/boot.js") < first_css, "boot must precede CSS"
+        assert head.rindex("/static/css/light.css") > first_css
         assert page.count('class="theme-toggle" role="group" aria-label="Theme"') == 1
         assert 'aria-label="Light theme"' in page and 'aria-label="Dark theme"' in page
 

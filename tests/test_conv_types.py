@@ -484,8 +484,9 @@ def test_the_form_renders_one_card_per_preset_and_hides_the_rest():
     assert set(rendered[1:]) == set(PRESET_NAMES),         f"card set drifted from PRESETS: {sorted(set(rendered[1:]) ^ set(PRESET_NAMES))}"
 
     # The type payload the JS filters on has to carry every sub-type.
-    types = json.loads(
-        re.search(r"const convTypes = (\{.*?\});", html, re.S).group(1))
+    types = json.loads(re.search(
+        r'<script type="application/json" id="orch-data"[^>]*>(.*?)</script>',
+        html, re.S).group(1))["convTypes"]
     assert set(types["collaborate"]["presets"]) == set(presets_for_collaborate())
 
 
@@ -712,7 +713,8 @@ def test_topic_field_is_a_title_capped_at_the_seeding_limit() -> None:
     # The counter lives in the section head row, not on a stray line below the box.
     assert f'<span id="orch-topic-count">0</span>/{TOPIC_MAX_CHARS}' in html
     # Enter used to submit the form because it was an <input>; keep that.
-    assert "requestSubmit" in html
+    from web.assets import static_text
+    assert "requestSubmit" in static_text("js/orchestrate.js")
 
 
 def test_the_brief_box_takes_a_file_without_uploading_it() -> None:
@@ -722,7 +724,8 @@ def test_the_brief_box_takes_a_file_without_uploading_it() -> None:
     storage, nothing for ReadOnlyMiddleware to guard."""
     from web.render.orchestrate import BRIEF_EXTENSIONS, _render_orchestrate
     html = _render_orchestrate([], conv_type="collaborate")
-    assert 'id="orch-brief-file"' in html and "FileReader" in html
+    from web.assets import static_text
+    assert 'id="orch-brief-file"' in html and "FileReader" in static_text("js/orchestrate.js")
     assert 'textarea name="kickoff" id="orch-brief"' in html
     # It sits directly under Title, before Format. That is where an operator
     # reaches for it — the run that prompted this pasted a brief into the title

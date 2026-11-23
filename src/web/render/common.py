@@ -8,8 +8,9 @@ from typing import Any
 
 from markdown_it import MarkdownIt
 
-from web.assets import BASE_CSS, LIGHT_CSS, MARK_SVG, SHELL_JS, THEME_BOOT_JS
-from web.security import _is_public_readonly
+from web.assets import MARK_SVG, stylesheets
+from web.assets import script as js_script
+from web.security import _is_public_readonly, csp_nonce
 
 
 # ---------------------------------------------------------------------------
@@ -126,15 +127,29 @@ _FONTS_CSS = (
     "&family=JetBrains+Mono:wght@400;500;700;800&display=swap"
 )
 # The font stylesheet no longer blocks first paint (audit RT-41): it is
-# preloaded and applied when it lands, and the system fallback in every
-# font-family stack shows until then. <noscript> keeps it for no-JS visitors.
+# preloaded, js/boot.js inserts the stylesheet (script-inserted, so it doesn't
+# block render), and the system fallback in every font-family stack shows until
+# it lands. <noscript> keeps it for no-JS visitors.
 FONTS_HEAD = (
     '<link rel="preconnect" href="https://fonts.googleapis.com">'
     '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
-    f'<link rel="preload" as="style" href="{_FONTS_CSS}" '
-    "onload=\"this.onload=null;this.rel='stylesheet'\">"
+    f'<link rel="preload" as="style" href="{_FONTS_CSS}" data-font-css>'
     f'<noscript><link rel="stylesheet" href="{_FONTS_CSS}"></noscript>'
 )
+
+
+def head_assets(page_head: str = "", base: str = "base", last: str = "") -> str:
+    """The <head> tail every document shares, in cascade order: the font
+    preload, js/boot.js (theme + `js` class before first paint — it must
+    precede every stylesheet), the shell stylesheets, the page's own head
+    (``page_head``: its stylesheet links, maybe a script), light.css so its
+    `html.light` overrides win, then ``last``.
+
+    ``base`` is ``"base"`` for the ``_layout()`` shell and ``"home"`` for the
+    homepage; both compose tokens.css + topbar.css first."""
+    return (FONTS_HEAD + js_script("boot")
+            + stylesheets("tokens", "topbar", base) + page_head
+            + stylesheets("light") + last)
 
 # Feather-style stroke icons for the nav row (MIT). Inline rather than a CDN
 # icon font — the local operator's page must render with no network.
@@ -249,21 +264,9 @@ _GH_MARK = (
     '1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>'
 )
 
-# Runs before any chrome paints — must stay tiny, synchronous, and first.
-# `js` gates the scroll-reveal styles: content that a script hides must only
-# ever be hidden when a script is there to show it again, or one failure blanks
-# the page (which is exactly what happened — see assets.SHELL_JS).
-# `rail-collapsed` is restored here rather than from SHELL_JS so the sidebar
-# can't paint open and then snap shut on DOMContentLoaded.
-_BOOT_JS = (
-    "<script>(function(){var e=document.documentElement;e.classList.add('js');"
-    "try{if(localStorage.getItem('ab-rail')==='0')e.classList.add('rail-collapsed');}"
-    "catch(_){}})();</script>"
-)
-
 # Light / dark switch, the last thing in the topbar's right cluster. Icons are
 # lucide's sun and moon, copied verbatim. aria-pressed is rendered for the
-# default (dark) and corrected by initTheme() in SHELL_JS; which half LOOKS lit
+# default (dark) and corrected by initTheme() in js/shell.js; which half LOOKS lit
 # comes from the <html> class, so a stored `light` never paints wrong first.
 _THEME_TOGGLE = (
     '<div class="theme-toggle" role="group" aria-label="Theme">'
@@ -284,9 +287,9 @@ _THEME_TOGGLE = (
     "</svg></button></div>"
 )
 
-# The palette dialog + the JS that drives it (and the live pill, and reveals).
-# Emitted once per page by _topbar(), directly after the bar.
-_CMDK_HTML = f"""
+# The palette dialog. _topbar() emits it once per page, directly after the bar,
+# followed by js/shell.js (the palette, the live pill, reveals).
+_CMDK_HTML = """
 <div class="cmdk" id="cmdk" hidden>
   <div class="cmdk-scrim" data-cmdk-close></div>
   <div class="cmdk-panel" role="dialog" aria-modal="true" aria-label="Search Roundtable">
@@ -305,8 +308,6 @@ _CMDK_HTML = f"""
     </div>
   </div>
 </div>
-<script>window.__AB_LINKS = {{"github": "{GITHUB_URL}"}};</script>
-{SHELL_JS}
 """
 
 
@@ -317,7 +318,7 @@ def _sidebar(
     """The universal navigation rail — a 64px icon column down the left.
 
     This is the app's navigation. It's the same on every page, which is the
-    point: nav that never moves. It's ``position:fixed`` (see TOPBAR_CSS
+    point: nav that never moves. It's ``position:fixed`` (see css/topbar.css
     ``.siderail``) rather than a grid column, because /conversations and
     /personas already own their own scrolling rails and full-height panes — a
     fixed rail insets them with one ``margin-left`` instead of rewriting their
@@ -334,7 +335,7 @@ def _sidebar(
 
     **Expanded by default**, showing each destination's title; the toggle
     collapses it to icons and persists that in ``localStorage`` under
-    ``ab-rail`` (restored by ``_BOOT_JS`` before first paint, so it can't flash
+    ``ab-rail`` (restored by ``js/boot.js`` before first paint, so it can't flash
     open and snap shut). Collapsed, the title moves to a hover tooltip — but it
     is *always* on ``aria-label`` too, so the rail never depends on hover or on
     CSS to be identifiable.
@@ -393,7 +394,7 @@ def _topbar(crumbs_html: str = "") -> str:
     """The one topbar, rendered by every page.
 
     Full-bleed: the breadcrumb sits in the literal left corner and the actions
-    in the right one (see TOPBAR_CSS — ``.topbar-inner`` has no max-width, and
+    in the right one (see css/topbar.css — ``.topbar-inner`` has no max-width, and
     ``.topbar-right`` is pushed out by ``margin-left:auto``).
 
     Neither navigation nor identity is here: both live in ``_sidebar()`` — the
@@ -410,8 +411,7 @@ def _topbar(crumbs_html: str = "") -> str:
     and ``_layout()`` now call this, so the bar cannot drift between them.
     """
     crumb_block = f'<span class="crumb">{crumbs_html}</span>' if crumbs_html else ""
-    return f"""{_BOOT_JS}
-<div class="topbar">
+    return f"""<div class="topbar">
   <div class="topbar-inner">
     {crumb_block}
     <div class="topbar-right">
@@ -427,7 +427,7 @@ def _topbar(crumbs_html: str = "") -> str:
     </div>
   </div>
 </div>
-{_CMDK_HTML}"""
+{_CMDK_HTML}{js_script("shell", github=GITHUB_URL)}"""
 
 
 def consent_script() -> str:
@@ -443,7 +443,8 @@ def consent_script() -> str:
     """
     if not _is_public_readonly():
         return ""
-    return '<script src="https://ai-automation-tools.dev/consent.js" defer></script>'
+    return (f'<script src="https://ai-automation-tools.dev/consent.js" defer '
+            f'nonce="{csp_nonce()}"></script>')
 
 
 def source_bar() -> str:
@@ -509,12 +510,8 @@ def _layout(
 <title>{html.escape(title)} — Roundtable</title>
 <meta name="description" content="{html.escape(description or DEFAULT_DESCRIPTION, quote=True)}" />
 <meta name="theme-color" content="#060606" />
-{THEME_BOOT_JS}
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-{FONTS_HEAD}
-<style>{BASE_CSS}</style>
-{head_extras}
-<style>{LIGHT_CSS}</style>
+{head_assets(head_extras)}
 </head><body>
 <a class="skip-link" href="#main">Skip to content</a>
 {source_bar()}
@@ -536,13 +533,8 @@ def _registry_layout(title: str, crumbs_html: str, body_html: str, head_extras: 
 <title>{html.escape(title)} — Agent Personas</title>
 <meta name="description" content="Agent Personas: the character cards Roundtable's CLI agents can take on in a debate, podcast or collaboration." />
 <meta name="theme-color" content="#060606" />
-{THEME_BOOT_JS}
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-{FONTS_HEAD}
-<style>{BASE_CSS}</style>
-{head_extras}
-<style>{LIGHT_CSS}</style>
-<style>html{{--rail-w:0px!important}}.reg-brand{{display:inline-flex;align-items:center;gap:8px;color:var(--text);text-decoration:none;font-weight:600}}.reg-brand svg{{width:22px;height:22px}}.reg-out{{color:var(--muted);text-decoration:none;font-size:13px;margin-right:8px}}.reg-out:hover{{color:var(--text)}}</style>
+{head_assets(head_extras, last=stylesheets("registry"))}
 </head><body>
 <a class="skip-link" href="#main">Skip to content</a>
 {source_bar()}
@@ -554,8 +546,7 @@ def _registry_layout(title: str, crumbs_html: str, body_html: str, head_extras: 
     {_THEME_TOGGLE}
   </div>
 </div></div>
-<script>window.__AB_LINKS = {{}};</script>
-{SHELL_JS}
+{js_script("shell")}
 <main id="main" tabindex="-1">{body_html}</main>
 {consent_script()}
 </body></html>"""

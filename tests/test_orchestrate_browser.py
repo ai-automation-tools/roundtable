@@ -16,8 +16,9 @@ way an operator would, and asserts on what the browser shows and posts:
 6. ticking approvals off while a custom card is seated shows a warning.
 
 No server runs. Every request goes through ``page.route``: the page itself is
-``_render_orchestrate()``'s output, ``POST /api/orchestrate`` is captured and
-answered with a refusal (so nothing navigates), and anything else is aborted.
+``_render_orchestrate()``'s output, ``/static/*`` is served from
+``src/web/static``, ``POST /api/orchestrate`` is captured and answered with a
+refusal (so nothing navigates), and anything else is aborted.
 
 **Playwright is optional** (Mike's call, 2026-10-12): it lives in
 ``requirements-dev.txt``, never in ``requirements.txt``, and this suite SKIPS
@@ -115,6 +116,10 @@ def _form(conv_type: str | None = None) -> Iterator[_Form]:
                 req = route.request
                 if req.url.startswith(_ORIGIN + "/orchestrate"):
                     route.fulfill(status=200, content_type="text/html", body=page_html)
+                elif req.url.startswith(_ORIGIN + "/static/"):
+                    # The page's own stylesheets and scripts (audit RT-34).
+                    rel = req.url[len(_ORIGIN + "/static/"):].split("?")[0]
+                    route.fulfill(status=200, path=str(_SRC / "web" / "static" / rel))
                 elif req.url == _ORIGIN + "/api/orchestrate" and req.method == "POST":
                     form.posts.append(json.loads(req.post_data or "{}"))
                     route.fulfill(status=200, content_type="application/json",

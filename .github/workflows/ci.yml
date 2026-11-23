@@ -133,6 +133,10 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: pipx run ruff==0.12.2 check --select E9,F src scripts tests
+      # The pages' scripts are files since RT-34; parse each one so a syntax
+      # error fails here, not in a browser. Node ships on the runner, so this
+      # adds no dependency to the app.
+      - run: for f in src/web/static/js/*.js; do node --check "$f"; done
 
   # Which paths changed — decides whether the mirror's image needs building
   # (PRs) or deploying (main). Kept in step with AGENTS.md › Deploying to Fly.

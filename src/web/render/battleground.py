@@ -28,7 +28,8 @@ import json
 from typing import Any
 from urllib.parse import urlsplit
 
-from web.assets import BATTLEGROUND_CSS, ORCHESTRATE_CSS
+from web.assets import script as js_script
+from web.assets import stylesheets
 from web.db import (
     ARENA_CLOSED,
     ARENA_OPEN,
@@ -232,7 +233,7 @@ def _render_battleground_index(
 """
     return _layout(
         "Battleground", "", body,
-        head_extras=f"<style>{ORCHESTRATE_CSS}</style><style>{BATTLEGROUND_CSS}</style>",
+        head_extras=stylesheets("orchestrate", "battleground"),
         active="battleground",
     )
 
@@ -425,79 +426,11 @@ def _render_battleground_arena(data: dict[str, Any]) -> str:
     {posts_html}
   </section>
 </div>
-<script>
-(function () {{
-  var shell = document.querySelector('[data-arena]');
-  if (!shell) return;
-  var aid = shell.getAttribute('data-arena');
-  var msg = document.getElementById('bgc-msg');
-  var reasons = {json.dumps(list(_REJECT_REASONS))};
-
-  function say(text, bad) {{
-    msg.textContent = text || '';
-    msg.className = 'bgc-msg' + (bad ? ' fail' : '');
-  }}
-
-  function post(path, payload) {{
-    return fetch(path, {{
-      method: 'POST',
-      headers: {{'Content-Type': 'application/json'}},
-      body: JSON.stringify(payload || {{}})
-    }}).then(function (r) {{
-      return r.json().catch(function () {{ return {{}}; }}).then(function (d) {{
-        if (!r.ok) throw new Error((d && d.error) || ('HTTP ' + r.status));
-        return d;
-      }});
-    }});
-  }}
-
-  document.addEventListener('click', function (ev) {{
-    var t = ev.target;
-    if (!t || !t.closest) return;
-    var el = t.closest('[data-verdict], [data-arena-status], [data-arena-delete]');
-    if (!el) return;
-
-    var verdict = el.getAttribute('data-verdict');
-    if (verdict) {{
-      var payload = {{verdict: verdict}};
-      if (verdict === 'rejected') {{
-        var note = window.prompt(
-          'Why? The agent reads this as a revision brief.\\n\\n' + reasons.join('\\n'),
-          reasons[0]
-        );
-        if (note === null) return;
-        if (note.trim()) payload.note = note.trim();
-      }}
-      say('Saving\\u2026');
-      post('/api/battleground/drafts/' + el.getAttribute('data-draft') + '/verdict', payload)
-        .then(function () {{ window.location.reload(); }})
-        .catch(function (e) {{ say(String(e.message || e), true); }});
-      return;
-    }}
-
-    var next = el.getAttribute('data-arena-status');
-    if (next) {{
-      say('Saving\\u2026');
-      post('/api/battleground/arenas/' + aid, {{status: next}})
-        .then(function () {{ window.location.reload(); }})
-        .catch(function (e) {{ say(String(e.message || e), true); }});
-      return;
-    }}
-
-    if (el.getAttribute('data-arena-delete')) {{
-      if (!window.confirm('Delete arena #' + aid + ' and every draft on it? This cannot be undone.')) return;
-      say('Deleting\\u2026');
-      post('/api/battleground/arenas/' + aid + '/delete', {{}})
-        .then(function () {{ window.location.href = '/battleground'; }})
-        .catch(function (e) {{ say(String(e.message || e), true); }});
-    }}
-  }});
-}})();
-</script>
+{js_script("battleground-arena", reasons=json.dumps(list(_REJECT_REASONS)))}
 """
     return _layout(
         f"Arena #{aid}", crumbs, body,
-        head_extras=f"<style>{ORCHESTRATE_CSS}</style><style>{BATTLEGROUND_CSS}</style>",
+        head_extras=stylesheets("orchestrate", "battleground"),
         active="battleground",
     )
 
@@ -518,7 +451,7 @@ def _render_battleground_not_found(aid: int) -> str:
 """
     return _layout(
         "Arena not found", '<a href="/battleground">Battleground</a>', body,
-        head_extras=f"<style>{ORCHESTRATE_CSS}</style><style>{BATTLEGROUND_CSS}</style>",
+        head_extras=stylesheets("orchestrate", "battleground"),
         active="battleground",
     )
 
@@ -557,6 +490,6 @@ def _render_battleground_readonly() -> str:
 """
     return _layout(
         "Battleground", "", body,
-        head_extras=f"<style>{ORCHESTRATE_CSS}</style><style>{BATTLEGROUND_CSS}</style>",
+        head_extras=stylesheets("orchestrate", "battleground"),
         active="battleground",
     )

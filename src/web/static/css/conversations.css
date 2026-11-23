@@ -1,0 +1,466 @@
+/* Two-pane conversations console: left rail (search + filters + sort + list)
+   and a main transcript-reader pane. Emerald-accented, scoped to `.cv2` so it
+   zeroes `_layout`'s <main> padding (panes run edge-to-edge below the topbar,
+   beside the nav rail). Clicking a conversation loads its transcript in the main
+   pane — no intermediate preview. The rail collapses (localStorage-persisted);
+   `?fullscreen=1` drops the rail entirely for a distraction-free reader. */
+/* App surface: panes run edge-to-edge, so zero <main>'s padding — but keep
+   the --rail-w inset, or the pane slides under the fixed sidebar. */
+main:has(.cv2) { max-width:none; padding:0; margin:0 0 0 var(--rail-w); }
+.cv2 {
+  --em:#10b981; --em-soft:rgba(16,185,129,0.10); --em-line:rgba(16,185,129,0.34);
+  --cv-line:rgba(255,255,255,0.07); --cv-ash:#909099; --cv-bone:#c8ccd1; --cv-paper:#e7eaee;
+  height:calc(100dvh - var(--chrome-h));
+  display:grid; grid-template-columns:var(--cv-rail-w, 320px) minmax(0,1fr);
+  background:#07090a;
+}
+/* While dragging the rail resizer: kill selection + pointer noise, freeze the
+   width transition so the pane tracks the cursor 1:1. */
+.cv2.cv-resizing { cursor:col-resize; }
+.cv2.cv-resizing, .cv2.cv-resizing * { user-select:none !important; }
+.cv2.cv-resizing .cv-main { pointer-events:none; }
+.cv2 *, .cv2 *::before, .cv2 *::after { box-sizing:border-box; }
+/* ---- scrollbars: blended into the dark canvas ---- */
+.cv-list, .cv-main { scrollbar-width:thin; scrollbar-color:rgba(255,255,255,0.14) transparent; }
+.cv2 ::-webkit-scrollbar { width:10px; height:10px; }
+.cv2 ::-webkit-scrollbar-track { background:transparent; }
+.cv2 ::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.08); border-radius:8px; border:2px solid transparent; background-clip:content-box; }
+.cv2 ::-webkit-scrollbar-thumb:hover { background:rgba(255,255,255,0.18); background-clip:content-box; }
+.cv2 ::-webkit-scrollbar-corner { background:transparent; }
+/* ---- shared chrome ---- */
+.cv2 .icon-btn { display:inline-grid; place-items:center; width:30px; height:30px; padding:0;
+  border:1px solid var(--cv-line); border-radius:7px; background:transparent; color:var(--cv-ash);
+  cursor:pointer; transition:background .12s ease,color .12s ease; text-decoration:none; }
+.cv2 .icon-btn:hover { background:rgba(255,255,255,0.05); color:var(--cv-paper); text-decoration:none; }
+.cv2 .icon-btn svg { width:15px; height:15px; }
+.cv2 .icon-btn.btn-disabled { opacity:0.3; cursor:default; pointer-events:none; }
+.cv2 .icon-btn-danger { display:inline-grid; place-items:center; width:30px; height:30px; padding:0;
+  border:0; border-radius:7px; background:#ef4444; color:#fff;
+  cursor:pointer; transition:background .12s ease; text-decoration:none; }
+.cv2 .icon-btn-danger:hover { background:#dc2626; color:#fff; text-decoration:none; }
+.cv2 .icon-btn-danger svg { width:15px; height:15px; }
+.cv2 .icon-btn-danger:disabled { opacity:0.4; cursor:default; }
+.cv-mark { display:inline-grid; place-items:center; flex:none; }
+.cv-mark svg { display:block; width:100%; height:100%; filter:drop-shadow(0 8px 24px rgba(0,0,0,0.26)); }
+.cv-mark-glyph { fill:none; stroke:#06110f; stroke-width:1.9; stroke-linecap:round;
+  stroke-linejoin:round; opacity:0.82; }
+.cv-mark-rail { width:34px; height:34px; }
+.cv-mark-recent { width:32px; height:32px; }
+.msg-avatar { flex:0 0 30px; width:30px; height:30px; border-radius:9px;
+  display:inline-grid; place-items:center;
+  font:700 11px/1 'JetBrains Mono',ui-monospace,monospace; letter-spacing:0;
+  color:#06110f; background:linear-gradient(135deg,var(--cv-ink),var(--cv-ink-2));
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,0.18); }
+/* Persona avatar image overlays the initials chip (msg-avatar / cast-avatar);
+   the monogram underneath shows through if the image 404s or fails to load. */
+.avatar-has-img { position:relative; overflow:hidden; }
+.avatar-img { position:absolute; inset:0; width:100%; height:100%;
+  object-fit:cover; border-radius:inherit; display:block; }
+.cv2 .msg-head { align-items:center; gap:10px; }
+.cv2 .msg-head .time { margin-left:auto; flex:none; }
+.cv-status { width:7px; height:7px; border-radius:50%; flex:none; background:var(--cv-ash); }
+.cv-status.cv-active { background:var(--em); box-shadow:0 0 6px var(--em); animation:pulse 1.8s ease-in-out infinite; }
+/* ---- rail ---- */
+.cv-rail { position:relative; border-right:1px solid var(--cv-line); display:flex; flex-direction:column;
+  min-height:0; background:rgba(255,255,255,0.012); }
+/* Drag handle on the rail's right edge — straddles the border, widens its hit
+   area beyond the visible 2px line. */
+.cv-resizer { position:absolute; top:0; right:-4px; width:9px; height:100%; z-index:30;
+  cursor:col-resize; display:flex; justify-content:center; touch-action:none; }
+.cv-resizer::after { content:""; width:2px; height:100%; background:transparent; transition:background .12s ease; }
+.cv-resizer:hover::after, .cv2.cv-resizing .cv-resizer::after { background:var(--em); }
+.cv2.rail-hidden .cv-resizer { display:none; }
+.cv2.rail-hidden { grid-template-columns:0 minmax(0,1fr); }
+.cv2.rail-hidden .cv-rail { display:none; }
+/* Fixed, so it must clear the fixed nav rail — otherwise the "reopen the
+   conversation list" button hides underneath the sidebar. */
+#cv-rail-open { position:fixed; left:calc(var(--rail-w) + 12px); top:calc(var(--chrome-h) + 10px); z-index:45; display:none; background:#0c1013; }
+.cv2.rail-hidden #cv-rail-open { display:grid; }
+.cv-railhead { display:flex; align-items:center; gap:8px; padding:14px 14px 10px; }
+.cv-railhead h2 { margin:0; flex:1; font-family:'JetBrains Mono',ui-monospace,monospace; font-size:11px;
+  font-weight:600; text-transform:uppercase; letter-spacing:0.14em; color:var(--cv-ash); }
+.cv-count { font-family:'JetBrains Mono',ui-monospace,monospace; font-size:11px; color:var(--cv-ash);
+  background:rgba(255,255,255,0.05); border:1px solid var(--cv-line); border-radius:999px; padding:1px 8px; }
+.cv-search { position:relative; padding:0 12px 10px; }
+.cv-search svg { position:absolute; left:22px; top:calc(50% - 5px); transform:translateY(-50%);
+  width:14px; height:14px; color:var(--cv-ash); pointer-events:none; }
+.cv-search input { width:100%; background:#0c1013; color:var(--cv-paper); border:1px solid var(--cv-line);
+  border-radius:8px; padding:7px 10px 7px 30px; font:inherit; font-size:13px; }
+.cv-search input::placeholder { color:var(--cv-ash); }
+.cv-search input:focus { outline:none; border-color:var(--em-line); }
+.cv-fchips { display:flex; flex-wrap:wrap; gap:5px; padding:0 12px 8px; }
+.cv-fchip { display:inline-flex; align-items:center; gap:6px; border:1px solid var(--cv-line);
+  border-radius:999px; background:transparent; color:var(--cv-bone); padding:3px 10px;
+  font:inherit; font-size:11.5px; cursor:pointer; transition:all .12s ease; }
+.cv-fchip:hover { border-color:rgba(255,255,255,0.18); color:var(--cv-paper); }
+.cv-fchip.active { background:var(--em-soft); border-color:var(--em-line); color:var(--cv-paper); }
+.cv-fchip-n { font-family:'JetBrains Mono',ui-monospace,monospace; font-size:10px; color:var(--cv-ash); }
+.cv-fchip.active .cv-fchip-n { color:var(--em); }
+.cv-controls { display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:0 12px 10px;
+  border-bottom:1px solid var(--cv-line); }
+.cv-controls select { width:100%; background:#0c1013; color:var(--cv-bone); border:1px solid var(--cv-line);
+  border-radius:7px; padding:6px 8px; font:inherit; font-size:12px; cursor:pointer; }
+.cv-controls select:focus { outline:none; border-color:var(--em-line); }
+.cv-list { flex:1; overflow-y:auto; padding:8px; display:flex; flex-direction:column; gap:3px; }
+/* ---- conversation button: just the topic logo + topic; everything else lives
+   in the hover (i) popover. Clean filled hover/active, no left-border accent. */
+.cv-item { position:relative; border-radius:10px; }
+.cv-link { display:flex; gap:11px; align-items:center; padding:9px 54px 9px 11px; border-radius:10px;
+  text-decoration:none; color:var(--cv-bone); min-width:0;
+  transition:background .12s ease, box-shadow .12s ease; }
+.cv-link:hover { text-decoration:none; background:rgba(255,255,255,0.045); }
+.cv-item.active .cv-link { background:var(--em-soft); box-shadow:inset 0 0 0 1px var(--em-line); }
+.cv-mark-wrap { position:relative; flex:none; display:flex; }
+.cv-mark-wrap.is-active::after { content:""; position:absolute; top:-2px; right:-2px; width:8px; height:8px;
+  border-radius:50%; background:var(--em); box-shadow:0 0 0 2px #0a0d0f, 0 0 6px var(--em);
+  animation:pulse 1.8s ease-in-out infinite; }
+.cv-topic { flex:1; min-width:0; font-size:13.5px; font-weight:500; color:var(--cv-paper); line-height:1.35;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cv-item.active .cv-topic { color:#fff; }
+/* ---- hover action buttons (i / delete) — reserved gutter, no layout shift ---- */
+.cv-info, .cv-del { position:absolute; top:50%; transform:translateY(-50%); width:24px; height:24px;
+  border:0; border-radius:7px; background:transparent; color:var(--cv-ash); cursor:pointer;
+  display:grid; place-items:center; padding:0; opacity:0;
+  transition:opacity .12s ease, background .12s ease, color .12s ease; }
+.cv-info { right:32px; }
+.cv-del { right:7px; font-size:15px; line-height:1; }
+.cv-item:hover .cv-info, .cv-item:hover .cv-del,
+.cv-info:focus-visible, .cv-del:focus-visible { opacity:1; }
+.cv-info svg { width:15px; height:15px; }
+.cv-info:hover { background:rgba(255,255,255,0.08); color:var(--cv-paper); }
+/* ---- (i) details popover — fixed-positioned by JS so the list's overflow
+   can't clip it ---- */
+.cv-tip { position:fixed; z-index:80; left:0; top:0; max-width:280px; min-width:180px;
+  padding:11px 13px; border-radius:11px; background:#0e1317; border:1px solid var(--cv-line);
+  box-shadow:0 12px 34px rgba(0,0,0,0.55); color:var(--cv-bone); font-size:12px; line-height:1.5;
+  opacity:0; visibility:hidden; transform:translateY(4px); pointer-events:none;
+  transition:opacity .12s ease, transform .12s ease; }
+.cv-tip.show { opacity:1; visibility:visible; transform:none; }
+.cv-tip-h { display:flex; align-items:center; gap:7px; margin-bottom:7px; padding-bottom:7px;
+  border-bottom:1px solid var(--cv-line); font-family:'JetBrains Mono',ui-monospace,monospace;
+  font-size:11px; color:var(--cv-paper); }
+.cv-tip-st { text-transform:capitalize; color:var(--cv-ash); }
+.cv-tip-st.active { color:var(--em); }
+.cv-tip-row { display:grid; grid-template-columns:64px 1fr; gap:8px; align-items:baseline; padding:2px 0; }
+.cv-tip-k { color:var(--cv-ash); font-family:'JetBrains Mono',ui-monospace,monospace; font-size:9.5px;
+  text-transform:uppercase; letter-spacing:0.09em; }
+.cv-tip-v { color:var(--cv-paper); word-break:break-word; }
+.cv-nomatch { display:none; padding:18px 14px; color:var(--cv-ash);
+  font-family:'JetBrains Mono',ui-monospace,monospace; font-size:12px; text-align:center; }
+.cv-list-empty { padding:24px 14px; color:var(--cv-ash); font-size:12.5px; text-align:center; line-height:1.6; }
+.cv-del:hover { background:rgba(248,113,113,0.16); color:#f87171; opacity:1; }
+.cv-del:disabled { opacity:0.4; }
+.cv-railfoot { padding:12px; border-top:1px solid var(--cv-line); }
+.cv-railfoot .btn { width:100%; justify-content:center; }
+/* ---- main pane ----
+   The reader keeps a measure while its pane runs full-bleed: a transcript is
+   prose, and prose set the full width of a 1600px pane is unreadable however
+   much screen there is. ch-based so the cap tracks the font, not a magic pixel
+   count.
+
+   Sizing note: `ch` is the advance width of "0", which in a proportional font
+   is wider than the average glyph — so these are NOT 123/138 characters per
+   line, they're ~1030px/~1160px at the 14px body size. Picked deliberately:
+   82ch resolved to 688px, well under the 960px this column used to be, which
+   left ~900px of the pane empty and read as a skinny ribbon. */
+.cv-main { overflow-y:auto; min-width:0; position:relative; }
+.cv-read { max-width:123ch; margin:0 auto; padding:40px var(--gutter) 96px; }
+.cv2.cv-fullscreen .cv-read { max-width:138ch; }
+
+/* ---- scroll progress rail ----
+   Sticky, not fixed: .cv-main is the scroller (the window never scrolls on
+   this page), so a sticky first child rides the top of the *pane* and needs
+   no knowledge of the rail's width or the topbar's height. margin-bottom:-2px
+   keeps it from displacing the transcript. Animates transform only — a width
+   transition here would relayout the pane on every scroll frame. */
+.cv-prog {
+  position:sticky; top:0; z-index:12;
+  height:2px; margin-bottom:-2px;
+  background:transparent; pointer-events:none;
+}
+.cv-prog i {
+  display:block; height:100%; width:100%;
+  transform:scaleX(0); transform-origin:0 50%;
+  background:linear-gradient(90deg, var(--em), #6ee7b7);
+  box-shadow:0 0 10px rgba(16,185,129,0.55);
+  transition:transform .08s linear;
+}
+
+/* ---- jump to latest ----
+   A zero-height sticky footer inside .cv-read: it hovers over the bottom of
+   whatever pane it's in, so it survives the rail collapsing, fullscreen, and
+   the mobile single-column layout without a single hard-coded offset.
+   Only shows when SSE lands a message you can't see — if you're already at the
+   bottom the transcript just grows and the button stays out of the way. */
+.cv-jumpwrap {
+  position:sticky; bottom:22px; z-index:14;
+  height:0; display:flex; justify-content:center;
+  pointer-events:none;
+}
+.cv-jump {
+  transform:translateY(14px);
+  display:inline-flex; align-items:center; gap:8px;
+  padding:8px 14px; border-radius:999px; min-height:32px;
+  border:1px solid var(--em-line); background:rgba(9,14,12,0.92);
+  backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+  color:var(--em); cursor:pointer;
+  font:inherit; font-size:12.5px; font-weight:500;
+  box-shadow:0 10px 30px -8px rgba(0,0,0,0.8);
+  opacity:0; visibility:hidden;
+  transition:opacity .18s ease, transform .18s cubic-bezier(0.16,1,0.3,1), visibility .18s;
+}
+.cv-jumpwrap.show .cv-jump {
+  opacity:1; visibility:visible; transform:translateY(0); pointer-events:auto;
+}
+.cv-jump:hover { background:rgba(16,185,129,0.16); }
+.cv-jump svg { width:13px; height:13px; }
+.cv-jump .cv-jump-n {
+  font-family:'JetBrains Mono',ui-monospace,monospace; font-size:10px;
+  background:var(--em); color:#06110f; border-radius:999px; padding:1px 6px; font-weight:700;
+}
+.cv-read-head { margin-bottom:0; }
+.cv-eyebrow { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+.cv-actions { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+/* Actions panel beneath the Cast — same .cv-box shell as Cast and Conversation
+   so the reader is three matching modules stacked. */
+.cv-actionbox { padding-bottom:0.9rem; }
+/* Window + destructive controls, pushed to the far edge so the four primary
+   actions read as a set rather than as part of a tray of eight. */
+.cv-actions-util { display:flex; align-items:center; gap:8px; margin-left:auto; }
+/* The four primary actions. Each carries one hue on its icon, its border and
+   its hover — the label stays light, so the row is colour-coded rather than a
+   row of coloured blocks. Emerald is deliberately not in this set: it means
+   "live / lead" elsewhere on this page. */
+.cv-abtn { display:inline-flex; align-items:center; gap:7px; }
+.cv-abtn svg { width:14px; height:14px; flex:0 0 auto; color:var(--abtn, #a1a1aa);
+  transition:color .14s ease; }
+.cv-abtn { border-color:color-mix(in srgb, var(--abtn, #3f3f46) 34%, transparent); }
+.cv-abtn:hover { border-color:color-mix(in srgb, var(--abtn, #3f3f46) 60%, transparent);
+  background:color-mix(in srgb, var(--abtn, #3f3f46) 10%, transparent); }
+.cv-abtn.is-violet { --abtn:#a78bfa; }
+.cv-abtn.is-sky    { --abtn:#38bdf8; }
+.cv-abtn.is-amber  { --abtn:#fbbf24; }
+.cv-abtn.is-rose   { --abtn:#f472b6; }
+/* Media-prompt buttons (Images / Audio) — icon + label, same height as the
+   export buttons beside them. The icon is a 14px stroke SVG, so it needs an
+   explicit size: .btn doesn't constrain its children. */
+/* ---- Actions help ----
+   ONE "?" for the whole pane, sat beside the ACTIONS heading, rather than four
+   badges straddling four button borders. It explains all four actions in a
+   single popover, so each explanation gets a readable width instead of a 264px
+   tip crammed under a button. Click to open — a hover tip can't hold four
+   paragraphs still long enough to read, and it's dead on touch. */
+.cv-box-head { display:flex; align-items:center; gap:8px; margin-bottom:0.7rem; }
+.cv-box-head .cv-box-label { margin:0; }
+/* The pane, not the "?", is the positioning context: anchored to the badge the
+   popover dropped straight over the four buttons it was explaining. Anchored to
+   .cv-actionbox it clears the whole row and opens beneath it. */
+.cv-actionbox { position:relative; }
+.cv-ahelp { display:inline-flex; }
+.cv-ahelp-btn {
+  width:17px; height:17px; padding:0; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  background:#22252a; border:1px solid rgba(255,255,255,0.16);
+  color:#c8cbd2; font:700 10px/1 inherit; cursor:pointer;
+  transition:color .12s, border-color .12s, background .12s;
+}
+.cv-ahelp-btn:hover, .cv-ahelp-btn:focus-visible,
+.cv-ahelp-btn[aria-expanded="true"] {
+  color:var(--em); border-color:var(--em); background:var(--em-soft);
+  outline:none;
+}
+.cv-ahelp-pop {
+  /* left == .cv-box's own horizontal padding, so the popover's edge lines up
+     with the first button above it rather than sitting 4px proud of it. */
+  position:absolute; top:calc(100% - 5px); left:1.15rem; z-index:40;
+  width:min(460px, calc(100% - 2.3rem));
+  padding:13px 15px 14px; border-radius:10px;
+  /* A genuinely RAISED surface. The old tip sat at #0b0d0f — a hair off the
+     page background — so it read as see-through wherever it landed on the gap
+     between panels. This is several stops lighter, with a visible hairline and
+     a real shadow, so the text always has its own ground. Opaque literals, not
+     tokens: the panel tokens are translucent by design. */
+  background:#191c21; border:1px solid rgba(255,255,255,0.13);
+  box-shadow:0 18px 44px -10px rgba(0,0,0,0.85), 0 0 0 1px rgba(0,0,0,0.45);
+  text-align:left; letter-spacing:0; text-transform:none;
+}
+.cv-ahelp-pop[hidden] { display:none; }
+.cv-ahelp-head {
+  margin:0 0 10px; padding-bottom:9px;
+  border-bottom:1px solid rgba(255,255,255,0.08);
+  font:600 10.5px/1 'JetBrains Mono',ui-monospace,monospace;
+  letter-spacing:0.1em; text-transform:uppercase; color:#8b9099;
+}
+.cv-ahelp-list { list-style:none; margin:0; padding:0;
+  display:flex; flex-direction:column; gap:11px; }
+.cv-ahelp-row { display:flex; align-items:flex-start; gap:9px; }
+.cv-ahelp-ico { flex:0 0 auto; display:flex; margin-top:1px; }
+.cv-ahelp-ico svg { width:14px; height:14px; color:var(--abtn,#a1a1aa); }
+.cv-ahelp-row.is-violet { --abtn:#a78bfa; }
+.cv-ahelp-row.is-sky    { --abtn:#38bdf8; }
+.cv-ahelp-row.is-amber  { --abtn:#fbbf24; }
+.cv-ahelp-row.is-rose   { --abtn:#f472b6; }
+.cv-ahelp-txt { display:flex; flex-direction:column; gap:2px;
+  font-size:12.5px; line-height:1.55; color:#b6bac2; }
+.cv-ahelp-txt b { color:#e7eaee; font-weight:600; font-size:12.5px; }
+.cv-ahelp-txt span b { color:#e7eaee; }
+/* Narrow screens: give it the pane's full inner width rather than a fixed one. */
+@media (max-width:560px) {
+  .cv-ahelp-pop { width:calc(100% - 2.3rem); }
+}
+/* The overlay both buttons fill in — see _media_prompt_modal(). */
+.cv-pm { position:fixed; inset:0; z-index:60; display:flex; align-items:center;
+  justify-content:center; padding:24px; background:rgba(3,5,8,0.72);
+  backdrop-filter:blur(2px); }
+.cv-pm.hidden { display:none; }
+.cv-pm-card { display:flex; flex-direction:column; width:min(880px,100%);
+  max-height:min(84vh,760px);
+  /* Opaque literal, NOT var(--panel). The panel token is rgba(24,24,27,0.4) —
+     40% opaque, which is right for the in-flow boxes that sit on the page
+     background, and wrong for anything floating over content: the transcript
+     read straight through the prompt text. Same raised-surface value as
+     .cv-ahelp-pop, so the two overlays agree. */
+  background:#191c21;
+  border:1px solid rgba(255,255,255,0.13); border-radius:12px; overflow:hidden;
+  box-shadow:0 24px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(0,0,0,0.45); }
+.cv-pm-head { display:flex; align-items:flex-start; gap:16px; padding:16px 18px;
+  border-bottom:1px solid var(--cv-line); }
+.cv-pm-head h2 { margin:0; font-size:15px; color:var(--text); }
+.cv-pm-sub { margin:4px 0 0; font-size:12.5px; color:var(--muted); max-width:60ch; }
+.cv-pm-head .icon-btn { margin-left:auto; flex:0 0 auto; }
+.cv-pm-text { flex:1 1 auto; min-height:240px; width:100%; resize:none; border:0;
+  padding:16px 18px; background:transparent; color:var(--text);
+  font-family:'JetBrains Mono',ui-monospace,monospace; font-size:12.5px;
+  line-height:1.6; white-space:pre-wrap; }
+.cv-pm-text:focus { outline:none; }
+.cv-pm-foot { display:flex; align-items:center; gap:10px; padding:12px 18px;
+  border-top:1px solid var(--cv-line); background:rgba(255,255,255,0.02); }
+.cv-pm-note { font-size:12px; color:var(--muted,#a1a1aa); margin-right:auto; max-width:52ch; }
+.cv-pm-note strong { color:var(--text); font-weight:600; }
+@media (max-width:640px) {
+  .cv-pm { padding:0; }
+  .cv-pm-card { max-height:100vh; max-height:100dvh; border-radius:0; border:0; }
+  .cv-pm-note { display:none; }
+}
+.cv-pill { display:inline-flex; align-items:center; gap:7px; border:1px solid var(--cv-line);
+  border-radius:999px; color:var(--cv-ash); padding:3px 11px;
+  font-family:'JetBrains Mono',ui-monospace,monospace; font-size:10.5px; text-transform:uppercase;
+  letter-spacing:0.06em; }
+.cv-pill .dot { width:6px; height:6px; border-radius:50%; background:var(--cv-ash); }
+.cv-pill.is-active { color:var(--em); border-color:var(--em-line); background:var(--em-soft); }
+.cv-pill.is-active .dot { background:var(--em); box-shadow:0 0 6px var(--em);
+  animation:pulse 1.8s ease-in-out infinite; }
+.cv-turn { display:inline-flex; align-items:center; gap:7px; border:1px solid var(--em-line);
+  border-radius:999px; background:var(--em-soft); color:var(--em); padding:3px 11px;
+  font-family:'JetBrains Mono',ui-monospace,monospace; font-size:10.5px; letter-spacing:0.03em; }
+/* "quiet for N" — elapsed since the last message on an active run. Neutral
+   until it passes this conversation's own median gap x3 (see
+   export.quiet_threshold_seconds), because a long turn is normal: run #54's
+   facilitator spent 16.8 min writing a deliverable while every other turn took
+   under 1.5 min. A hung agent looks identical from here, which is the whole
+   point of surfacing the number rather than a verdict. */
+.cv-quiet { display:inline-flex; align-items:center; gap:7px; border:1px solid var(--border);
+            border-radius:999px; padding:3px 10px; font-size:11.5px; color:var(--muted-2);
+            font-variant-numeric:tabular-nums; }
+.cv-quiet .dot { width:6px; height:6px; border-radius:50%; background:var(--muted-2); }
+.cv-quiet.is-stale { border-color:rgba(245,158,11,0.4); color:var(--warn,#f59e0b); }
+.cv-quiet.is-stale .dot { background:var(--warn,#f59e0b); }
+.cv-turn .dot { width:6px; height:6px; border-radius:50%; background:var(--em);
+  box-shadow:0 0 6px var(--em); animation:pulse 1.8s ease-in-out infinite; }
+/* The conversation title. Was JetBrains Mono 800 — a monospace headline sitting
+   on top of monospace meta, so nothing separated the topic from the run data.
+   It's the page's one real headline now, in the body face. Styling lives here
+   rather than on `.cv-h1` alone because `.cv-read-head h1` would outrank a bare
+   class and silently win. */
+.cv-read-head h1.cv-h1 { margin:0; font-size:27px; font-weight:650;
+  letter-spacing:-0.02em; line-height:1.22; color:var(--cv-paper);
+  /* A topic is the run's NAME, but nothing stopped an operator pasting a whole
+     brief into the field — run #57 arrived as a four-thousand-character
+     headline that pushed the cast and the transcript off the screen. The seed
+     path caps new ones; this clamps the ones already in the DB, retroactively
+     and with no migration. The full text stays in the `title=` tooltip. */
+  display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+.cv-empty { height:100%; min-height:60vh; display:flex; flex-direction:column; align-items:center;
+  justify-content:center; gap:14px; color:var(--cv-ash); text-align:center; padding:24px; }
+.cv-empty h1 { margin:0; font-size:15px; font-weight:600; color:var(--text); }
+.cv-empty svg { width:30px; height:30px; opacity:0.5; }
+/* ---- overview (no conversation selected) ---- */
+.cv-ov { max-width:var(--w-panel); margin:0 auto; padding:40px 32px 72px; }
+.cv-ov-head h1 { margin:0; font-family:'JetBrains Mono',ui-monospace,monospace; font-size:24px;
+  font-weight:800; letter-spacing:-0.01em; color:var(--cv-paper); }
+.cv-ov-head p { margin:6px 0 0; color:var(--cv-ash); font-size:13.5px; }
+.cv-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:22px 0 28px; }
+.cv-stat { border:1px solid var(--cv-line); border-radius:10px; padding:16px 18px;
+  background:rgba(255,255,255,0.015); }
+.cv-stat-n { display:block; font-family:'JetBrains Mono',ui-monospace,monospace; font-size:26px;
+  font-weight:800; line-height:1; color:var(--cv-paper); font-variant-numeric:tabular-nums; }
+.cv-stat-n.em { color:var(--em); }
+.cv-stat-l { display:block; margin-top:7px; font-size:11px; text-transform:uppercase;
+  letter-spacing:0.12em; color:var(--cv-ash); }
+.cv-recent h2 { margin:0 0 12px; font-size:11px; text-transform:uppercase; letter-spacing:0.14em;
+  color:var(--cv-ash); font-weight:600; }
+/* ---- recent conversations: a responsive card grid, not a flat list ---- */
+.cv-recent-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(268px, 1fr)); gap:12px; }
+.cv-card { display:flex; flex-direction:column; gap:11px; padding:16px 17px; border-radius:14px;
+  border:1px solid var(--cv-line); background:rgba(255,255,255,0.015); text-decoration:none;
+  transition:border-color .14s ease, background .14s ease, transform .14s ease, box-shadow .14s ease; }
+.cv-card:hover { text-decoration:none; border-color:var(--em-line); background:rgba(255,255,255,0.03);
+  transform:translateY(-2px); box-shadow:0 10px 26px rgba(0,0,0,0.32); }
+.cv-card-top { display:flex; align-items:center; gap:11px; min-width:0; }
+.cv-card-topic { flex:1; min-width:0; font-size:14px; font-weight:600; color:var(--cv-paper);
+  line-height:1.35; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.cv-card-live { flex:none; font-family:'JetBrains Mono',ui-monospace,monospace; font-size:9px;
+  text-transform:uppercase; letter-spacing:0.1em; color:var(--em); background:var(--em-soft);
+  border:1px solid var(--em-line); border-radius:999px; padding:2px 7px; align-self:flex-start; }
+.cv-card-cast { font-size:12.5px; color:var(--cv-bone); opacity:0.82; white-space:nowrap;
+  overflow:hidden; text-overflow:ellipsis; }
+.cv-card-meta { display:flex; align-items:center; gap:8px; font-family:'JetBrains Mono',ui-monospace,monospace;
+  font-size:10.5px; color:var(--cv-ash); margin-top:auto; }
+.cv-card-dot { width:2.5px; height:2.5px; border-radius:50%; background:var(--cv-ash); opacity:0.6; }
+.cv-ov-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:24px; }
+/* ---- full screen ----
+   Distraction-free reader: the topbar AND the nav rail both go, and <main>
+   reclaims the rail's inset. Leaving the rail would make "full screen" a lie. */
+.cv2.cv-fullscreen { height:calc(100dvh - var(--srcbar-h)); grid-template-columns:minmax(0,1fr); }
+body:has(.cv2.cv-fullscreen) .topbar,
+body:has(.cv2.cv-fullscreen) .siderail { display:none; }
+body:has(.cv2.cv-fullscreen) main { min-height:calc(100dvh - var(--srcbar-h)); margin-left:0; }
+body:has(.cv2.cv-fullscreen) .topbar { margin-left:0; }
+/* ---- mobile ---- */
+@media (max-width:900px) {
+  /* minmax(0,1fr), not 1fr — an auto min would let the rail's nowrap topic
+     lines set the column's min-content and force horizontal page scroll. */
+  .cv2 { grid-template-columns:minmax(0,1fr); grid-template-rows:auto 1fr; height:auto;
+    min-height:calc(100dvh - var(--chrome-h)); }
+  .cv-rail { border-right:0; border-bottom:1px solid var(--cv-line); }
+  .cv-resizer { display:none; }
+  .cv-list { max-height:38vh; }
+  /* A conversation (or its 404) reads first; the list follows it. With the
+     list on top the transcript started ~700px down a 812px phone (RT-38). */
+  .cv2.cv-reading { grid-template-rows:auto auto; }
+  .cv2.cv-reading .cv-rail { order:2; border-bottom:0; border-top:1px solid var(--cv-line); }
+  /* …and inside it the transcript comes straight after the title and cast;
+     the action and kickoff panels follow it. */
+  .cv2.cv-reading .cv-read { display:flex; flex-direction:column; }
+  .cv2.cv-reading .cv-read > * { order:2; }
+  .cv2.cv-reading .cv-read > :is(.cv-read-head, .cv-cast, .cv-convo-box, .cv-jumpwrap) { order:1; }
+  #cv-rail-open { top:auto; bottom:14px; }
+  .cv-read { padding:28px 16px 56px; }
+  .cv-ov { padding:28px 16px 56px; }
+  .cv-stats { grid-template-columns:1fr 1fr; }
+  .cv-actions-util { margin-left:0; }
+  .cv-del { opacity: 0.65; }
+}
+/* No hover to reveal them on a touchscreen — the "i" was unreachable. */
+@media (hover:none) {
+  .cv-info, .cv-del { opacity:0.65; }
+}
+@media (max-width:600px) {
+  .cv2 .icon-btn, .cv2 .icon-btn-danger { width:36px; height:36px; }
+  .cv-fchip { min-height:32px; }
+  .cv-info, .cv-del { width:32px; height:32px; }
+  .cv-info { right:40px; }
+  .cv-del { right:4px; }
+  .cv-link { padding-right:78px; }  /* gutter for the two 32px buttons */
+  .cv-ahelp-btn { width:28px; height:28px; }
+}
