@@ -1,9 +1,9 @@
 {
-  "revision": "6a1837c11c00fc1f3989acb3a631a1dc0ad45cdb",
+  "revision": "64e34abdb6bb868021e0c5dd6f513e843b247fdd",
   "files": {
-    "src/agent_chat_mcp.py": "efd32f546f35457f5f09928cb0d2c346da5f67ff",
+    "src/agent_chat_mcp.py": "53bd6e2d8a707144f390bcc83937e8fbb7c67a92",
     "src/orchestrator/availability.py": "bc514541baa3df5323e6d7cad20db370aba9df1f",
-    "src/orchestrator/delivery.py": "325feb6f308ce8b10ea97e33bb88a35a1992c44a",
+    "src/orchestrator/delivery.py": "ce9dca241ac4c5b4b5c29283bf9feea742e1aca0",
     "src/orchestrator/seeding.py": "bef13f554ff51a02d280cf7a4c3208733072336c",
     "src/orchestrator/watchdog.py": "763a1355d8757893b431348fdd7d7a3d6173b41d",
     "src/web/api/conversations.py": "d9f9272f66ba5e02e10000226ee7be3e730d1042"
