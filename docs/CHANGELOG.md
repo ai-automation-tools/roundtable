@@ -4,6 +4,13 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 ## 2026-11-22 (latest)
 
+### Changed — message senders and signals are escaped and checked; ingest validates rows
+
+- **The transcript escapes a message's `sender` and `signal`** where they become CSS class names, on the server and in the live-append script. Both used to be pasted in raw.
+- **One sender grammar**, `schema.SENDER_RE` (letters, digits, `-`, `_`, `.`, up to 64): the MCP server refuses to start with an `--agent-id` outside it, and `/api/ingest` refuses a message whose sender doesn't match or whose signal isn't `done`/`blocked`/`result`.
+- **`/api/ingest` checks a batch before applying it**: integer ids, string content, and a 32 MB body cap (`413`). A bad row is a `400` naming it, and nothing in the batch is stored. Every sender and signal already in a local database passes.
+- Tests: `tests/test_web_readonly.py`. Audit item RT-18.
+
 ### Fixed — the live stream no longer drops a run's final message
 
 - **The SSE stream sends every message before `complete`.** It read new messages and then the conversation's status; a final send landing between the two reads closed the stream without that message (often the closing statement or the deliverable) until a reload. It now reads the status first: since the send commits its message and the close together, a `complete` read means every message is already visible.

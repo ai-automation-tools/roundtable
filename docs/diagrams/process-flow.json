@@ -148,8 +148,8 @@
       "sources": [
         {
           "path": "src/agent_chat_mcp.py",
-          "line": 659,
-          "end_line": 712
+          "line": 660,
+          "end_line": 713
         }
       ]
     },
@@ -164,8 +164,8 @@
       "sources": [
         {
           "path": "src/agent_chat_mcp.py",
-          "line": 983,
-          "end_line": 1025
+          "line": 984,
+          "end_line": 1026
         }
       ]
     },
@@ -205,8 +205,8 @@
       "sources": [
         {
           "path": "src/agent_chat_mcp.py",
-          "line": 847,
-          "end_line": 936
+          "line": 848,
+          "end_line": 937
         }
       ]
     },
@@ -221,13 +221,13 @@
       "sources": [
         {
           "path": "src/agent_chat_mcp.py",
-          "line": 937,
-          "end_line": 944
+          "line": 938,
+          "end_line": 945
         },
         {
           "path": "src/agent_chat_mcp.py",
-          "line": 815,
-          "end_line": 834
+          "line": 816,
+          "end_line": 835
         }
       ]
     },
