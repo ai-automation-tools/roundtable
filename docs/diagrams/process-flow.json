@@ -148,8 +148,8 @@
       "sources": [
         {
           "path": "src/agent_chat_mcp.py",
-          "line": 660,
-          "end_line": 713
+          "line": 658,
+          "end_line": 711
         }
       ]
     },
@@ -164,8 +164,8 @@
       "sources": [
         {
           "path": "src/agent_chat_mcp.py",
-          "line": 984,
-          "end_line": 1026
+          "line": 982,
+          "end_line": 1024
         }
       ]
     },
@@ -190,7 +190,7 @@
         {
           "path": "src/orchestrator/watchdog.py",
           "line": 1,
-          "end_line": 45
+          "end_line": 44
         }
       ]
     },
@@ -205,8 +205,8 @@
       "sources": [
         {
           "path": "src/agent_chat_mcp.py",
-          "line": 848,
-          "end_line": 937
+          "line": 846,
+          "end_line": 935
         }
       ]
     },
@@ -221,13 +221,13 @@
       "sources": [
         {
           "path": "src/agent_chat_mcp.py",
-          "line": 938,
-          "end_line": 945
+          "line": 936,
+          "end_line": 943
         },
         {
           "path": "src/agent_chat_mcp.py",
-          "line": 816,
-          "end_line": 835
+          "line": 814,
+          "end_line": 833
         }
       ]
     },

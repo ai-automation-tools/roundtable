@@ -99,7 +99,9 @@ def filter_personas(
                 continue
         out.append(p)
     if sort == "newest":
-        out.sort(key=lambda p: p.created_at, reverse=True)
+        # Slug breaks ties: a bulk import stamps many cards with one time, and
+        # an unbroken tie made the order (and a test) flaky (audit RT-29).
+        out.sort(key=lambda p: (p.created_at, p.slug), reverse=True)
     else:
         out.sort(key=lambda p: p.name.lower())
     return out

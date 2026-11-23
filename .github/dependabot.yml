@@ -25,12 +25,12 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
+  # Majors allowed for actions (unlike pip/docker): every workflow pins a SHA,
+  # and a held-back major is how ci.yml sat on checkout@v4 while homepage.yml
+  # was on v7 (audit RT-29).
   - package-ecosystem: github-actions
     directory: "/"
     schedule: { interval: weekly, day: monday }
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
     groups:
       actions:
         patterns: ["*"]

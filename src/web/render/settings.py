@@ -19,7 +19,6 @@ lives next to the API it posts to.
 from __future__ import annotations
 
 import html
-import json
 
 from web.assets import (DELIVERY_SETTINGS_CSS, NOTIFICATIONS_CSS,
                         ORCHESTRATE_CSS, SETTINGS_CSS, SETUP_CSS,

@@ -4,6 +4,14 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 ## 2026-11-22 (latest)
 
+### Changed — CI runs once per PR, on Linux too, and lints
+
+- **Pushes run CI only on `main`.** A PR's branch is covered by `pull_request`; running on its pushes as well doubled every PR's CI.
+- **New `test-linux` job**: the suites on Ubuntu / Python 3.14, the runtime the hosted mirror uses (the existing `test` job is Windows / 3.12). **New `lint` job**: `ruff check --select E9,F`. Both gate the Fly deploy with `test`. The 15 existing findings (unused imports, one unused variable) are fixed.
+- 20-minute timeouts (the default was six hours), every action pinned to a commit SHA, and Dependabot now offers action major bumps.
+- The persona explorer's *Newest* sort breaks ties by slug, so cards imported in one batch keep a stable order.
+- Audit item RT-29.
+
 ### Changed — maintainer skills caught up with the code
 
 - The three skills installed from `agent-skills` (`agent-chat-conv-types`, `agent-chat-delivery`, `agent-chat-run-triage`) are re-installed from its `main`; the copies here had fallen two upstream revisions behind.
