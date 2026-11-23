@@ -556,6 +556,31 @@ def test_orchestrate_is_local_only_when_readonly():
             importlib.reload(web_ui)
 
 
+def test_phones_get_the_transcript_before_the_list():
+    """On a phone the conversation list used to stack above the reader, so a
+    shared link opened ~700px of list before the title (audit RT-38). The
+    detail and 404 pages opt in with ``cv-reading``; the index keeps the list
+    first, since there the list is the page."""
+    from orchestrator import seeding
+    from web.assets import _CONV_CSS
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
+        db = Path(tmp) / "chat.db"
+        cid = seeding.seed_conversation(
+            db_path=str(db), topic="phone layout", participants=["codex", "claude-code"],
+            mode="turns", max_turns=1, first="codex").conversation_id
+        web_ui.set_db_path(str(db))
+        web_ui.db_init()
+        client = TestClient(web_ui.app, base_url=LOCAL)
+        assert 'class="cv2 cv-reading"' in client.get(f"/conversations/{cid}").text
+        missing = client.get("/conversations/99999")
+        assert missing.status_code == 404 and 'class="cv2 cv-reading"' in missing.text
+        assert 'class="cv2 cv-reading"' not in client.get("/conversations").text
+    mobile = _CONV_CSS[_CONV_CSS.index("@media (max-width:900px)"):]
+    mobile = mobile[:mobile.index("\n}")]
+    assert ".cv2.cv-reading .cv-rail { order:2;" in mobile
+    assert ".cv-convo-box" in mobile and ".cv2.cv-reading .cv-read > * { order:2; }" in mobile
+
+
 def test_notifications_page_is_local_only_when_readonly():
     """Hosted /notifications renders the explainer, not the form. The events it
     would notify about fire in whichever process drives the CLI windows, which

@@ -1565,7 +1565,7 @@ def _render_conversation(data: dict[str, Any],
         body = f'<div class="cv2 cv-fullscreen">{main}</div>'
     else:
         rail = _conversations_rail(convs, int(c["id"]))
-        body = f'<div class="cv2">{rail}{main}</div>{_conv_rail_js()}'
+        body = f'<div class="cv2 cv-reading">{rail}{main}</div>{_conv_rail_js()}'
     return _layout(title, "", body,
                    head_extras=HIGHLIGHT_JS_HEAD + _CAST_CSS + _CONV_CSS,
                    active="conversations",
@@ -1593,6 +1593,6 @@ def _render_conversation_not_found(cid: int, convs: list[dict[str, Any]]) -> str
         '<a class="btn btn-primary" href="/conversations">&larr; Back to conversations</a>'
         "</div></section>"
     )
-    body = f'<div class="cv2">{rail}{center}</div>{_conv_rail_js()}'
+    body = f'<div class="cv2 cv-reading">{rail}{center}</div>{_conv_rail_js()}'
     return _layout("Not found", "", body, head_extras=_CONV_CSS,
                    active="conversations")
