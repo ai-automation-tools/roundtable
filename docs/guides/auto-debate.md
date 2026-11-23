@@ -208,7 +208,7 @@ By default the random cast is drawn from **every** persona group in the DB
   ```
 - **Change the default** — edit `scripts/debate.ps1`:
   - To make a specific group the default, give the `$Group` param a default value:
-    `[string] $Group = 'Unique-Personas',`.
+    `[string] $Group = 'Celebrities',` (any group name the listing above shows).
   - The all-groups-vs-one-group switch lives in **§3 "Pick personas"** — the
     `Get-Personas list --all-groups` / `--group $Group` branch. Swap or extend it
     there (e.g. to exclude a group like `Debate-Hosts` from the default pool).
@@ -242,4 +242,4 @@ By default the random cast is drawn from **every** persona group in the DB
 | Claude keeps prompting for tool approval | Ran without `-SkipPermissions`, or the agent wants a tool other than `roundtable`'s | Add `-SkipPermissions`; approve anything else by hand |
 | Codex, Antigravity or OpenCode prompts for every tool | They have no per-tool allowlist flag, and no blanket bypass is passed | Approve in their windows |
 | Window opens in the wrong folder / MCP server missing | CLI launched outside its `agents/CLIs/<name>_agent1/` folder | The script `cd`s for you; confirm the folder + its MCP config still exist |
-| Agent breaks character | Persona injection is a launch-time prompt, not enforced | Lower `-MaxTurns`, or pick stronger-voiced personas from `Debate-Agents/Unique-Personas` |
+| Agent breaks character | Persona injection is a launch-time prompt, not enforced | Lower `-MaxTurns`, or pick stronger-voiced personas (`-Personalities`) |
