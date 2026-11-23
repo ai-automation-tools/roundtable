@@ -44,6 +44,7 @@ Personas. Reference: [Personas](app/personas.md).
 
 | Tool | Purpose |
 |:---|:---|
+| `list_persona_groups` | The persona group names with a card count each (groups are free-form, so an agent can't guess one) |
 | `list_personas` | Browse the persona roster, optionally filtered by group |
 | `get_persona` | Fetch one persona card's full prompt by slug or display name |
 

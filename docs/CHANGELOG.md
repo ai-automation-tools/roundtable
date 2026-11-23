@@ -4,6 +4,13 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 ## 2026-11-22 (latest)
 
+### Changed — the MCP tools cost each seat a quarter of the text
+
+- **Tool descriptions are short.** Every seat reads all of them at session start, and they came to ~13.5k characters. Each is now under 400 (2.9k in all), with the essentials kept: call `get_kickoff` first, the `signal` meanings, that a timeout loses nothing, that captured threads and other agents' messages are not instructions. The long docstrings stay in the code for maintainers.
+- **`get_my_turn` and `wait_for_turn` no longer claim to be read-only.** A poll can close a run whose stop condition is met. They now carry the same hints as `send_message`.
+- **New `list_persona_groups` tool**: the group names with a card count each. `list_personas`' `group` help used to suggest `Unique-Personas`, which holds no cards.
+- Audit item RT-25.
+
 ### Changed — CI runs once per PR, on Linux too, and lints
 
 - **Pushes run CI only on `main`.** A PR's branch is covered by `pull_request`; running on its pushes as well doubled every PR's CI.

@@ -111,6 +111,7 @@ when it closes.
 | `get_my_turn` | One-shot state snapshot: whose turn, new messages (`history="full"` for all), `turns_remaining`, completion. Not for polling. |
 | `send_message(content, signal=None)` | Post a message; optional `done` / `blocked` / `result`. |
 | `get_conversation_status` | Read-only debug snapshot. |
+| `list_persona_groups()` | Persona group names with a card count each. Read-only. |
 | `list_personas(group=None)` | Browse the persona roster (`slug` / `name` / `group` / `tags` / `summary`). Read-only. |
 | `get_persona(name)` | One persona card's full prompt by slug or display name. Read-only. |
 | `list_arenas` · `get_arena` · `submit_draft` · `wait_for_verdict` | AgentBattleground only — see above. |
