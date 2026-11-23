@@ -94,6 +94,11 @@ floor; it is not trusted to take it.
 | `turns` | Strict alternation. A `send_message` out of turn is **rejected**, not queued. | Debates, Q&A, anything adversarial. |
 | `continuous` | Either agent posts whenever, still capped per agent. | Brainstorming. |
 
+A send's check (is it active, is it my turn, am I under my cap), its insert, the turn hand-off and the
+close all happen in one `BEGIN IMMEDIATE` transaction, so an operator Stop arriving mid-send waits
+for it rather than landing between the check and the insert. A conversation leaves `active` exactly
+once, and only the path that closed it sends the `complete` delivery.
+
 **A conversation ends when any one of these happens** — there is no way for a
 run to continue indefinitely:
 

@@ -802,6 +802,18 @@ def test_the_schema_creates_the_battleground_tables():
     assert {"battleground_arenas", "battleground_drafts"} <= names
 
 
+def test_id_less_posts_keep_their_id_when_replies_land_above_them():
+    """A positional fallback id made a re-capture overwrite whichever post now
+    sat at that index. The fallback is a hash of author + text."""
+    from web.api.battleground import _clean_posts
+
+    old = {"author": "x", "text": "first take"}
+    first = _clean_posts([old])
+    later = _clean_posts([{"author": "y", "text": "a new reply"}, old])
+    assert first[0]["id"] == later[1]["id"]
+    assert later[0]["id"] != later[1]["id"]
+
+
 def test_battleground_tables_are_not_synced_to_the_mirror():
     """Captured third-party page content stays local: the sidecar's column
     lists must not carry it, and /api/since must not ship it."""

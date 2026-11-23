@@ -358,6 +358,151 @@ def test_no_conversation_is_reported_not_raised() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Transitions (audit RT-09): a row leaves 'active' once, and only the caller
+# that moved it delivers `complete`.
+# ---------------------------------------------------------------------------
+
+def _record_deliveries() -> tuple[list[tuple[int, str]], object]:
+    """Swap delivery.deliver for a recorder; returns (calls, original)."""
+    from orchestrator import delivery
+    calls: list[tuple[int, str]] = []
+    original = delivery.deliver
+    delivery.deliver = lambda cid, event, *a, **k: calls.append((cid, event)) or []
+    return calls, original
+
+
+def test_polls_never_rewrite_a_finished_row() -> None:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
+        db, cid = _seed(Path(td), ["a", "b"], max_turns=1)
+        _send("a")
+        _send("b")
+        assert _row(db, cid)["status"] == "complete"
+        before = tuple(_row(db, cid))
+        _turn_state("a")
+        _turn_state("b")
+        assert tuple(_row(db, cid)) == before, "a read-only poll rewrote a complete row"
+
+        # An operator stop on a spent run must survive the next poll too.
+        conn = sqlite3.connect(db, isolation_level=None)
+        conn.execute("UPDATE conversations SET end_reason='stopped by operator' WHERE id=?", (cid,))
+        conn.close()
+        _turn_state("a")
+        assert _row(db, cid)["end_reason"] == "stopped by operator"
+
+
+def _stop_during_send(db: str, cid: int, agent: str) -> tuple[dict, list, dict]:
+    """Run `agent`'s send while an operator Stop (another connection, another
+    thread) fires between the turn check and the insert."""
+    import threading
+
+    from web import db as web_db
+
+    web_db.set_db_path(db)
+    calls, original = _record_deliveries()
+    real_count = mcp.count_messages_by_sender
+    stop_result: dict = {}
+    stopper: list[threading.Thread] = []
+
+    def count_then_operator_stops(conn, c, s):
+        if not stopper:
+            t = threading.Thread(
+                target=lambda: stop_result.update(web_db.stop_conversation(cid) or {}))
+            t.start()
+            t.join(0.3)  # it must be blocked on our write lock, not finished
+            assert t.is_alive(), "stop committed inside the send's transaction"
+            stopper.append(t)
+        return real_count(conn, c, s)
+
+    mcp.count_messages_by_sender = count_then_operator_stops
+    try:
+        sent = _send(agent, "late message")
+        stopper[0].join(15)
+    finally:
+        mcp.count_messages_by_sender = real_count
+        from orchestrator import delivery
+        delivery.deliver = original
+    return sent, calls, stop_result
+
+
+def test_a_stop_waits_for_an_in_flight_send() -> None:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
+        db, cid = _seed(Path(td), ["a", "b"], max_turns=3)
+        sent, calls, stop = _stop_during_send(db, cid, "a")
+        row = _row(db, cid)
+        # The send held the lock first, so it lands; the stop closes after it.
+        assert sent["status"] == "wait"
+        assert _senders(db, cid) == ["a"]
+        assert row["status"] == "complete" and row["current_turn"] is None
+        assert row["end_reason"] == "stopped by operator"
+        assert stop["already_complete"] is False
+        assert calls.count((cid, "complete")) == 1, calls
+
+
+def test_a_send_that_ends_the_run_races_a_stop_and_delivers_once() -> None:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
+        db, cid = _seed(Path(td), ["a", "b"], max_turns=1)
+        _send("a")
+        sent, calls, stop = _stop_during_send(db, cid, "b")
+        row = _row(db, cid)
+        assert sent["status"] == "complete"
+        assert row["end_reason"].startswith("max_turns reached")
+        assert stop["already_complete"] is True
+        assert calls.count((cid, "complete")) == 1, calls
+
+
+def test_cli_stop_closes_once() -> None:
+    import inspect_conversations as ic
+
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
+        db, cid = _seed(Path(td), ["a", "b"], max_turns=2)
+        calls, original = _record_deliveries()
+        try:
+            conn = sqlite3.connect(db, isolation_level=None)
+            conn.row_factory = sqlite3.Row
+            assert ic.cmd_stop(conn, cid, db) == 0
+            first = tuple(_row(db, cid))
+            assert ic.cmd_stop(conn, cid, db) == 0  # "already complete"
+            assert ic.cmd_stop(conn, 9999, db) == 1
+            conn.close()
+        finally:
+            from orchestrator import delivery
+            delivery.deliver = original
+        assert tuple(_row(db, cid)) == first
+        assert calls == [(cid, "complete")]
+
+
+def test_two_agents_cannot_both_claim_an_arena() -> None:
+    from web import db as web_db
+
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
+        db = str(Path(td) / "chat.db")
+        mcp.DB_PATH = db
+        mcp.db_init()
+        web_db.set_db_path(db)
+        aid = web_db.bg_create_arena(
+            url="https://example.test/t", site="generic", title="t",
+            thread=[{"id": "p1", "author": "x", "text": "claim"}])["id"]
+
+        real_pick = mcp._pick_arena
+
+        def pick_then_codex_claims(conn, arena_id):
+            row = real_pick(conn, arena_id)
+            other = sqlite3.connect(db, isolation_level=None)
+            other.execute("UPDATE battleground_arenas SET agent_id='codex' WHERE id=?", (aid,))
+            other.close()
+            return row
+
+        mcp._pick_arena = pick_then_codex_claims
+        try:
+            mcp.AGENT_ID = "claude-code"
+            got = json.loads(asyncio.run(mcp.get_arena(mcp.GetArenaInput())))
+        finally:
+            mcp._pick_arena = real_pick
+        assert got["status"] == "assigned_elsewhere" and got["assigned_to"] == "codex"
+        assert web_db.bg_get_arena(aid)["arena"]["agent_id"] == "codex"
+
+
+# ---------------------------------------------------------------------------
 # Standalone runner (no pytest required)
 # ---------------------------------------------------------------------------
 

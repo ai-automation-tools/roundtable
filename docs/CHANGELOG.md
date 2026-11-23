@@ -4,6 +4,14 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 ## 2026-11-22 (latest)
 
+### Fixed — a Stop racing a send, polls rewriting finished runs, and two agents claiming one arena
+
+- **A send is one transaction.** `send_message` checked the row, inserted, then moved the turn pointer as separate autocommit statements, so an operator Stop (web UI, `inspect_conversations stop`, or a stop pulled from the mirror) could land in between: the message was appended to a stopped run, the finished row got `current_turn` set again, and `complete` was delivered twice. The whole sequence now runs under `BEGIN IMMEDIATE`, so the Stop waits for it.
+- **A conversation is closed once.** Every close goes through `schema.complete_conversation()`, a conditional `UPDATE … WHERE status='active'` that reports whether this caller made the change; only that caller fires the `complete` delivery.
+- **Polls no longer rewrite finished rows.** `get_my_turn` / `wait_for_turn` re-closed a complete conversation on every call, moving `updated_at` (so the sidecar re-shipped it) and turning an operator's "stopped by operator" into "max_turns reached". A finished row is now left byte-identical.
+- **Battleground:** claiming an arena is conditional (`AND agent_id IS NULL`), so the second of two CLIs is told `assigned_elsewhere` instead of both getting "ok". A re-capture merges under `BEGIN IMMEDIATE`. A post its adapter gave no id gets one hashed from author + text instead of its position, so new replies above it no longer overwrite it on the next capture.
+- Tests: `tests/test_mcp_turns.py` (a Stop from another thread during a send; polls on a finished row; CLI stop; the arena claim race). Audit item RT-09.
+
 ### Changed — the database schema is declared once, in `src/schema.py`
 
 - **One module replaces four copies.** The DDL used to be pasted into `agent_chat_mcp.py`, `web/db.py`, `orchestrator/seeding.py` and (personas only) `orchestrator/personas.py`, each with its own migration list, and the sync column lists lived in both `web/db.py` and `scripts/db_sync.py`. Now `src/schema.py` (stdlib only) holds `SCHEMA`, `MIGRATIONS`, `CONV_COLUMNS` / `MSG_COLUMNS` / `PERSONA_COLUMNS` and the arena/draft status values, and every process boots a file through `schema.ensure_schema(conn)`. No column changed; existing databases need nothing.

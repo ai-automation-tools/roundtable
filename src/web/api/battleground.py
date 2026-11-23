@@ -28,6 +28,7 @@ arena it would post about.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import secrets
@@ -164,6 +165,14 @@ def _clip(value: Any, limit: int = MAX_FIELD_CHARS) -> str | None:
     return text[:limit]
 
 
+def _content_id(item: dict[str, Any], text: str) -> str:
+    """A stable id for a post its adapter gave none: a hash of author + text.
+    A positional ``post-{i}`` made a re-capture overwrite whichever post now
+    sat at that index, so replies landing above it scrambled the thread."""
+    digest = hashlib.sha1(f"{item.get('author')}\n{text}".encode("utf-8")).hexdigest()
+    return f"post-{digest[:12]}"
+
+
 def _http_url(value: Any, limit: int) -> str | None:
     """A clipped http(s) URL, or None. A captured page picks its own links, and
     a ``javascript:`` href clicked on the console runs on the app's origin."""
@@ -196,7 +205,7 @@ def _clean_posts(raw: Any) -> list[dict[str, Any]] | str:
         if not text:
             continue  # empty nodes (dividers, deleted comments) carry nothing
         post: dict[str, Any] = {
-            "id": _clip(item.get("id"), 200) or f"post-{i}",
+            "id": _clip(item.get("id"), 200) or _content_id(item, text),
             "author": _clip(item.get("author"), 200) or "unknown",
             "text": text,
         }

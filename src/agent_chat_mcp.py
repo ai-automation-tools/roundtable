@@ -41,7 +41,10 @@ from orchestrator import delivery
 from orchestrator import personas as personas_registry
 from orchestrator.conv_types import CONV_TYPES, lead_of
 from presets import BLIND_FIRST, protocol_for
-from schema import DRAFT_APPROVED, DRAFT_PENDING, DRAFT_POSTED, DRAFT_REJECTED, ensure_schema
+from schema import (
+    DRAFT_APPROVED, DRAFT_PENDING, DRAFT_POSTED, DRAFT_REJECTED,
+    complete_conversation, ensure_schema, write_txn,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -429,15 +432,19 @@ def blocks_premature_done(conn: sqlite3.Connection, conv: sqlite3.Row,
 
 
 def maybe_complete(conn: sqlite3.Connection, conv: sqlite3.Row) -> Optional[str]:
-    """Mark conversation complete if a stop condition is met. Returns end_reason or None."""
+    """Close an active conversation whose stop condition is met.
+
+    Returns the end_reason only when THIS call closed it, so a caller can fire
+    the ``complete`` delivery on a non-None return and never twice. A finished
+    row is never rewritten: polls used to re-close it on every call, moving
+    ``updated_at`` (the sync watermark) and overwriting an operator's
+    "stopped by operator" (audit RT-09)."""
+    if conv["status"] != "active":
+        return None
     reason = evaluate_stop(conn, conv)
-    if reason:
-        conn.execute(
-            "UPDATE conversations SET status = 'complete', end_reason = ?, "
-            "current_turn = NULL, updated_at = ? WHERE id = ?",
-            (reason, now_iso(), conv["id"]),
-        )
-    return reason
+    if reason and complete_conversation(conn, conv["id"], reason):
+        return reason
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -681,6 +688,28 @@ async def get_my_turn(params: GetMyTurnInput) -> str:
     return json.dumps(_compute_turn_state(), indent=2)
 
 
+def _advance_and_close(conn: sqlite3.Connection, conv: sqlite3.Row) -> Optional[str]:
+    """After AGENT_ID's message is inserted: pass the turn, then close the run
+    if that message ended it. Runs inside send_message's write transaction.
+    Returns the end_reason if this call closed the conversation."""
+    # Advance the pointer in turns mode, skipping seats that are spent. If
+    # nobody is left, leave it alone — maybe_complete() closes the row and
+    # NULLs it.
+    if conv["mode"] == "turns":
+        next_agent = next_turn_agent(
+            json.loads(conv["participants"]), AGENT_ID, exhausted_agents(conn, conv))
+        if next_agent is not None:
+            conn.execute(
+                "UPDATE conversations SET current_turn = ?, updated_at = ? "
+                "WHERE id = ?",
+                (next_agent, now_iso(), conv["id"]),
+            )
+    conv = conn.execute(
+        "SELECT * FROM conversations WHERE id = ?", (conv["id"],)
+    ).fetchone()
+    return maybe_complete(conn, conv)
+
+
 @mcp.tool(
     name="send_message",
     annotations={
@@ -722,7 +751,13 @@ async def send_message(params: SendMessageInput) -> str:
             ),
         }, indent=2)
 
-    with db_connect() as conn:
+    # The whole check -> insert -> advance -> close sequence runs under one
+    # BEGIN IMMEDIATE: an operator Stop (web UI, CLI, or a stop pulled from the
+    # mirror) waits for it instead of committing between the turn check and the
+    # insert, which used to append a message to a stopped run and deliver
+    # `complete` twice (audit RT-09).
+    closed: Optional[str] = None
+    with db_connect() as conn, write_txn(conn):
         conv = get_latest_conversation(conn, AGENT_ID)
         if conv is None:
             return json.dumps({
@@ -736,8 +771,6 @@ async def send_message(params: SendMessageInput) -> str:
                 "message": f"Conversation {conv['id']} is already complete.",
                 "end_reason": conv["end_reason"],
             }, indent=2)
-
-        participants = json.loads(conv["participants"])
 
         if conv["mode"] == "turns" and conv["current_turn"] != AGENT_ID:
             return json.dumps({
@@ -759,14 +792,15 @@ async def send_message(params: SendMessageInput) -> str:
         # Enforce per-agent cap up front so we don't accept a message we'd
         # immediately have to reject.
         my_count = count_messages_by_sender(conn, conv["id"], AGENT_ID)
+        capped: Optional[str] = None
         if my_count >= conv["max_turns"]:
             # Re-evaluate, but don't promise a close: reaching YOUR cap no
             # longer ends the conversation — the seats that still have turns
             # carry on without you, and the row closes when the last one is
             # spent. In turns mode the rotation skips you, so this branch is
             # now mostly a continuous-mode guard.
-            maybe_complete(conn, conv)
-            return json.dumps({
+            closed = maybe_complete(conn, conv)
+            capped = json.dumps({
                 "status": "error",
                 "message": (
                     f"You have already sent {my_count} messages, which is the "
@@ -776,50 +810,33 @@ async def send_message(params: SendMessageInput) -> str:
                     "closes."
                 ),
             }, indent=2)
-
-        # Insert the message.
-        conn.execute(
-            "INSERT INTO messages (conversation_id, sender, content, signal, created_at) "
-            "VALUES (?, ?, ?, ?, ?)",
-            (conv["id"], AGENT_ID, params.content, params.signal, now_iso()),
-        )
-
-        # Advance turn pointer in turns mode, skipping seats that are spent.
-        # If nobody is left, leave the pointer alone — maybe_complete() below
-        # closes the row and NULLs it.
-        if conv["mode"] == "turns":
-            next_agent = next_turn_agent(
-                participants, AGENT_ID, exhausted_agents(conn, conv))
-            if next_agent is not None:
-                conn.execute(
-                    "UPDATE conversations SET current_turn = ?, updated_at = ? "
-                    "WHERE id = ?",
-                    (next_agent, now_iso(), conv["id"]),
-                )
-
-        # Refresh and re-evaluate stop conditions.
-        conv = conn.execute(
-            "SELECT * FROM conversations WHERE id = ?", (conv["id"],)
-        ).fetchone()
-        maybe_complete(conn, conv)
-        conv = conn.execute(
-            "SELECT * FROM conversations WHERE id = ?", (conv["id"],)
-        ).fetchone()
+        else:
+            conn.execute(
+                "INSERT INTO messages (conversation_id, sender, content, signal, created_at) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (conv["id"], AGENT_ID, params.content, params.signal, now_iso()),
+            )
+            closed = _advance_and_close(conn, conv)
         cid = conv["id"]
-        just_completed = conv["status"] == "complete"
+
+    if capped is not None:
+        if closed:
+            delivery.deliver(cid, "complete", DB_PATH)
+        return capped
 
     # Fan the export bundle out to any configured sink — a no-op unless
     # config/delivery.json turns one on. Deliberately AFTER the `with` block:
     # a sink can be an HTTP POST or a subprocess, and neither belongs inside a
     # write transaction on a database three other processes are waiting on.
     #
-    # This is the only send-side hook. get_my_turn() also runs maybe_complete(),
-    # but it re-runs it on every poll, so firing from there would re-deliver on
-    # a loop; every natural ending (cap reached, done, blocked) is evaluated
-    # here first, right after the insert that caused it.
+    # This is the only send-side hook. `closed` is set only when THIS send's
+    # transaction moved the row out of 'active', so a concurrent Stop can't
+    # make it fire twice. Every natural ending (cap reached, done, blocked) is
+    # evaluated here, right after the insert that caused it; get_my_turn()'s
+    # maybe_complete() is only a backstop and never delivers.
     if params.signal == SIGNAL_RESULT:
         delivery.deliver(cid, "result", DB_PATH)
-    if just_completed:
+    if closed:
         delivery.deliver(cid, "complete", DB_PATH)
 
     # Mirror get_my_turn() output so the caller can act without another round trip.
@@ -1445,11 +1462,29 @@ async def get_arena(params: GetArenaInput) -> str:
                 ),
             }, indent=2)
         if not arena["agent_id"]:
-            conn.execute(
+            # Conditional claim: two CLIs opening the same arena at once both
+            # read agent_id NULL, and an unguarded UPDATE let the later one
+            # silently take it from the earlier (audit RT-09).
+            claimed = conn.execute(
                 "UPDATE battleground_arenas SET agent_id = ?, updated_at = ? "
-                "WHERE id = ?",
+                "WHERE id = ? AND agent_id IS NULL",
                 (AGENT_ID, now_iso(), arena["id"]),
-            )
+            ).rowcount == 1
+            if not claimed:
+                owner = conn.execute(
+                    "SELECT agent_id FROM battleground_arenas WHERE id = ?",
+                    (arena["id"],),
+                ).fetchone()["agent_id"]
+                if owner != AGENT_ID:
+                    return json.dumps({
+                        "status": "assigned_elsewhere",
+                        "arena_id": arena["id"],
+                        "assigned_to": owner,
+                        "message": (
+                            f"Arena {arena['id']} was just claimed by "
+                            f"'{owner}', not you."
+                        ),
+                    }, indent=2)
             arena["agent_id"] = AGENT_ID
 
         drafts = conn.execute(

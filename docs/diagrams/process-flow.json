@@ -7,7 +7,7 @@
     "output": "docs/diagrams/process-flow.html",
     "repository": {
       "url": "https://github.com/ai-automation-tools/roundtable.git",
-      "revision": "f801f1ced10e45c9d1d6949b0dcb3c66efe1511d"
+      "revision": "879a9073aa41e5db938cf8f9da43248a5de0c50d"
     }
   },
   "lanes": [
@@ -148,8 +148,8 @@
       "sources": [
         {
           "path": "src/agent_chat_mcp.py",
-          "line": 545,
-          "end_line": 598
+          "line": 552,
+          "end_line": 605
         }
       ]
     },
@@ -164,8 +164,8 @@
       "sources": [
         {
           "path": "src/agent_chat_mcp.py",
-          "line": 839,
-          "end_line": 874
+          "line": 856,
+          "end_line": 891
         }
       ]
     },
@@ -205,8 +205,8 @@
       "sources": [
         {
           "path": "src/agent_chat_mcp.py",
-          "line": 694,
-          "end_line": 758
+          "line": 723,
+          "end_line": 812
         }
       ]
     },
@@ -216,13 +216,18 @@
       "col": 5,
       "type": "database",
       "label": "Commit Message",
-      "sublabel": "messages table + current_turn",
+      "sublabel": "one BEGIN IMMEDIATE: insert + turn + close",
       "tag": "WAL append",
       "sources": [
         {
           "path": "src/agent_chat_mcp.py",
-          "line": 780,
-          "end_line": 799
+          "line": 813,
+          "end_line": 820
+        },
+        {
+          "path": "src/agent_chat_mcp.py",
+          "line": 691,
+          "end_line": 710
         }
       ]
     },
