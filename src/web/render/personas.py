@@ -161,7 +161,7 @@ def _render_personas_page() -> str:
     center = (
         '<section class="pm-center">'
         '<header class="pm-chead">'
-        f'<h2 class="pm-ctitle" id="pm-ctitle">{html.escape(_pm_glabel(active_group).upper())}</h2>'
+        f'<h1 class="pm-ctitle" id="pm-ctitle">{html.escape(_pm_glabel(active_group).upper())}</h1>'
         '<div class="pm-ctools">'
         '<select class="pm-sort" id="pm-sort" aria-label="Sort personas">'
         '<option value="az">Name A&ndash;Z</option>'

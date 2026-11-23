@@ -37,6 +37,9 @@ export function setBridgeStatus(ok, title) {
   const node = $('bridge-status');
   node.className = `dot ${ok ? 'on' : 'off'}`;
   node.title = title;
+  // Said in words, not only by colour (audit RT-43).
+  node.textContent = ok ? '● Connected' : '● Offline';
+  node.setAttribute('aria-label', `Bridge ${ok ? 'connected' : 'offline'}: ${title}`);
 }
 
 export function bridgeUp() {

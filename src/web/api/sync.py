@@ -12,12 +12,14 @@ import os
 import secrets
 import sqlite3
 
+from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 from schema import SENDER_RE, SIGNALS
 from web.avatars import invalidate_index
 from web.db import ingest_payload, since_payload
+from web.api import request_json
 
 # A sync batch carries only rows that changed since the last push, so a
 # normal one is kilobytes; 32 MB still fits a dozen personas with a 2 MB
@@ -46,7 +48,7 @@ def _row_error(conversations: list, messages: list) -> str | None:
     return None
 
 
-async def api_since(request: Request) -> Response:
+def api_since(request: Request) -> Response:
     """Pull endpoint for the bidirectional-sync sidecar.
 
     Auth: ``Authorization: Bearer <token>`` matched against
@@ -54,11 +56,17 @@ async def api_since(request: Request) -> Response:
     less rotation surface for now; can split later if the threat model
     needs read/write separation).
 
-    Query params:
+    Parameters — a JSON body on ``POST`` (what the sidecar sends since
+    audit RT-15: the known-id list grows with the DB, and a query string
+    past ~64 KB is refused before the app sees it), or the query string on
+    ``GET`` (older sidecars):
       - ``conversations_updated_after`` (ISO timestamp; required)
-      - ``known_ids`` (comma-separated int list of conversation ids the
-        sidecar believes still exist; used to compute deletions via
-        set-difference. Optional — empty means "no deletions to compute").
+      - ``known_ids`` (conversation ids the sidecar believes still exist —
+        a JSON list, or comma-separated on GET; used to compute deletions
+        via set-difference. Optional — empty means "no deletions").
+      - ``personas_updated_after`` / ``known_persona_keys`` (optional; the
+        current sidecar no longer sends them, since it ignores pulled
+        personas).
 
     Response::
 
@@ -98,35 +106,45 @@ async def api_since(request: Request) -> Response:
             headers={"WWW-Authenticate": 'Bearer realm="agent_chat_ingest"'},
         )
 
-    updated_after = request.query_params.get(
-        "conversations_updated_after", ""
-    ).strip()
+    if request.method == "POST":
+        try:
+            params = request_json(request)
+        except ValueError:
+            return JSONResponse({"error": "body must be JSON"}, status_code=400)
+        if not isinstance(params, dict):
+            return JSONResponse({"error": "body must be a JSON object"}, status_code=400)
+    else:
+        q = request.query_params
+        params = {
+            "conversations_updated_after": q.get("conversations_updated_after", ""),
+            "known_ids": [x for x in q.get("known_ids", "").split(",") if x.strip()],
+            "personas_updated_after": q.get("personas_updated_after", ""),
+            "known_persona_keys": [k for k in q.get("known_persona_keys", "").split(",") if k],
+        }
+
+    updated_after = str(params.get("conversations_updated_after") or "").strip()
     if not updated_after:
         return JSONResponse(
-            {"error": "conversations_updated_after query param is required"},
+            {"error": "conversations_updated_after is required"},
             status_code=400,
         )
 
-    known_raw = request.query_params.get("known_ids", "").strip()
+    known_raw = params.get("known_ids") or []
     try:
-        known_ids = (
-            [int(x) for x in known_raw.split(",") if x.strip()]
-            if known_raw
-            else []
-        )
-    except ValueError:
+        if not isinstance(known_raw, list):
+            raise ValueError
+        known_ids = [int(x) for x in known_raw]
+    except (TypeError, ValueError):
         return JSONResponse(
-            {"error": "known_ids must be a comma-separated list of integers"},
+            {"error": "known_ids must be a list of integers"},
             status_code=400,
         )
 
-    # Persona params are optional: a sidecar that predates persona sync omits
-    # `personas_updated_after`, and since_payload then skips persona work.
-    personas_updated_after = request.query_params.get(
-        "personas_updated_after", ""
-    ).strip() or None
-    pk_raw = request.query_params.get("known_persona_keys", "").strip()
-    known_persona_keys = [k for k in pk_raw.split(",") if k] if pk_raw else []
+    # Persona params are optional: without `personas_updated_after`,
+    # since_payload skips persona work.
+    personas_updated_after = str(params.get("personas_updated_after") or "").strip() or None
+    pk_raw = params.get("known_persona_keys") or []
+    known_persona_keys = [str(k) for k in pk_raw if k] if isinstance(pk_raw, list) else []
 
     try:
         payload = since_payload(
@@ -234,8 +252,10 @@ async def api_ingest(request: Request) -> Response:
         return JSONResponse({"error": problem}, status_code=400)
 
     try:
-        result = ingest_payload(
-            conversations, messages, deletions,
+        # Off the event loop: a big batch or a locked DB would stall every
+        # other request (audit RT-28).
+        result = await run_in_threadpool(
+            ingest_payload, conversations, messages, deletions,
             personas, deleted_persona_keys,
         )
     except sqlite3.Error as e:

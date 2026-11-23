@@ -305,9 +305,8 @@ personas.get_avatar("new-bot")                  # ("image/png", b"\x89PNG…") |
   (not stored): `summary` is recomputed from `body`; `path` is synthesized as
   `agents/Debate-Agents/<group>/<slug>.md` so the shape is unchanged for callers
   (`debate.ps1` only displays `.path`, never opens it).
-- `list_personas(group=None)` returns the **canonical roster** — the
-  `PREFERRED_GROUPS = ("Unique-Personas", "Debate-Hosts")` constant. Passing a
-  `group` filters to any group in the DB (case-insensitive).
+- `list_personas(group=None)` returns **every** persona, ordered by group then
+  name. Passing a `group` filters to any group in the DB (case-insensitive).
 - `discover_groups()` returns every group present in the `personas` table; the
   two `PREFERRED_GROUPS` sort first, the rest follow alphabetically.
 - `get_persona()` matching is **case-, punctuation-, and emoji-insensitive**, so
@@ -337,12 +336,15 @@ The on-disk seed cards are loaded into the DB once via the importer (idempotent 
 `INSERT OR IGNORE`, or `--overwrite` to replace + bump `updated_at`):
 
 ```powershell
-python src/orchestrator/personas.py import            # {"imported": 29, "skipped": 0}
+python src/orchestrator/personas.py import            # {"imported": 76, "skipped": 0}
 python src/orchestrator/personas.py import --overwrite # re-seed from the cards
 ```
 
 It's a no-op where the `agents/` tree isn't present (the hosted deploy seeds via
-sync instead). `import_personas_from_files()` is the Python entry point.
+sync instead). `import_personas_from_files()` is the Python entry point. It walks
+**every depth** of the tree; a card's group is its nearest folder that isn't a
+dated card folder (`<slug>_<YYYY-MM-DD>`). The web UI runs it on start when the
+registry has no castable card (a fresh clone), and never otherwise.
 
 > [!WARNING]
 > Re-running `import` reads the **current** folder names. Because the debater
@@ -497,13 +499,15 @@ personas.avatar_index()            # {slug: updated_at} for personas that have o
 
 ## The MCP tools
 
-Both are read-only and idempotent, mirroring `get_kickoff`'s annotation shape.
+All three are read-only and idempotent. `list_persona_groups()` returns
+`{"count", "groups": [{"group", "count"}]}`; groups are free-form, so this is how
+an agent finds a name to pass to `list_personas(group=...)`.
 
 ### `list_personas(group=None)`
 
 Lightweight roster — **no body**, to keep it cheap to call. Optional `group`
-filter (`"Unique-Personas"`, `"Debate-Hosts"`, or any curated-subset folder).
-`group=None` returns the canonical roster (`Unique-Personas` + `Debate-Hosts`).
+filter: any group name from `list_persona_groups()`. `group=None` returns every
+persona.
 
 ```json
 {
@@ -588,7 +592,7 @@ rather than relying on the name to carry it.
 | You want… | Look at |
 |:---|:---|
 | The live persona data | the `personas` table in `db/chat.db` |
-| The seed cards (one-time import + git snapshot) | `agents/Debate-Agents/{Unique-Personas,Debate-Hosts}/*.md` |
+| The seed cards (one-time import + git snapshot) | `agents/Debate-Agents/**/*.md` |
 | The registry / write layer / importer | `src/orchestrator/personas.py` |
 | The single-card import helper | `import_persona_card()` / `parse_card_text()` in `src/orchestrator/personas.py` |
 | The MCP tool definitions | `list_personas` / `get_persona` in `src/agent_chat_mcp.py` |

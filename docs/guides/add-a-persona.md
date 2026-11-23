@@ -129,16 +129,20 @@ modal reads, so the picture comes along. Download, then drop the `.zip` into
 `Import`. (It replaced the Persona Registry on the AI-Automation-Library site,
 retired 2026-11-06.)
 
-This repo also ships 62 seed cards under
+This repo also ships 76 seed cards under
 [`agents/Debate-Agents/`](../../agents/Debate-Agents/). They are a **one-time
 import source**, not a runtime folder: nothing reads them during a conversation,
-and editing one changes nothing until someone re-imports it.
+and editing one changes nothing until someone re-imports it. The web UI imports
+them on first start when the registry has no castable card, so a fresh clone can
+cast a random debate straight away.
 
 > [!NOTE]
-> The file-tree importer (`import_personas_from_files()`) reads **one level
-> down** — the `.md` files directly inside each group folder. Cards nested
-> deeper, like `AI-Library-Imports/Celebrities/`, come in through the `Import`
-> modal instead: select that folder's cards, or zip it and drop the zip.
+> The file-tree importer (`import_personas_from_files()`) reads **every depth**.
+> A card's group is its nearest folder that isn't a dated card folder:
+> `Weekly-Additions/Athletes/x.md` lands in `Athletes`, and
+> `AI-Library-Imports/Celebrities/x_2026-06-23/x.md` in `Celebrities`. Cover art
+> is not kept here; the persona explorer serves it from the
+> [roundtable-personas](https://ai-automation-tools.dev/roundtable-personas/) site.
 
 ---
 

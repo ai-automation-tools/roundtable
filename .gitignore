@@ -144,6 +144,12 @@ agents/Debate-Agents/*
 # has to be in the repo rather than on one machine. See docs/app/personas.md.
 !agents/Debate-Agents/Practitioners/
 
+# Never the bulk zips or cover art, in any group (audit RT-23): the zips only
+# duplicated the cards beside them, and covers are served from the
+# roundtable-personas site (PERSONA_MEDIA_URL), never read from here.
+agents/Debate-Agents/**/*.zip
+agents/Debate-Agents/**/cover-image.*
+
 # Playwright-MCP runtime dumps (console/page snapshots) — junk, never tracked
 .playwright-mcp/
 

@@ -574,6 +574,9 @@ def test_web_ui_main_starts_on_a_given_db_path():
             web_ui.main()
             assert started.get("port") == 8799, started
             assert os.environ["AGENT_CHAT_DB"] == db
+            # A fresh DB gets a castable roster from the card tree (RT-23).
+            from orchestrator import personas
+            assert len(personas.list_debater_personas()) >= 60
     finally:
         web_ui.uvicorn.run, _sys.argv = real_run, argv
         if env is None:
@@ -705,7 +708,7 @@ def test_topic_field_is_a_title_capped_at_the_seeding_limit() -> None:
     from web.render.orchestrate import _render_orchestrate
     html = _render_orchestrate([], conv_type="collaborate")
     assert 'name="topic" type="text"' not in html
-    assert f'<textarea name="topic" required maxlength="{TOPIC_MAX_CHARS}"' in html
+    assert f'<textarea name="topic" id="orch-topic" aria-describedby="orch-topic-hint" required maxlength="{TOPIC_MAX_CHARS}"' in html
     # The counter lives in the section head row, not on a stray line below the box.
     assert f'<span id="orch-topic-count">0</span>/{TOPIC_MAX_CHARS}' in html
     # Enter used to submit the form because it was an <input>; keep that.
@@ -726,9 +729,9 @@ def test_the_brief_box_takes_a_file_without_uploading_it() -> None:
     # field, and a "put it here instead" at the bottom of a long form is not an
     # answer. Collapsed and labelled optional, so the common case still reads
     # as one short field.
-    assert (html.index('<span class="lbl">Title')
+    assert (html.index('<label class="lbl" for="orch-topic">Title')
             < html.index('orch-brief-details')
-            < html.index('<span class="lbl">Format</span>'))
+            < html.index('id="orch-type-label">Format</span>'))
     assert "optional" in html[html.index('orch-brief-details'):][:600]
     for ext in (".md", ".txt"):
         assert ext in BRIEF_EXTENSIONS
@@ -827,7 +830,6 @@ def _orchestrate(db_path: str, **payload):
     which is exactly the kind of environment-dependent green nobody should
     trust. `tests/test_web_readonly.py` covers the gate itself.
     """
-    import asyncio
     import json as _json
 
     from orchestrator import preflight as orch_preflight
@@ -849,7 +851,8 @@ def _orchestrate(db_path: str, **payload):
     real = orch_preflight.run_preflight
     orch_preflight.run_preflight = _all_ok
     try:
-        resp = asyncio.run(api.api_orchestrate(_Req()))
+        import anyio.to_thread  # sync handler: run it as Starlette does
+        resp = anyio.run(anyio.to_thread.run_sync, api.api_orchestrate, _Req())
     finally:
         orch_preflight.run_preflight = real
     return resp.status_code, _json.loads(resp.body.decode())
@@ -1216,7 +1219,6 @@ def test_orchestrate_refuses_a_busy_seat_before_preflight():
         real = orch_preflight.run_preflight
         orch_preflight.run_preflight = lambda seats: called.append(seats) or real(seats)
         try:
-            import asyncio
 
             from web.api import orchestrate as api
 
@@ -1225,7 +1227,9 @@ def test_orchestrate_refuses_a_busy_seat_before_preflight():
                     return {"topic": "T2", "conv_type": "collaborate", "preset": "plan",
                             "participants": ["codex", "antigravity"], "spawn": False}
 
-            resp = asyncio.run(api.api_orchestrate(_Req()))
+            import anyio.to_thread  # sync handler: run it as Starlette does
+
+            resp = anyio.run(anyio.to_thread.run_sync, api.api_orchestrate, _Req())
         finally:
             orch_preflight.run_preflight = real
         data = json.loads(resp.body.decode())

@@ -22,6 +22,7 @@ from pathlib import Path
 
 from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, RedirectResponse, Response
@@ -249,8 +250,9 @@ class BasicAuthMiddleware(BaseHTTPMiddleware):
 _SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 
 # POST routes that carry their own bearer-token auth (the sidecar sync realm)
-# and must keep working even when the public site is read-only.
-_BEARER_REALM_PATHS = frozenset({"/api/ingest"})
+# and must keep working even when the public site is read-only. /api/since is
+# a read, POSTed so its known-id list can't outgrow a request head (RT-15).
+_BEARER_REALM_PATHS = frozenset({"/api/ingest", "/api/since"})
 
 
 def _env_truthy(name: str) -> bool:
@@ -503,6 +505,10 @@ def _build_middleware() -> list[Middleware]:
     """
     stack: list[Middleware] = [
         Middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts(), www_redirect=False),
+        # A transcript page is ~270 KB of HTML. Fly's edge compresses the
+        # mirror, but a local or tailnet instance sent it raw: 4.7 s on a slow
+        # phone link (audit RT-41). Starlette's own gzip skips text/event-stream.
+        Middleware(GZipMiddleware, minimum_size=1024),
         Middleware(SecurityHeadersMiddleware),
         Middleware(RegistryHostMiddleware),
         Middleware(ExtensionCorsMiddleware),

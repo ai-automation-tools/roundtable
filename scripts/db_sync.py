@@ -54,6 +54,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -151,6 +152,28 @@ def load_exclusions(path: Path) -> set[int]:
 
 EPOCH = "1970-01-01T00:00:00+00:00"
 
+# Writers stamp `updated_at` before they wait (up to 10 s) for the write lock,
+# so a row can commit with a stamp older than one already pushed. The push
+# re-reads this far behind its cursor and drops what it already shipped
+# (`State.recent_pushed`), so a late commit is still picked up (audit RT-15).
+OVERLAP_SECONDS = 15
+
+# `/api/ingest` refuses a body over 32 MB; a --force-push of a whole DB can be
+# bigger than that. Pages go conversations first, so every message's row exists.
+PAGE_MESSAGES = 500
+PAGE_PERSONAS = 25
+
+# Daemon back-off after consecutive failures, capped.
+MAX_BACKOFF_SECONDS = 300.0
+
+
+def shift_iso(ts: str, seconds: float) -> str:
+    """``ts`` moved by ``seconds``, in the writers' isoformat."""
+    try:
+        return (datetime.fromisoformat(ts) + timedelta(seconds=seconds)).isoformat()
+    except ValueError:
+        return ts
+
 
 @dataclass
 class State:
@@ -187,6 +210,9 @@ class State:
     # ship it — and the mirror not having it would come back as a hosted-side
     # deletion and take the local row with it. See `run_tick`.
     excluded_conversation_ids: list[int] = field(default_factory=list)
+    # {conversation id: updated_at} pushed inside the overlap window, so the
+    # re-read behind the cursor ships only what is new (see OVERLAP_SECONDS).
+    recent_pushed: dict[str, str] = field(default_factory=dict)
 
 
 def state_path_for(db_path: Path, override: Path | None) -> Path:
@@ -226,6 +252,9 @@ def load_state(path: Path) -> State:
         excluded_conversation_ids=[
             int(i) for i in raw.get("excluded_conversation_ids", [])
         ],
+        recent_pushed={
+            str(k): str(v) for k, v in (raw.get("recent_pushed") or {}).items()
+        },
     )
 
 
@@ -245,6 +274,7 @@ def save_state(path: Path, state: State) -> None:
                 "excluded_conversation_ids": sorted(
                     state.excluded_conversation_ids
                 ),
+                "recent_pushed": state.recent_pushed,
             },
             indent=2,
             sort_keys=True,
@@ -273,6 +303,7 @@ def rewind_push_watermarks(state: State) -> State:
         pulled_personas_updated_at=state.pulled_personas_updated_at,
         known_persona_keys=list(state.known_persona_keys),
         excluded_conversation_ids=list(state.excluded_conversation_ids),
+        recent_pushed={},
     )
 
 
@@ -290,12 +321,14 @@ def _connect(db_path: Path) -> sqlite3.Connection:
 def read_changed_conversations(
     db_path: Path, updated_after: str
 ) -> list[dict[str, Any]]:
+    """Rows with ``updated_at`` past ``updated_after`` minus the overlap
+    window. Includes rows already pushed; ``run_tick`` drops those."""
     cols = ",".join(CONV_COLUMNS)
     with _connect(db_path) as conn:
         rows = conn.execute(
             f"SELECT {cols} FROM conversations "
             f"WHERE updated_at > ? ORDER BY updated_at ASC",
-            (updated_after,),
+            (shift_iso(updated_after, -OVERLAP_SECONDS),),
         ).fetchall()
     return [dict(r) for r in rows]
 
@@ -400,13 +433,18 @@ class PullNotSupported(Exception):
     """
 
 
-def post_batch(
-    url: str, token: str, batch: dict[str, Any], timeout: float
-) -> dict[str, Any]:
-    body = json.dumps(batch).encode("utf-8")
+def _post_json(url: str, token: str, body: dict[str, Any], timeout: float,
+               what: str, not_found: type[Exception]) -> dict[str, Any]:
+    """POST ``body`` as JSON and return the decoded reply.
+
+    Every way the network can fail ends as a ``SyncError`` (retry next tick),
+    except 401/403 (``FatalSyncError``) and 404 (``not_found``). That includes
+    a reset while reading an error body and a 200 that isn't JSON (a proxy's
+    HTML page): either used to escape ``main()`` and end the daemon.
+    """
     req = urllib.request.Request(
         url,
-        data=body,
+        data=json.dumps(body).encode("utf-8"),
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Bearer {token}",
@@ -416,20 +454,58 @@ def post_batch(
     )
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return json.loads(resp.read().decode("utf-8"))
+            reply = json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
-        detail = e.read().decode("utf-8", "replace") if e.fp else ""
-        if e.code in (401, 403, 404):
-            # 401/403 = bad token, 404 = ingest disabled on server. Either
-            # way, retrying on the next tick will keep failing — bail.
-            raise FatalSyncError(
-                f"server rejected the request ({e.code}): {detail.strip()}"
-            )
-        raise SyncError(f"HTTP {e.code}: {detail.strip()}")
+        try:
+            detail = e.read().decode("utf-8", "replace").strip() if e.fp else ""
+        except OSError:
+            detail = ""
+        if e.code == 404:
+            raise not_found(f"{what}: 404 {detail}".strip())
+        if e.code in (401, 403):
+            raise FatalSyncError(f"server rejected the {what} ({e.code}): {detail}")
+        raise SyncError(f"{what}: HTTP {e.code}: {detail[:300]}")
     except urllib.error.URLError as e:
-        raise SyncError(f"network error: {e.reason}")
-    except (TimeoutError, ConnectionError) as e:
-        raise SyncError(f"transport error: {e}")
+        raise SyncError(f"{what}: network error: {e.reason}")
+    except OSError as e:  # TimeoutError, ConnectionResetError, ...
+        raise SyncError(f"{what}: transport error: {e!r}")
+    except ValueError as e:  # not JSON / not UTF-8
+        raise SyncError(f"{what}: unreadable reply: {e}")
+    if not isinstance(reply, dict):
+        raise SyncError(f"{what}: reply is not a JSON object")
+    return reply
+
+
+def post_batch(
+    url: str, token: str, batch: dict[str, Any], timeout: float
+) -> dict[str, Any]:
+    # 404 = ingest disabled on the server: retrying won't help, so it's fatal.
+    return _post_json(url, token, batch, timeout, "push", FatalSyncError)
+
+
+def batch_pages(batch: dict[str, Any]) -> list[dict[str, Any]]:
+    """Split a push into pages ``/api/ingest`` will take (32 MB cap).
+
+    Page one carries the conversations and both deletion lists; later pages
+    carry personas, then messages. Conversations go first so each message's
+    row already exists; a failed page fails the tick and the next tick
+    re-sends everything (ingest is idempotent).
+    """
+    empty = {"conversations": [], "messages": [], "deleted_conversation_ids": [],
+             "personas": [], "deleted_persona_keys": []}
+    msgs, personas = batch["messages"], batch["personas"]
+    first = {**empty,
+             "conversations": batch["conversations"],
+             "deleted_conversation_ids": batch["deleted_conversation_ids"],
+             "deleted_persona_keys": batch["deleted_persona_keys"],
+             "personas": personas[:PAGE_PERSONAS],
+             "messages": msgs[:PAGE_MESSAGES]}
+    pages = [first]
+    for i in range(PAGE_PERSONAS, len(personas), PAGE_PERSONAS):
+        pages.append({**empty, "personas": personas[i:i + PAGE_PERSONAS]})
+    for i in range(PAGE_MESSAGES, len(msgs), PAGE_MESSAGES):
+        pages.append({**empty, "messages": msgs[i:i + PAGE_MESSAGES]})
+    return pages
 
 
 def get_since(
@@ -438,51 +514,25 @@ def get_since(
     updated_after: str,
     known_ids: list[int],
     timeout: float,
-    personas_updated_after: str,
-    known_persona_keys: list[str],
 ) -> dict[str, Any]:
-    """GET /api/since with the conversation + persona watermarks and known-key
-    lists.
+    """POST /api/since with the conversation watermark and known ids.
 
-    Returns ``{conversations, deleted_conversation_ids, personas,
-    deleted_persona_keys, server_time}`` (an older server omits the persona
-    keys, which the caller treats as empty).
+    Returns ``{conversations, deleted_conversation_ids, server_time}``.
 
-    HTTP error mapping (same families as ``post_batch``, with one
-    difference): a 404 here is interpreted as **PullNotSupported**, not
-    fatal — the remote may not yet have the pull endpoint deployed.
-    Caller decides whether to skip pull or bail.
+    A JSON body, not a query string: the known-id list grows with the DB, and
+    a request head past ~64 KB is refused by the server before the app sees
+    it (audit RT-15, ~1,300 persona keys). Persona keys aren't sent at all:
+    ``apply_pull`` ignores personas, so asking for them only cost bandwidth.
+
+    A 404 is **PullNotSupported**, not fatal — the remote may not have the
+    pull endpoint deployed; the caller skips the pull and still pushes.
     """
-    qs = urllib.parse.urlencode({
-        "conversations_updated_after": updated_after,
-        "known_ids": ",".join(str(i) for i in known_ids),
-        "personas_updated_after": personas_updated_after,
-        "known_persona_keys": ",".join(known_persona_keys),
-    })
-    req = urllib.request.Request(
-        f"{url}?{qs}",
-        headers={
-            "Authorization": f"Bearer {token}",
-            "User-Agent": "agent_chat-db-sync/1.0",
-        },
-        method="GET",
+    return _post_json(
+        url, token,
+        {"conversations_updated_after": updated_after,
+         "known_ids": [int(i) for i in known_ids]},
+        timeout, "pull", PullNotSupported,
     )
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return json.loads(resp.read().decode("utf-8"))
-    except urllib.error.HTTPError as e:
-        detail = e.read().decode("utf-8", "replace") if e.fp else ""
-        if e.code == 404:
-            raise PullNotSupported(detail.strip() or "404 from /api/since")
-        if e.code in (401, 403):
-            raise FatalSyncError(
-                f"server rejected the pull ({e.code}): {detail.strip()}"
-            )
-        raise SyncError(f"HTTP {e.code}: {detail.strip()}")
-    except urllib.error.URLError as e:
-        raise SyncError(f"network error: {e.reason}")
-    except (TimeoutError, ConnectionError) as e:
-        raise SyncError(f"transport error: {e}")
 
 
 # ---------------------------------------------------------------------------
@@ -577,7 +627,8 @@ def run_tick(
     Order matters: pull first so hosted-side stops/deletes propagate
     locally before the push step computes its delta. Without that
     ordering, a hosted-side delete would race with a local re-upsert of
-    the conversation row.
+    the conversation row. A pull that fails is logged and the push runs
+    anyway: one bad pull used to freeze the mirror for good (audit RT-15).
 
     On no-op (nothing to pull, nothing to push), state is returned
     unchanged.
@@ -595,9 +646,10 @@ def run_tick(
             state.pulled_updated_at,
             state.known_conversation_ids,
             timeout,
-            state.pulled_personas_updated_at,
-            state.known_persona_keys,
         )
+    except SyncError as e:
+        log.warning("pull failed (%s); pushing anyway.", e)
+        since = None
     except PullNotSupported as e:
         # Mixed-version path: new sidecar, old server. Push still works.
         # Logged once per tick — could throttle further if it gets noisy.
@@ -641,9 +693,12 @@ def run_tick(
     # ---------- Push ----------
     # Read unfiltered, push filtered: the watermarks below have to advance
     # over excluded rows too, or every tick re-reads them forever.
-    all_changed_convs = read_changed_conversations(
-        db_path, state.conversations_updated_after
-    )
+    all_changed_convs = [
+        c for c in read_changed_conversations(
+            db_path, state.conversations_updated_after
+        )
+        if state.recent_pushed.get(str(c["id"])) != c["updated_at"]
+    ]
     all_new_msgs = read_new_messages(db_path, state.last_message_id)
     changed_convs = [c for c in all_changed_convs if int(c["id"]) not in exclude]
     new_msgs = [
@@ -709,8 +764,9 @@ def run_tick(
             len(changed_convs), len(new_msgs), len(deleted_ids),
             len(changed_personas), len(deleted_persona_keys), ingest_url,
         )
-        result = post_batch(ingest_url, token, batch, timeout)
-        log.info("server reply: %s", json.dumps(result, sort_keys=True))
+        for page in batch_pages(batch):
+            result = post_batch(ingest_url, token, page, timeout)
+            log.info("server reply: %s", json.dumps(result, sort_keys=True))
     else:
         log.debug("push: no changes.")
 
@@ -731,10 +787,19 @@ def run_tick(
     # advances the cursor past it — one redundant push per hosted-side
     # edit, then quiet. A wasted POST is cheap; a silently dropped local
     # edit is not.
+    # The overlap re-read can return rows behind the cursor; it never moves back.
     new_pushed_at = max(
-        (c["updated_at"] for c in all_changed_convs),
-        default=state.conversations_updated_after,
+        [state.conversations_updated_after]
+        + [c["updated_at"] for c in all_changed_convs]
     )
+    horizon = shift_iso(new_pushed_at, -OVERLAP_SECONDS)
+    recent_pushed = {
+        k: v for k, v in {
+            **state.recent_pushed,
+            **{str(c["id"]): c["updated_at"] for c in all_changed_convs},
+        }.items()
+        if v > horizon
+    }
     new_pulled_at = pulled_server_time or state.pulled_updated_at
 
     # Persona watermarks split the same way: push on local `updated_at`,
@@ -759,6 +824,7 @@ def run_tick(
         pulled_personas_updated_at=new_persona_pulled_at,
         known_persona_keys=current_persona_keys,
         excluded_conversation_ids=sorted(exclude),
+        recent_pushed=recent_pushed,
     )
     return new_state
 
@@ -938,10 +1004,15 @@ def main() -> None:
         except sqlite3.Error as e:
             log.error("local DB error: %s", e)
             sys.exit(3)
+        except Exception:  # noqa: BLE001 - a hidden daemon must not die on a surprise
+            consecutive_failures += 1
+            log.exception("unexpected error (%d in a row); retrying", consecutive_failures)
 
         if args.once or _should_stop:
             break
-        time.sleep(args.interval)
+        # Back off while the remote keeps failing; one success resets it.
+        time.sleep(min(args.interval * 2 ** min(consecutive_failures, 10),
+                       max(args.interval, MAX_BACKOFF_SECONDS)))
 
     log.info("exit (clean).")
 

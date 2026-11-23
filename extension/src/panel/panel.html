@@ -12,28 +12,31 @@
         <span>AgentBattleground</span>
       </div>
       <div class="bar-right">
-        <span id="bridge-status" class="dot" title="Bridge status">●</span>
-        <button id="toggle-settings" class="icon-btn" title="Settings">⚙</button>
+        <span id="bridge-status" class="dot" role="status" title="Bridge status">● …</span>
+        <button id="toggle-settings" class="icon-btn" title="Settings" aria-label="Settings"
+                aria-expanded="false" aria-controls="settings">⚙</button>
       </div>
     </header>
 
+    <main>
     <section id="settings" class="card hidden">
       <h2>Settings</h2>
       <label for="bridge-url">Roundtable bridge</label>
       <input id="bridge-url" type="text" spellcheck="false" placeholder="http://127.0.0.1:8765" />
       <label for="bridge-token">Bearer token <span class="hint">(the server's AGENT_CHAT_BATTLEGROUND_TOKEN)</span></label>
       <input id="bridge-token" type="password" spellcheck="false" placeholder="(none)" />
-      <p id="token-warn" class="msg warn hidden"></p>
+      <p id="token-warn" role="status" class="msg warn hidden"></p>
       <label class="check">
         <input id="disclose" type="checkbox" checked />
         Append an AI-disclosure line when inserting
       </label>
+      <label for="disclosure-text">Disclosure line</label>
       <input id="disclosure-text" type="text" spellcheck="false" />
       <div class="row">
         <button id="save-settings" class="primary">Save</button>
         <button id="test-bridge">Test connection</button>
       </div>
-      <p id="settings-msg" class="msg"></p>
+      <p id="settings-msg" role="status" class="msg"></p>
     </section>
 
     <section id="capture-card" class="card">
@@ -41,7 +44,7 @@
       <p id="page-title" class="page-title">—</p>
       <p id="page-url" class="page-url mono">—</p>
       <button id="capture" class="primary wide">Capture this thread</button>
-      <p id="capture-summary" class="msg"></p>
+      <p id="capture-summary" role="status" class="msg"></p>
       <div id="frame-hints" class="row hidden"></div>
     </section>
 
@@ -51,7 +54,7 @@
         <span id="preview-meta" class="mono"></span>
         <button id="preview-toggle" class="ghost small">Show posts</button>
       </div>
-      <p id="preview-warn" class="msg warn hidden"></p>
+      <p id="preview-warn" role="status" class="msg warn hidden"></p>
       <ol id="preview-posts" class="posts hidden"></ol>
     </section>
 
@@ -80,9 +83,9 @@
       </div>
       <label for="stance">Stance / brief <span class="hint">(what side, what to hit)</span></label>
       <textarea id="stance" rows="3" placeholder="Argue against the top comment's claim that…"></textarea>
-      <p id="cast-target" class="msg"></p>
+      <p id="cast-target" role="status" class="msg"></p>
       <button id="open-arena" class="primary wide">Open arena</button>
-      <p id="arena-msg" class="msg"></p>
+      <p id="arena-msg" role="status" class="msg"></p>
     </section>
 
     <section id="arena-card" class="card hidden">
@@ -99,7 +102,7 @@
           <button id="copy-prompt" class="primary">Copy prompt</button>
           <button id="copy-launch" class="hidden">Copy launch command</button>
         </div>
-        <p id="handoff-msg" class="msg"></p>
+        <p id="handoff-msg" role="status" class="msg"></p>
       </div>
 
       <div class="row">
@@ -113,19 +116,21 @@
       >
         ↺ Start over — capture a different page
       </button>
-      <label class="check auto">
-        <input id="auto-recapture" type="checkbox" />
-        Auto re-capture every
-        <input id="auto-seconds" type="number" min="30" max="3600" step="10" />
-        <span class="hint">s</span>
-      </label>
-      <p id="auto-status" class="msg"></p>
+      <div class="check auto">
+        <label class="check"><input id="auto-recapture" type="checkbox" /> Auto re-capture every</label>
+        <input id="auto-seconds" type="number" min="30" max="3600" step="10"
+               aria-label="Seconds between automatic re-captures" />
+        <span class="hint" aria-hidden="true">s</span>
+      </div>
+      <p id="auto-status" role="status" class="msg"></p>
     </section>
 
     <section id="drafts-card" class="card hidden">
       <h2>4 · Review</h2>
       <div id="drafts"></div>
     </section>
+
+    </main>
 
     <footer class="foot">
       AgentBattleground drafts replies. It never submits anything — approving

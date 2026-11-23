@@ -575,7 +575,7 @@ def _render_orchestrate(
          someone reading it for the hundredth time. Same "?" the sub-type cards
          use: a floating tooltip, so revealing it reflows nothing, and a real
          <button> so it is keyboard-reachable. -->
-    <h2>Orchestrate a conversation
+    <h1>Orchestrate a conversation
       <span class="orch-head-tip">
         <button type="button" class="orch-head-help" aria-describedby="orch-what"
                 aria-label="What happens when I launch?">?</button>
@@ -589,19 +589,19 @@ def _render_orchestrate(
           <strong>Spawn</strong> is ticked, one CLI window opens per seat.
         </span>
       </span>
-    </h2>
+    </h1>
   </header>
 
   <form id="orch-form" class="orch-form">
     <section>
-      <span class="lbl">Title<em class="mark orch-count"><span id="orch-topic-count">0</span>/{topic_max}</em></span>
-      <p class="hint">One line &mdash; a question, a proposition, or a name for the run.
+      <label class="lbl" for="orch-topic">Title<em class="mark orch-count"><span id="orch-topic-count">0</span>/{topic_max}</em></label>
+      <p class="hint" id="orch-topic-hint">One line &mdash; a question, a proposition, or a name for the run.
          This is the conversation's <em>title</em>: it becomes the page heading, the
          sidebar entry and the export's filename slug, so keep it short. Anything
          longer than a line &mdash; background, constraints, a whole spec &mdash; goes in
          <b>Brief</b> just below, where the agents still read it and it never crowds
          the transcript.</p>
-      <textarea name="topic" required maxlength="{topic_max}" rows="2"
+      <textarea name="topic" id="orch-topic" aria-describedby="orch-topic-hint" required maxlength="{topic_max}" rows="2"
                 placeholder="What should the agents discuss?"></textarea>
     </section>
 
@@ -620,7 +620,7 @@ def _render_orchestrate(
              clicking it does nothing. -->
         <summary>
           <span class="orch-brief-sum">
-            <span class="lbl">Brief</span>
+            <span class="lbl" id="orch-brief-label">Brief</span>
             <span class="orch-opt">optional &mdash; add a longer prompt or attach a file</span>
           </span>
         </summary>
@@ -637,16 +637,16 @@ def _render_orchestrate(
            <b>in your browser</b> and dropped into the box below so you can edit it before
            launching &mdash; nothing is uploaded or stored.</p>
         <span class="hint" id="orch-brief-file-name"></span>
-        <textarea name="kickoff" id="orch-brief" rows="8"
+        <textarea name="kickoff" id="orch-brief" aria-labelledby="orch-brief-label" rows="8"
                   placeholder="Leave blank for none — a title on its own is a valid run."></textarea>
       </details>
     </section>
 
     <section>
-      <span class="lbl">Format</span>
-      <p class="hint">What kind of room this is — who each seat is for. Separate from
+      <span class="lbl" id="orch-type-label">Format</span>
+      <p class="hint" id="orch-type-hint">What kind of room this is — who each seat is for. Separate from
          the sub-type below, which decides what the room produces.</p>
-      <div class="orch-types">
+      <div class="orch-types" role="radiogroup" aria-labelledby="orch-type-label" aria-describedby="orch-type-hint">
         {type_radios}
       </div>
       <!-- Guide for whichever format is selected. href/text are rewritten by
@@ -666,7 +666,7 @@ def _render_orchestrate(
       <p class="hint" id="orch-preset-hint">Your topic says <em>what</em> to work on; this says
          <em>what to hand back</em>. It sets the agents' instructions and the shape of the final
          deliverable — nothing else changes. Leave it on the default to just follow your topic.</p>
-      <div class="orch-presets" id="orch-preset-grid">
+      <div class="orch-presets" id="orch-preset-grid" role="radiogroup" aria-labelledby="orch-preset-label" aria-describedby="orch-preset-hint">
         {preset_radios}
       </div>
     </section>
@@ -715,6 +715,10 @@ def _render_orchestrate(
         <label>
           <span class="orch-flabel">Max turns (per agent)</span>
           <input name="max_turns" type="number" min="1" max="50" value="8" />
+        </label>
+        <label>
+          <span class="orch-flabel">Time limit (minutes)</span>
+          <input name="max_minutes" type="number" min="1" max="1440" placeholder="none" />
         </label>
         <label>
           <span class="orch-flabel" id="orch-first-label">First speaker</span>
@@ -1206,7 +1210,7 @@ def _render_orchestrate(
   // failure raised while picking a persona seven sections up. Bring it along.
   function showError(title, lines) {{
     if (!errorPanel) return;
-    errorPanel.innerHTML = '<h4>' + escapeHtml(title) + '</h4><ul>' +
+    errorPanel.innerHTML = '<h2>' + escapeHtml(title) + '</h2><ul>' +
       (lines || []).map(l => '<li>' + escapeHtml(l) + '</li>').join('') + '</ul>';
     errorPanel.classList.remove('hidden');
     errorPanel.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
@@ -1602,6 +1606,7 @@ def _render_orchestrate(
       participants: participants,
       preset: currentPreset() || null,
       max_turns: parseInt(fd.get('max_turns'), 10) || null,
+      max_minutes: parseInt(fd.get('max_minutes'), 10) || null,
       first: fd.get('first') || null,
       kickoff: (fd.get('kickoff') || '').trim() || null,
       personas: personas,
@@ -1629,7 +1634,7 @@ def _render_orchestrate(
         // silently redirect — the operator would wonder why no windows opened.
         const sp = data.spawn || {{}};
         if (sp.status === 'unavailable' || sp.status === 'error') {{
-          let note = '<h4>Conversation #' + data.conversation_id + ' seeded — but agents were not spawned</h4>';
+          let note = '<h2>Conversation #' + data.conversation_id + ' seeded — but agents were not spawned</h2>';
           note += '<p>' + escapeHtml(sp.detail || 'spawn unavailable') + '</p>';
           if (sp.manual) note += '<p>Launch them yourself: <code>' + escapeHtml(sp.manual) + '</code></p>';
           note += '<p><a href="/conversations/' + data.conversation_id + '">Open the conversation &rarr;</a></p>';
@@ -1644,7 +1649,7 @@ def _render_orchestrate(
         window.location.href = '/conversations/' + data.conversation_id;
         return;
       }}
-      let parts = ['<h4>Aborted — ' + escapeHtml(data.kind || 'error') + '</h4><ul>'];
+      let parts = ['<h2>Aborted — ' + escapeHtml(data.kind || 'error') + '</h2><ul>'];
       if (data.kind === 'preflight_failed' && Array.isArray(data.preflight)) {{
         for (const r of data.preflight) {{
           if (!r.ok) {{
@@ -1663,7 +1668,7 @@ def _render_orchestrate(
       errorPanel.innerHTML = parts.join('');
       errorPanel.classList.remove('hidden');
     }} catch (err) {{
-      errorPanel.innerHTML = '<h4>Network error</h4><p>' + escapeHtml(String(err)) + '</p>';
+      errorPanel.innerHTML = '<h2>Network error</h2><p>' + escapeHtml(String(err)) + '</p>';
       errorPanel.classList.remove('hidden');
     }} finally {{
       // Only when the run did NOT start — see `navigating` above.
@@ -1699,7 +1704,7 @@ def _render_orchestrate_readonly() -> str:
     body = f"""
 <div class="orch-shell">
   <header class="orch-head">
-    <h2>Debates run on your machine, not here</h2>
+    <h1>Debates run on your machine, not here</h1>
     <p>This hosted site is a <strong>read-only demo</strong> for viewing debates.
        It can't launch one — spawning CLI agents needs the CLIs, their auth, and
        the shared SQLite DB on your own computer.
@@ -1709,20 +1714,20 @@ def _render_orchestrate_readonly() -> str:
   </header>
 
   <div class="orch-ro-card spot">
-    <h3>Option A — one-command auto-debate</h3>
+    <h2>Option A — one-command auto-debate</h2>
     <pre><code>.\\scripts\\debate.ps1</code></pre>
     <p>Picks a topic, casts personas, seeds the conversation, and spawns each CLI in character.</p>
   </div>
 
   <div class="orch-ro-card spot">
-    <h3>Option B — this orchestrate form, locally</h3>
+    <h2>Option B — this orchestrate form, locally</h2>
     <pre><code>.\\.venv\\Scripts\\python.exe src\\web_ui.py
 # then open http://127.0.0.1:8765/orchestrate</code></pre>
     <p>The same form you'd see here, but with live preflight and the ability to spawn agents.</p>
   </div>
 
   <div class="orch-ro-card spot">
-    <h3>The guides</h3>
+    <h2>The guides</h2>
     <p>One per format &mdash; what to seed, what each seat does, and the prompts to paste.</p>
     <div class="orch-ro-links">
       {guide_links}

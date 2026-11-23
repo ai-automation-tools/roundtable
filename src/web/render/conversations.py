@@ -38,7 +38,14 @@ from orchestrator.model_personas import model_persona_entries
 from web.assets import HIGHLIGHT_JS_HEAD, _CAST_CSS, _CONV_CSS
 from web.avatars import avatar_url
 from web.db import list_conversations, list_stats
-from web.render.common import _conv_cast_label, _layout, _pm_svg, render_markdown
+from web.render.common import (
+    CARD_HEADING_LEVEL,
+    MESSAGE_HEADING_LEVEL,
+    _conv_cast_label,
+    _layout,
+    _pm_svg,
+    render_markdown,
+)
 from web.security import _is_public_readonly
 from web.topics import classify_topic
 
@@ -642,13 +649,14 @@ def _render_message(m: dict[str, Any], personas: dict[str, Any] | None = None,
         f'{html.escape(pname)} <span class="who-cli">{html.escape(sender)}</span>'
         if pname else html.escape(sender)
     )
+    mid = int(m["id"])
     head = f"""<div class="msg-head">
             {_agent_avatar(sender, personas, "msg-avatar")}
-            <span class="who">{who}</span>
+            <h3 class="who" id="m{mid}-who">{who}</h3>
             <span class="time">{_fmt_time(m['created_at'])}</span>
             {signal_badge}
           </div>"""
-    body = f'<div class="msg-body">{render_markdown(m["content"])}</div>'
+    body = f'<div class="msg-body">{render_markdown(m["content"], MESSAGE_HEADING_LEVEL)}</div>'
     # A seeded brief arrives as the `system` message, and a brief is long by
     # design — uploading one is the supported way to give the room a standing
     # prompt. Collapse it so the transcript still opens on the first agent
@@ -665,10 +673,10 @@ def _render_message(m: dict[str, Any], personas: dict[str, Any] | None = None,
                 f'Superseded draft — a later result replaced this. Show it.'
                 f'</summary>{body}</details>')
     return f"""
-        <div class="msg {sender_class} {signal_class}" data-id="{int(m['id'])}">
+        <article class="msg {sender_class} {signal_class}" data-id="{mid}" aria-labelledby="m{mid}-who">
           {head}
           {body}
-        </div>"""
+        </article>"""
 
 
 def _conversation_neighbors(
@@ -758,7 +766,8 @@ def _cast_panel(c: dict[str, Any], personas: dict[str, Any],
         # Say so when this is the CLI's default card rather than a cast persona.
         model_html = ('<span class="cast-model">AI model</span>'
                       if str(ag) in defaulted else "")
-        card_html = render_markdown(p.get("persona_body") or "_No card body._")
+        card_html = render_markdown(p.get("persona_body") or "_No card body._",
+                                    CARD_HEADING_LEVEL)
         cast_items.append(
             f'<li class="cast-item"><details>'
             f'<summary>{_agent_avatar(ag, personas, "cast-avatar")}'
@@ -771,7 +780,7 @@ def _cast_panel(c: dict[str, Any], personas: dict[str, Any],
         )
     return (
         '<aside class="cast cv-cast">'
-        '<div class="cv-cast-head"><span class="cv-cast-label">Cast</span>'
+        '<div class="cv-cast-head"><h2 class="cv-cast-label">Cast</h2>'
         '<span class="cv-cast-hint">click to read a card</span></div>'
         f'<ul class="cast-list">{"".join(cast_items)}</ul></aside>'
     )
@@ -1234,6 +1243,15 @@ def _render_conversation_main(data: dict[str, Any],
               try {{
                 const res = await fetch('/api/conversations/' + cid + '/stop', {{ method: 'POST' }});
                 if (!res.ok) throw new Error('HTTP ' + res.status);
+                // A stopped run reaches an agent only at its next MCP call; one
+                // mid-tool-call keeps going. Offer to close the windows this app
+                // opened for it (audit RT-21).
+                const info = await res.json().catch(() => ({{}}));
+                const n = info.seat_windows || 0;
+                if (n && confirm('Also close the ' + n + ' CLI window' + (n === 1 ? '' : 's') +
+                                 ' this app opened for it? Anything unsaved in them is lost.')) {{
+                  await fetch('/api/conversations/' + cid + '/close-windows', {{ method: 'POST' }});
+                }}
                 // Server flipped status='complete'. The SSE stream will emit
                 // 'event: complete' on its next tick; the pill flips there.
               }} catch (err) {{
@@ -1264,9 +1282,7 @@ def _render_conversation_main(data: dict[str, Any],
           }}
           // Syntax-highlight code blocks in the server-rendered HTML.
           // Re-run after each SSE message append below.
-          if (typeof hljs !== 'undefined') {{
-            document.querySelectorAll('#transcript pre code').forEach(el => hljs.highlightElement(el));
-          }}
+          if (window.__hl) window.__hl(document.getElementById('transcript'));
 
           // --- scroll progress + jump-to-latest ---------------------------
           // .cv-main is the scroller; the window itself never scrolls on this
@@ -1325,9 +1341,7 @@ def _render_conversation_main(data: dict[str, Any],
             tmp.innerHTML = renderMsg(m);
             const node = tmp.firstElementChild;
             transcript.appendChild(node);
-            if (typeof hljs !== 'undefined') {{
-              node.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
-            }}
+            if (window.__hl) window.__hl(node);
             // First real message — hide the "Next: launch each CLI" panel.
             if (nextSteps && nextSteps.parentNode) {{
               nextSteps.remove();
@@ -1414,10 +1428,12 @@ def _render_conversation_main(data: dict[str, Any],
             const who = pname
               ? esc(pname) + ' <span class="who-cli">' + esc(m.sender) + '</span>'
               : esc(m.sender);
-            return '<div class="msg ' + senderClass + ' ' + signalClass + '" data-id="' + esc(m.id) + '">' +
-              '<div class="msg-head">' + avatar + '<span class="who">' + who + '</span>' +
+            const hid = 'm' + esc(m.id) + '-who';
+            return '<article class="msg ' + senderClass + ' ' + signalClass + '" data-id="' + esc(m.id) +
+              '" aria-labelledby="' + hid + '">' +
+              '<div class="msg-head">' + avatar + '<h3 class="who" id="' + hid + '">' + who + '</h3>' +
               '<span class="time">' + esc(fmtTime(m.created_at)) + '</span>' + signalBadge + '</div>' +
-              '<div class="msg-body">' + (m.content_html || '') + '</div></div>';
+              '<div class="msg-body">' + (m.content_html || '') + '</div></article>';
           }}
           function esc(s) {{
             return String(s).replace(/[&<>"']/g, c => (
@@ -1447,14 +1463,15 @@ def _render_conversation_main(data: dict[str, Any],
         f"{header}{cast_panel}"
         '<section class="cv-box cv-actionbox">'
         '<div class="cv-box-head">'
-        '<h3 class="cv-box-label">Actions</h3>'
+        '<h2 class="cv-box-label">Actions</h2>'
         f"{actions_help}"
         "</div>"
         f"{actions}"
         "</section>"
         f"{kickoff_panel}"
-        '<section class="cv-box cv-convo-box"><h3 class="cv-box-label">Conversation</h3>'
-        f'<div id="transcript" class="transcript">{initial_msgs_html}</div>'
+        '<section class="cv-box cv-convo-box"><h2 class="cv-box-label">Conversation</h2>'
+        # role=log: messages the stream appends are announced (audit RT-40).
+        f'<div id="transcript" class="transcript" role="log" aria-live="polite">{initial_msgs_html}</div>'
         "</section>"
         f"{jump}{_media_prompt_modal()}{script}</div></section>"
     )
@@ -1535,7 +1552,7 @@ def _media_prompt_modal() -> str:
         'aria-labelledby="cv-pm-title">'
         '<div class="cv-pm-card">'
         '<header class="cv-pm-head">'
-        '<div><h3 id="cv-pm-title">Prompt</h3>'
+        '<div><h2 id="cv-pm-title">Prompt</h2>'
         '<p id="cv-pm-sub" class="cv-pm-sub"></p></div>'
         '<button type="button" class="icon-btn" data-pm-close '
         f'aria-label="Close">{_cv_svg("close")}</button>'
@@ -1590,8 +1607,8 @@ def _render_conversation_not_found(cid: int, convs: list[dict[str, Any]]) -> str
     center = (
         '<section class="cv-main" id="cv-main"><div class="cv-empty">'
         + _pm_svg("chat") +
-        f"<p>Conversation #{cid} doesn't exist.<br>"
-        "It may have been deleted, or the link is wrong.</p>"
+        f"<h1>Conversation #{cid} doesn't exist.</h1>"
+        "<p>It may have been deleted, or the link is wrong.</p>"
         '<a class="btn btn-primary" href="/conversations">&larr; Back to conversations</a>'
         "</div></section>"
     )

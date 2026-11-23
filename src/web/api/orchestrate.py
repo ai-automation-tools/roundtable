@@ -23,6 +23,7 @@ from starlette.responses import JSONResponse, Response
 
 from orchestrator import availability as orch_availability
 from orchestrator import delivery as orch_delivery
+from orchestrator import killswitch
 from orchestrator import personas as orch_personas
 from orchestrator import preflight as orch_preflight
 from orchestrator import seeding as orch_seeding
@@ -33,6 +34,7 @@ from presets import PRESETS, PRESET_NAMES
 from web.api.setup import _add_seat_module  # the setup page's seat maker, reused
 from web import db
 from web.security import _is_public_readonly
+from web.api import request_json
 
 # Sentinel values a persona <select> can post per CLI. Anything else is treated
 # as a slug / display name to resolve against the registry.
@@ -52,7 +54,7 @@ _PERSONA_CUSTOM = "__custom__"
 _PERSONA_CUSTOM_MAX_CHARS = 100_000
 
 
-async def api_orchestrate(request: Request) -> Response:
+def api_orchestrate(request: Request) -> Response:
     """POST /api/orchestrate — validate body, run preflight on selected CLIs, seed conversation.
 
     Response shape:
@@ -66,7 +68,7 @@ async def api_orchestrate(request: Request) -> Response:
     Successful runs do not write a log (the conversation row is the audit trail).
     """
     try:
-        payload = await request.json()
+        payload = request_json(request)
     except (json.JSONDecodeError, ValueError):
         return JSONResponse({"ok": False, "kind": "validation",
                              "error": "request body must be JSON"}, status_code=400)
@@ -141,6 +143,24 @@ async def api_orchestrate(request: Request) -> Response:
         if max_turns < 1 or max_turns > 50:
             return JSONResponse({"ok": False, "kind": "validation",
                                  "error": "max_turns must be between 1 and 50"}, status_code=400)
+
+    max_minutes = payload.get("max_minutes")
+    if max_minutes is not None:
+        try:
+            max_minutes = int(max_minutes)
+        except (TypeError, ValueError):
+            max_minutes = 0
+        if not 1 <= max_minutes <= 24 * 60:
+            return JSONResponse({"ok": False, "kind": "validation",
+                                 "error": "max_minutes must be between 1 and 1440"},
+                                status_code=400)
+
+    # The kill switch (audit RT-21): refused before anything is seeded.
+    if payload.get("spawn") and killswitch.spawn_disabled():
+        return JSONResponse({"ok": False, "kind": "spawn_disabled",
+                             "error": f"spawning is switched off: delete {killswitch.NO_SPAWN_FILE} "
+                                      "to allow it, or launch without auto-spawn"},
+                            status_code=409)
 
     first = payload.get("first") or None
     if first and first not in participants:
@@ -362,6 +382,7 @@ async def api_orchestrate(request: Request) -> Response:
             participant_personas=participant_personas or None,
             conv_type=conv_type,
             participant_roles=participant_roles,
+            max_minutes=max_minutes,
         )
     except orch_seeding.SeedError as e:
         return JSONResponse({"ok": False, "kind": "seed_error",
@@ -480,13 +501,9 @@ def _resolve_personas(
         used_slugs.add(persona.slug)
 
     if random_clis:
-        # DEFAULT_DEBATER_GROUP is often empty (the roster was reorganised into
-        # per-category groups), so this normally falls through to the whole
-        # registry — which is why the fallback must exclude the reserved
-        # AI-Models reference cards rather than calling list_personas(None).
-        pool = orch_personas.list_personas(orch_personas.DEFAULT_DEBATER_GROUP)
-        if not pool:
-            pool = orch_personas.list_debater_personas()
+        # Every castable card: list_debater_personas() leaves out the reserved
+        # AI-Models reference cards, which list_personas(None) would not.
+        pool = orch_personas.list_debater_personas()
         available = [p for p in pool if p.slug not in used_slugs]
         random.shuffle(available)
         if len(available) < len(random_clis):

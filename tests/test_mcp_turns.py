@@ -603,6 +603,55 @@ def _wait(agent: str, **kw) -> dict:
     return json.loads(asyncio.run(mcp.wait_for_turn(mcp.WaitForTurnInput(**kw))))
 
 
+def test_a_waiting_seat_does_not_reread_an_unchanged_run() -> None:
+    """wait_for_turn re-read every message and re-ran the stop rules every
+    second (audit RT-28); now a cheap fingerprint gates the full read."""
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
+        _seed(Path(td), ["a", "b"], max_turns=3)
+        real, calls = mcp._compute_turn_state, []
+        mcp._compute_turn_state = lambda *a, **k: calls.append(1) or real(*a, **k)
+        try:
+            got = _wait("b", timeout_seconds=5)
+        finally:
+            mcp._compute_turn_state = real
+        assert got["status"] == "timeout", got["status"]
+        assert len(calls) <= 2, len(calls)
+
+
+def test_exhausted_seats_are_one_query() -> None:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
+        db, cid = _seed(Path(td), ["a", "b", "c"], max_turns=1)
+        _send("a")
+        conn = sqlite3.connect(db)
+        conn.row_factory = sqlite3.Row
+        sql: list[str] = []
+        conn.set_trace_callback(sql.append)
+        row = conn.execute("SELECT * FROM conversations WHERE id = ?", (cid,)).fetchone()
+        assert mcp.exhausted_agents(conn, row) == {"a"}
+        assert mcp.evaluate_stop(conn, row) is None
+        conn.close()
+        assert sum("GROUP BY sender" in q for q in sql) == 2, sql   # one per call
+        assert not any("AND sender = ?" in q for q in sql), sql
+
+
+def test_a_run_past_its_time_limit_ends_on_the_next_call() -> None:
+    """Audit RT-21: a wall-clock cap, checked by the stop rule (the watchdog
+    must stay read-only)."""
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
+        db = Path(td) / "chat.db"
+        cid = seeding.seed_conversation(
+            db_path=str(db), topic="clock", participants=["a", "b"], mode="turns",
+            max_turns=10, max_minutes=5).conversation_id
+        mcp.DB_PATH = str(db)
+        assert _turn_state("a")["status"] == "your_turn"
+        c = sqlite3.connect(db, isolation_level=None)
+        c.execute("UPDATE conversations SET created_at = '2020-01-01T00:00:00+00:00' WHERE id = ?", (cid,))
+        c.close()
+        state = _turn_state("a")
+        assert state["status"] == "complete", state["status"]
+        assert _row(str(db), cid)["end_reason"] == "time limit (5 min)"
+
+
 def test_a_late_turn_returns_only_new_messages() -> None:
     """The audit's case: 28 messages in, a turn call returns what arrived since
     this session last looked, not the 28."""

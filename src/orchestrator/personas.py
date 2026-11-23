@@ -121,9 +121,9 @@ def _ensure_table(conn: sqlite3.Connection) -> None:
 PREFERRED_GROUPS: tuple[str, ...] = ("Unique-Personas", "Debate-Hosts",
                                     "Practitioners")
 
-# The default debater roster folder — what debate.ps1 -Group falls back to and
-# the first entry browsers see. Kept as a named constant so a future rename is a
-# one-line change here (mirror it in scripts/debate.ps1's -Group default).
+# The group a card lands in when it's created or imported without one. Random
+# casting does NOT read it (it holds no cards on most machines): it draws from
+# list_debater_personas(), every card outside RESERVED_GROUPS.
 DEFAULT_DEBATER_GROUP: str = "Unique-Personas"
 
 # Reference-card groups: real personas, browsable and editable on /personas, but
@@ -149,6 +149,21 @@ RESERVED_GROUPS: tuple[str, ...] = (AI_MODELS_GROUP, PRACTITIONERS_GROUP)
 
 # Filenames inside a group folder that are documentation, not persona cards.
 _NON_CARD_FILES: frozenset[str] = frozenset({"readme.md"})
+
+# A card imported from the AI-Automation-Library sits in a dated folder of its
+# own, `<Group>/<slug>_<YYYY-MM-DD>/<slug>.md`; that folder is not its group.
+_DATED_CARD_DIR = re.compile(r".+_\d{4}-\d{2}-\d{2}$")
+
+
+def _card_group(path: Path) -> str:
+    """A card's group: its nearest folder that isn't a dated card folder, so
+    `Practitioners/x.md`, `Weekly-Additions/Athletes/x.md` and
+    `AI-Library-Imports/Celebrities/x_2026-06-23/x.md` land in `Practitioners`,
+    `Athletes` and `Celebrities`."""
+    for parent in path.parents:
+        if not _DATED_CARD_DIR.match(parent.name):
+            return parent.name
+    return path.parent.name
 
 
 def discover_groups() -> list[str]:
@@ -931,15 +946,16 @@ def import_personas_from_files(overwrite: bool = False) -> dict[str, int]:
     if not _PERSONAS_ROOT.is_dir():
         return {"imported": 0, "skipped": 0}
     cards: list[Persona] = []
-    for folder in sorted(p for p in _PERSONAS_ROOT.iterdir() if p.is_dir()):
-        for path in sorted(folder.glob("*.md")):
-            # A group folder is allowed to document itself. Without this a
-            # README lands in the roster as a persona named "README" — and the
-            # repo's docs rules want an index in every doc-bearing folder, so
-            # the two conventions would otherwise be in direct conflict.
-            if path.name.lower() in _NON_CARD_FILES:
-                continue
-            cards.append(_load_card(path, folder.name))
+    # Every depth: the tree nests cards two and three folders down, and reading
+    # one level found 11 of them (audit RT-23).
+    for path in sorted(_PERSONAS_ROOT.rglob("*.md")):
+        # A group folder is allowed to document itself. Without this a
+        # README lands in the roster as a persona named "README" — and the
+        # repo's docs rules want an index in every doc-bearing folder, so
+        # the two conventions would otherwise be in direct conflict.
+        if path.name.lower() in _NON_CARD_FILES or path.parent == _PERSONAS_ROOT:
+            continue
+        cards.append(_load_card(path, _card_group(path)))
     imported = 0
     conn = _connect()
     try:

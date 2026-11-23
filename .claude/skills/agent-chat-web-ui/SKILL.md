@@ -22,7 +22,28 @@ route table, app assembly, `main()`. Implementation lives in the package.
 | Topic→logo classification | `web/topics.py` |
 | Persona avatar resolution (`avatar_url`/`avatar_response`, `GET /avatars/{slug}`, uploaded row → file art → default silhouette, `invalidate_index()`) | `web/avatars.py` |
 
-Two rules that break things quietly:
+Four rules that break things quietly:
+
+- **One `h1` per page, no skipped levels** (audit RT-40, pinned by
+  `test_every_page_has_one_h1_and_no_skipped_heading_level`). A page's title is
+  its `h1`; sections are `h2`. Markdown rendered inside the page goes through
+  `render_markdown(text, nest_under=N)` so its top heading becomes h(N+1):
+  messages nest under the speaker `h3` (`MESSAGE_HEADING_LEVEL`), persona cards
+  under an `h2` (`CARD_HEADING_LEVEL`). Style rendered headings by their
+  `md-hN` class (the authored level), never by tag. A form field gets a real
+  `<label for>` or `aria-labelledby`, and a radio set a `role="radiogroup"`
+  with a label.
+
+- **Handlers are plain `def`, not `async def`** (since 2026-11-22, audit RT-28).
+  Starlette runs a sync endpoint in its threadpool, so SQLite's 10 s busy
+  timeout, a file write or a webhook test holds one worker instead of the event
+  loop every other request (SSE included) runs on. Read a body with
+  `web.api.request_json(request)`, not `await request.json()`. Only the SSE
+  stream and the streamed `/api/ingest` stay async, and they hand their DB work
+  to `run_in_threadpool`. A read-merge-write of a `config/` file takes
+  `delivery.config_locked`, since two saves can now run at once. A test that
+  calls a handler directly runs it with
+  `anyio.run(anyio.to_thread.run_sync, handler, request)`.
 
 - **Route paths are defined only in `web_ui.py`.** Handlers live in the package;
   the table stays in the entrypoint.

@@ -25,6 +25,7 @@ from pathlib import Path
 
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
+from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.responses import JSONResponse
 from starlette.routing import Route
@@ -142,6 +143,7 @@ def test_build_middleware_default_is_cors_only():
     # it only ever acts on /api/battleground/* with a chrome-extension origin.
     assert [m.cls for m in _build_with_env()] == [
         TrustedHostMiddleware,
+        GZipMiddleware,
         web_ui.SecurityHeadersMiddleware,
         web_ui.RegistryHostMiddleware,
         web_ui.ExtensionCorsMiddleware,
@@ -154,6 +156,7 @@ def test_build_middleware_readonly_only():
     stack = _build_with_env(AGENT_CHAT_PUBLIC_READONLY="1")
     assert [m.cls for m in stack] == [
         TrustedHostMiddleware,
+        GZipMiddleware,
         web_ui.SecurityHeadersMiddleware,
         web_ui.RegistryHostMiddleware,
         web_ui.ExtensionCorsMiddleware,
@@ -166,6 +169,7 @@ def test_build_middleware_basic_auth_only():
     stack = _build_with_env(AGENT_CHAT_BASIC_AUTH_PASSWORD="secret")
     assert [m.cls for m in stack] == [
         TrustedHostMiddleware,
+        GZipMiddleware,
         web_ui.SecurityHeadersMiddleware,
         web_ui.RegistryHostMiddleware,
         web_ui.ExtensionCorsMiddleware,
@@ -185,6 +189,7 @@ def test_build_middleware_both_auth_outermost():
     # browser preflight (no Authorization header, by spec) isn't challenged.
     assert [m.cls for m in stack] == [
         TrustedHostMiddleware,
+        GZipMiddleware,
         web_ui.SecurityHeadersMiddleware,
         web_ui.RegistryHostMiddleware,
         web_ui.ExtensionCorsMiddleware,
@@ -296,6 +301,24 @@ def _hosted_stack_client(host: str, allowed: str | None = None) -> TestClient:
         if saved is not None:
             os.environ["AGENT_CHAT_ALLOWED_HOSTS"] = saved
     return TestClient(app, base_url=f"http://{host}")
+
+
+def test_the_readonly_mirror_takes_a_posted_pull():
+    """/api/since is a read the sidecar POSTs (its id list outgrew a query
+    string, RT-15), so the read-only gate and the write secret let it by;
+    the handler checks the bearer token. Any other POST is still refused."""
+
+    async def ok(request):
+        return JSONResponse({"ok": True})
+
+    app = Starlette(
+        routes=[Route("/api/since", ok, methods=["POST"]),
+                Route("/api/settings/delivery", ok, methods=["POST"])],
+        middleware=_build_with_env(AGENT_CHAT_PUBLIC_READONLY="1"),
+    )
+    c = TestClient(app, base_url="http://127.0.0.1:8765")
+    assert c.post("/api/since", json={}).status_code == 200
+    assert c.post("/api/settings/delivery", json={}).status_code == 403
 
 
 def test_foreign_host_is_refused_on_every_method():
@@ -581,6 +604,220 @@ def test_phones_get_the_transcript_before_the_list():
     assert ".cv-convo-box" in mobile and ".cv2.cv-reading .cv-read > * { order:2; }" in mobile
 
 
+def test_a_write_waiting_on_a_lock_does_not_stall_other_requests():
+    """Handlers were async def around blocking SQLite: a Stop waiting out the
+    busy timeout on a locked DB froze every other request, SSE included
+    (audit RT-28). Real uvicorn, because TestClient serializes requests."""
+    import socket
+    import sqlite3
+    import threading
+    import time
+    import urllib.request
+
+    import uvicorn
+
+    from orchestrator import seeding
+    from web.security import WRITE_HEADER, write_secret
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
+        db = Path(tmp) / "chat.db"
+        cid = seeding.seed_conversation(
+            db_path=str(db), topic="lock", participants=["a", "b"],
+            mode="turns", max_turns=1).conversation_id
+        web_ui.set_db_path(str(db))
+        web_ui.db_init()
+        s = socket.socket()
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+        s.close()
+        server = uvicorn.Server(uvicorn.Config(web_ui.app, host="127.0.0.1", port=port,
+                                               log_level="critical"))
+        threading.Thread(target=server.run, daemon=True).start()
+        base = f"http://127.0.0.1:{port}"
+        lock = sqlite3.connect(db, isolation_level=None, check_same_thread=False)
+        try:
+            deadline = time.time() + 10
+            while not server.started and time.time() < deadline:
+                time.sleep(0.05)
+            lock.execute("BEGIN IMMEDIATE")          # every writer now waits
+            stop = urllib.request.Request(
+                f"{base}/api/conversations/{cid}/stop", method="POST",
+                headers={WRITE_HEADER: write_secret()})
+            stopped: dict = {}
+            t = threading.Thread(target=lambda: stopped.update(
+                r=urllib.request.urlopen(stop, timeout=20).status))
+            t.start()
+            time.sleep(0.5)                          # the stop is now waiting
+            t0 = time.monotonic()
+            with urllib.request.urlopen(f"{base}/api/conversations", timeout=20) as r:
+                assert r.status == 200
+            took = time.monotonic() - t0
+            time.sleep(1.5)
+            lock.execute("COMMIT")
+            t.join(20)
+            assert took < 1.0, f"an unrelated GET waited {took:.1f}s behind a locked write"
+            assert stopped.get("r") == 200, stopped
+        finally:
+            server.should_exit = True
+            lock.close()
+
+
+def test_the_transcript_page_counts_messages_once():
+    """One GROUP BY for the rail's message counts, not a COUNT per row."""
+    from orchestrator import seeding
+    from web import db as web_db
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
+        db = Path(tmp) / "chat.db"
+        for i in range(4):
+            cid = seeding.seed_conversation(
+                db_path=str(db), topic=f"t{i}", participants=[f"a{i}", f"b{i}"],
+                mode="turns", max_turns=1).conversation_id
+        web_ui.set_db_path(str(db))
+        web_ui.db_init()
+        sql: list[str] = []
+        real = web_db._connect
+
+        def traced():
+            conn = real()
+            conn.set_trace_callback(sql.append)
+            return conn
+
+        web_db._connect = traced
+        try:
+            r = TestClient(web_ui.app, base_url=LOCAL).get(f"/conversations/{cid}")
+        finally:
+            web_db._connect = real
+        assert r.status_code == 200
+        per_row = [q for q in sql if "COUNT(*) FROM messages WHERE conversation_id" in q]
+        assert per_row == [], per_row
+        assert sum("GROUP BY conversation_id" in q for q in sql) == 1, sql
+
+
+def test_the_polled_index_is_slim_and_revalidates():
+    """The chrome polls /api/conversations every 30 s for four fields; full
+    rows carry the kickoff and every persona card (audit RT-41)."""
+    from orchestrator import seeding
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
+        db = Path(tmp) / "chat.db"
+        for i in range(3):
+            seeding.seed_conversation(
+                db_path=str(db), topic=f"t{i}", participants=[f"a{i}", f"b{i}"],
+                mode="turns", max_turns=1, initial_system_message="x" * 5000)
+        web_ui.set_db_path(str(db))
+        web_ui.db_init()
+        c = TestClient(web_ui.app, base_url=LOCAL)
+        full = c.get("/api/conversations")
+        url = "/api/conversations?fields=id,topic,status,participants"
+        slim = c.get(url)
+        assert slim.status_code == 200
+        assert all(set(r) == {"id", "topic", "status", "participants"} for r in slim.json())
+        assert len(slim.content) * 5 < len(full.content), (len(slim.content), len(full.content))
+        etag = slim.headers["etag"]
+        again = c.get(url, headers={"If-None-Match": etag})
+        assert again.status_code == 304 and again.content == b""
+        from web.assets import SHELL_JS
+        assert "/api/conversations?fields=id,topic,status,participants" in SHELL_JS
+
+
+def test_nothing_blocks_first_paint_and_html_is_compressed():
+    """A phone waited ~1.2 s on the font CSS and highlight.js in <head>, and
+    a local or tailnet instance sent 270 KB of HTML uncompressed (RT-41)."""
+    from web.assets import HIGHLIGHT_JS_HEAD
+    from web.render.common import FONTS_HEAD
+    assert 'rel="stylesheet"' not in FONTS_HEAD.split("<noscript>")[0]
+    assert 'rel="preload" as="style"' in FONTS_HEAD
+    assert "<script src=" not in HIGHLIGHT_JS_HEAD and "<link" not in HIGHLIGHT_JS_HEAD
+    assert HIGHLIGHT_JS_HEAD.count("integrity: 'sha512-") == 2
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
+        web_ui.set_db_path(str(Path(tmp) / "chat.db"))
+        web_ui.db_init()
+        c = TestClient(web_ui.app, base_url=LOCAL)
+        r = c.get("/conversations", headers={"Accept-Encoding": "gzip"})
+        assert r.headers.get("content-encoding") == "gzip"
+
+def _outline(html_text: str) -> list[int]:
+    import re
+    html_text = re.sub(r"<(script|style)\b.*?</\1>|<!--.*?-->", "", html_text, flags=re.S)
+    return [int(x) for x in re.findall(r"<h([1-6])\b", html_text)]
+
+
+def test_every_page_has_one_h1_and_no_skipped_heading_level():
+    """Audit RT-40: five page types had no h1, a transcript had one per cast
+    card, and home skipped h2 -> h4. Messages and cards render their markdown
+    headings beneath the page's own."""
+    from orchestrator import seeding
+    from web.render.common import render_markdown
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
+        db = Path(tmp) / "chat.db"
+        cid = seeding.seed_conversation(
+            db_path=str(db), topic="outline", participants=["a", "b"], mode="turns",
+            max_turns=2, initial_system_message="## Background\n\n### Detail\n\ntext",
+            participant_personas={"a": {"persona_name": "Ann",
+                                        "persona_body": "# Ann\n\n## Voice\nDry."}},
+        ).conversation_id
+        web_ui.set_db_path(str(db))
+        web_ui.db_init()
+        c = TestClient(web_ui.app, base_url=LOCAL)
+        for path in ("/", "/conversations", f"/conversations/{cid}", "/conversations/99999",
+                     "/personas", "/personas/manage", "/orchestrate", "/settings",
+                     "/settings?tab=notifications", "/settings?tab=delivery",
+                     "/battleground", "/extension", "/no-such-page"):
+            hs = _outline(c.get(path).text)
+            assert hs.count(1) == 1, (path, hs)
+            skips = [(a, b) for a, b in zip(hs, hs[1:]) if b > a + 1]
+            assert not skips, (path, skips, hs)
+        page = c.get(f"/conversations/{cid}").text
+        assert 'id="transcript" class="transcript" role="log" aria-live="polite"' in page
+        assert '<article class="msg ' in page and 'aria-labelledby="m' in page
+        assert '<h3 class="who" id="m' in page
+    # The content's top heading lands one level under the given one.
+    assert render_markdown("## A\n### B", 3).startswith('<h4 class="md-h2">A</h4>\n<h5 class="md-h3">')
+    assert render_markdown("# T", 2) == '<h3 class="md-h1">T</h3>\n'
+    assert render_markdown("# plain") == "<h1>plain</h1>\n"
+
+
+def test_form_fields_have_names():
+    """Audit RT-40 (UX-06): the topic, brief and notification fields had no
+    accessible name, and the radio sets no group label."""
+    c = TestClient(web_ui.app, base_url=LOCAL)
+    orch = c.get("/orchestrate").text
+    if 'id="orch-topic"' in orch:  # the local form, not the hosted explainer
+        assert '<label class="lbl" for="orch-topic">' in orch
+        assert 'aria-labelledby="orch-brief-label"' in orch
+        assert 'role="radiogroup" aria-labelledby="orch-type-label"' in orch
+    nt = c.get("/settings?tab=notifications").text
+    for needle in ('for="nt-target"', 'for="nt-server"', 'aria-labelledby="nt-svc-label"'):
+        assert needle in nt, needle
+    dl = c.get("/settings?tab=delivery").text
+    for needle in ('for="dl-folder-path"', 'for="dl-cmd-argv"', 'for="dl-cmd-timeout"'):
+        assert needle in dl, needle
+
+
+def test_no_spawn_refuses_an_orchestrated_spawn_before_seeding():
+    """Audit RT-21: config/NO_SPAWN is a global kill switch."""
+    from orchestrator import killswitch
+    from web.security import WRITE_HEADER, write_secret
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
+        web_ui.set_db_path(str(Path(tmp) / "chat.db"))
+        web_ui.db_init()
+        flag = Path(tmp) / "NO_SPAWN"
+        flag.write_text("", encoding="utf-8")
+        real = killswitch.NO_SPAWN_FILE
+        killswitch.NO_SPAWN_FILE = flag
+        try:
+            c = TestClient(web_ui.app, base_url=LOCAL)
+            r = c.post("/api/orchestrate", headers={WRITE_HEADER: write_secret()},
+                       json={"topic": "t", "participants": ["codex", "claude-code"], "spawn": True})
+        finally:
+            killswitch.NO_SPAWN_FILE = real
+        assert r.status_code == 409 and r.json()["kind"] == "spawn_disabled", r.text
+        assert c.get("/api/conversations").json() == []
+
+
+def test_close_windows_is_a_local_write():
+    c = _hosted_stack_client("127.0.0.1:8765")
+    assert c.post("/api/conversations/1/close-windows").status_code == 401  # no write secret
+
+
 def test_sse_stream_sends_the_final_message_before_complete():
     """The stream read messages, then the status: a send landing between the
     two reads closed the stream without its final message (audit RT-17).
@@ -597,7 +834,8 @@ def test_sse_stream_sends_the_final_message_before_complete():
             mode="turns", max_turns=1).conversation_id
         web_ui.set_db_path(str(db))
         web_ui.db_init()
-        w = sqlite3.connect(db, isolation_level=None)
+        # The stream reads in a worker thread (RT-28), so this writer is shared.
+        w = sqlite3.connect(db, isolation_level=None, check_same_thread=False)
         real, poll = api.conversation_turn_state, api.POLL_INTERVAL_SECONDS
         calls = {"n": 0}
 

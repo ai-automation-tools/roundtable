@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 
 from sse_starlette.sse import EventSourceResponse
+from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
+from orchestrator import killswitch
 from orchestrator.export import (
     export_filename as _export_filename,
     export_zip_filename as _export_zip_filename,
@@ -29,7 +32,7 @@ from web.db import (
     messages_since,
     stop_conversation,
 )
-from web.render.common import render_markdown
+from web.render.common import MESSAGE_HEADING_LEVEL, render_markdown
 
 POLL_INTERVAL_SECONDS = 1.0
 
@@ -50,11 +53,25 @@ def _stream_client(request: Request) -> str:
     return headers.get("fly-client-ip") or (client.host if client else "?")
 
 
-async def api_conversations(request: Request) -> Response:
-    return JSONResponse(list_conversations())
+def api_conversations(request: Request) -> Response:
+    """Every conversation row. ``?fields=id,topic,…`` trims each row to those
+    keys: the chrome polls this every 30 s for a live count and the palette,
+    which need four small fields, and a full row carries the kickoff and every
+    persona card (154 KB for 12 rows; audit RT-41). An ``ETag`` lets an
+    unchanged poll come back ``304`` with no body."""
+    rows = list_conversations()
+    fields = [f for f in request.query_params.get("fields", "").split(",") if f]
+    if fields:
+        rows = [{k: r[k] for k in fields if k in r} for r in rows]
+    body = json.dumps(rows, separators=(",", ":")).encode("utf-8")
+    etag = '"' + hashlib.sha256(body).hexdigest()[:32] + '"'
+    headers = {"ETag": etag, "Cache-Control": "no-cache"}
+    if etag in request.headers.get("if-none-match", ""):
+        return Response(status_code=304, headers=headers)
+    return Response(body, media_type="application/json", headers=headers)
 
 
-async def api_conversation(request: Request) -> Response:
+def api_conversation(request: Request) -> Response:
     cid = int(request.path_params["cid"])
     data = get_conversation(cid)
     if not data:
@@ -62,7 +79,7 @@ async def api_conversation(request: Request) -> Response:
     return JSONResponse(data)
 
 
-async def api_conversation_export(request: Request) -> Response:
+def api_conversation_export(request: Request) -> Response:
     """Serve a conversation as a downloadable Markdown document.
 
     Content-Disposition forces a download in browsers; the URL ends in
@@ -86,7 +103,7 @@ async def api_conversation_export(request: Request) -> Response:
     )
 
 
-async def api_conversation_prompt(request: Request) -> Response:
+def api_conversation_prompt(request: Request) -> Response:
     """Serve a media-production prompt for one conversation.
 
     ``GET /api/conversations/{cid}/prompts/{kind}.md`` where kind is ``images``
@@ -120,7 +137,7 @@ async def api_conversation_prompt(request: Request) -> Response:
     return Response(text, media_type="text/markdown; charset=utf-8", headers=headers)
 
 
-async def api_conversation_export_zip(request: Request) -> Response:
+def api_conversation_export_zip(request: Request) -> Response:
     """Serve a conversation as a downloadable .zip of Markdown documents.
 
     Bundle: ``topic.md`` (topic + overview), ``personas/<agent>.md`` (one per
@@ -144,15 +161,26 @@ async def api_conversation_export_zip(request: Request) -> Response:
     )
 
 
-async def api_stop(request: Request) -> Response:
+def api_stop(request: Request) -> Response:
     cid = int(request.path_params["cid"])
     result = stop_conversation(cid)
     if result is None:
         return JSONResponse({"error": "not found"}, status_code=404)
-    return JSONResponse(result)
+    # How many seat windows this app opened for it, so the page can offer to
+    # close them (audit RT-21).
+    return JSONResponse({**result, "seat_windows": len(killswitch.pid_files(cid))})
 
 
-async def api_delete(request: Request) -> Response:
+def api_close_windows(request: Request) -> Response:
+    """End the process tree of each seat window recorded for this
+    conversation. Stopping a run only reaches an agent at its next MCP call;
+    this ends one mid-tool-call. Only a window whose PID still has its
+    recorded start time is touched."""
+    cid = int(request.path_params["cid"])
+    return JSONResponse({"closed": killswitch.close_seat_windows(cid)})
+
+
+def api_delete(request: Request) -> Response:
     """Permanently delete a conversation. Hosted-UI affordance.
 
     Cascades messages. The local sidecar picks this up on the next pull
@@ -164,6 +192,10 @@ async def api_delete(request: Request) -> Response:
     if result is None:
         return JSONResponse({"error": "not found"}, status_code=404)
     return JSONResponse(result)
+
+def _tick(cid: int, last_id: int) -> tuple[tuple[str | None, str | None], list]:
+    return conversation_turn_state(cid), messages_since(cid, last_id)
+
 
 async def api_stream(request: Request) -> Response:
     """SSE stream for a conversation: ``message`` per new row, ``turn`` when
@@ -188,10 +220,11 @@ async def api_stream(request: Request) -> Response:
             # in one transaction (RT-09), so once 'complete' is read every
             # message is visible to the read below. The other order could see
             # 'complete' and stop without the final message (audit RT-17).
-            status, current_turn = conversation_turn_state(cid)
-            new = messages_since(cid, last_id)
+            # In the threadpool: a reader that waits on a lock must not hold
+            # up the loop that serves every other viewer (audit RT-28).
+            (status, current_turn), new = await run_in_threadpool(_tick, cid, last_id)
             for m in new:
-                payload = {**m, "content_html": render_markdown(m["content"])}
+                payload = {**m, "content_html": render_markdown(m["content"], MESSAGE_HEADING_LEVEL)}
                 yield {"event": "message", "data": json.dumps(payload)}
                 last_id = max(last_id, m["id"])
             if status == "complete":

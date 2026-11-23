@@ -16,8 +16,8 @@
        -DefaultAgents). With -Format podcast the line is "- Guests: N" and N
        counts the guests only; the host is one more seat on top.
     3. Ask the persona registry (the DB-backed personas table) for the chosen
-       group's roster (default "Unique-Personas"; override with -Group to draw
-       from another group) and pick N at
+       castable roster (every group but AI-Models; -Group draws from one
+       group instead) and pick N at
        random (or resolve the names passed via -Personalities through the same
        registry, restricted to that group). A podcast's host is drawn from the
        "Debate-Hosts" group (falling back to every castable persona when that
@@ -220,6 +220,13 @@ $CastPersonas = (-not $IsCollab) -or [bool]$Personalities -or [bool]$Group
 # Shared CLI registry ($Clis) + prompt-file/spawn helpers, shared with
 # scripts/orchestrate-debate.ps1 so the CLI binary/flag table lives in one place.
 . $SpawnLib
+
+# The kill switch: refuse before seeding anything. A dry run spawns nothing,
+# so it only says so.
+if (Test-Path -LiteralPath $NoSpawnFile) {
+    if (-not $DryRun) { Assert-SpawnAllowed }
+    Write-Host "NO_SPAWN is set ($NoSpawnFile): a real run would be refused." -ForegroundColor Yellow
+}
 
 # The CLI registry ($Clis) — binaries, launch dirs, prompt-arg shapes, and
 # tool-allowlist flags — now lives in scripts/lib/spawn-agents.ps1 (dot-sourced

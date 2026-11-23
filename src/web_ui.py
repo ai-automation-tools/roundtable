@@ -46,6 +46,7 @@ from web.api.conversations import (  # noqa: E402
     api_conversation_prompt,
     api_conversations,
     api_delete,
+    api_close_windows,
     api_stop,
     api_stream,
 )
@@ -160,7 +161,7 @@ from web.security import (  # noqa: E402,F401
 # Page routes
 # ---------------------------------------------------------------------------
 
-async def homepage(request: Request) -> Response:
+def homepage(request: Request) -> Response:
     """Public landing page. Shows the marketing/intro shell plus live
     counters and the 5 most recent conversations on this deploy.
     """
@@ -168,11 +169,11 @@ async def homepage(request: Request) -> Response:
     return HTMLResponse(_render_homepage(list_stats(), convs[:5]))
 
 
-async def index(request: Request) -> Response:
+def index(request: Request) -> Response:
     return HTMLResponse(_render_index(list_conversations()))
 
 
-async def conversation_view(request: Request) -> Response:
+def conversation_view(request: Request) -> Response:
     cid = int(request.path_params["cid"])
     data = get_conversation(cid)
     if not data:
@@ -191,7 +192,7 @@ async def conversation_view(request: Request) -> Response:
     )
 
 
-async def orchestrate(request: Request) -> Response:
+def orchestrate(request: Request) -> Response:
     """GET /orchestrate — local: seed-conversation form with page-load preflight;
     hosted (read-only): a local-only explainer (the mirror can't spawn CLIs).
 
@@ -230,12 +231,12 @@ async def orchestrate(request: Request) -> Response:
     ))
 
 
-async def personas_page(request: Request) -> Response:
+def personas_page(request: Request) -> Response:
     """GET /personas — the read-only persona explorer (the cast grid)."""
     return HTMLResponse(render_explorer(dict(request.query_params)))
 
 
-async def persona_detail_page(request: Request) -> Response:
+def persona_detail_page(request: Request) -> Response:
     """GET /personas/{slug} — one persona: cover, card, downloads."""
     p = find_persona(request.path_params["slug"], request.query_params.get("group", ""))
     if p is None:
@@ -243,12 +244,12 @@ async def persona_detail_page(request: Request) -> Response:
     return HTMLResponse(render_persona_detail(p))
 
 
-async def personas_manage_page(request: Request) -> Response:
+def personas_manage_page(request: Request) -> Response:
     """GET /personas/manage — the persona-management console (CRUD/import)."""
     return HTMLResponse(_render_personas_page())
 
 
-async def settings_page(request: Request) -> Response:
+def settings_page(request: Request) -> Response:
     """GET /settings — the three per-machine config files, one tab each.
 
     Local only in substance: every tab edits something under `config/`, which
@@ -275,7 +276,7 @@ async def settings_page(request: Request) -> Response:
         SETUP_TAB_CSS))
 
 
-async def legacy_settings_redirect(request: Request) -> Response:
+def legacy_settings_redirect(request: Request) -> Response:
     """`/setup` and `/notifications` → the tab that replaced them.
 
     They were their own pages for months and are linked from the README, the
@@ -286,7 +287,7 @@ async def legacy_settings_redirect(request: Request) -> Response:
     return RedirectResponse(f"/settings?tab={tab}", status_code=302)
 
 
-async def extension_page(request: Request) -> Response:
+def extension_page(request: Request) -> Response:
     """GET /extension — what AgentBattleground is and how to install it.
 
     Renders on both deploys: it's an explainer, not a control surface. The only
@@ -296,7 +297,7 @@ async def extension_page(request: Request) -> Response:
     return HTMLResponse(_render_extension_page())
 
 
-async def battleground_page(request: Request) -> Response:
+def battleground_page(request: Request) -> Response:
     """GET /battleground — the arena console: every captured arena, its thread,
     and every draft with its verdict.
 
@@ -318,7 +319,7 @@ async def battleground_page(request: Request) -> Response:
     )
 
 
-async def battleground_arena_page(request: Request) -> Response:
+def battleground_arena_page(request: Request) -> Response:
     """GET /battleground/{aid} — one arena, its captured thread, and its drafts.
 
     The verdict buttons POST to the same bridge endpoints the extension's side
@@ -333,7 +334,7 @@ async def battleground_arena_page(request: Request) -> Response:
     return HTMLResponse(_render_battleground_arena(data))
 
 
-async def favicon(request: Request) -> Response:
+def favicon(request: Request) -> Response:
     return Response(
         FAVICON_SVG,
         media_type="image/svg+xml",
@@ -341,13 +342,13 @@ async def favicon(request: Request) -> Response:
     )
 
 
-async def avatars(request: Request) -> Response:
+def avatars(request: Request) -> Response:
     """GET /avatars/{slug} — persona avatar PNG, or a default silhouette when
     the persona has no image (AI-Models cards, personas without art)."""
     return avatar_response(request.path_params.get("slug", ""))
 
 
-async def not_found(request: Request, exc: Exception) -> Response:
+def not_found(request: Request, exc: Exception) -> Response:
     """Branded 404 for unmatched routes (typos, ``/conversations/abc``, etc.).
 
     Handlers that return their own 404 Response (missing conversation/persona)
@@ -369,10 +370,11 @@ routes = [
     Route("/api/conversations/{cid:int}/export.zip", api_conversation_export_zip),
     Route("/api/conversations/{cid:int}/prompts/{kind}.md", api_conversation_prompt),
     Route("/api/conversations/{cid:int}/stop", api_stop, methods=["POST"]),
+    Route("/api/conversations/{cid:int}/close-windows", api_close_windows, methods=["POST"]),
     Route("/api/conversations/{cid:int}/delete", api_delete, methods=["POST"]),
     Route("/api/conversations/{cid:int}/stream", api_stream),
     Route("/api/ingest", api_ingest, methods=["POST"]),
-    Route("/api/since", api_since),
+    Route("/api/since", api_since, methods=["GET", "POST"]),
     Route("/orchestrate", orchestrate),
     Route("/api/orchestrate", api_orchestrate, methods=["POST"]),
     # Which CLI tools this machine has. GET re-probes (safe anywhere); the two
@@ -482,12 +484,19 @@ def main() -> None:
     # without personas. Create-if-missing, so operator edits survive a restart
     # and a fresh volume (Fly) or clone self-heals on boot.
     models = ensure_model_personas()
+    # A fresh clone's registry is empty, so a random cast had nothing to draw
+    # from. Seed it from the card tree once; a registry with any castable card
+    # is never touched (the tree is a seed, the DB is the source of truth).
+    seeded = (orch_personas.import_personas_from_files()
+              if not orch_personas.list_debater_personas() else None)
     ingest_on = bool(os.environ.get("AGENT_CHAT_INGEST_TOKEN"))
     print(f"roundtable web UI — DB: {resolved}")
     print(f"  bind: http://{args.host}:{args.port}/")
     print(f"  basic auth: {'on' if basic_auth_password() else 'off'}")
     print(f"  /api/ingest: {'on' if ingest_on else 'off'}")
     print(f"  AI-Models cards: {models['created']} created, {models['skipped']} present")
+    if seeded:
+        print(f"  persona cards seeded from agents/Debate-Agents: {seeded['imported']}")
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")
 
 
