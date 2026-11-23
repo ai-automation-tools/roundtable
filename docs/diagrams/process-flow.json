@@ -7,7 +7,7 @@
     "output": "docs/diagrams/process-flow.html",
     "repository": {
       "url": "https://github.com/ai-automation-tools/roundtable.git",
-      "revision": "c5127f381d9fa387795c9e3bad85945794253002"
+      "revision": "8301a07b973a170f3f9f65c1d3d3c624e8d5c510"
     }
   },
   "lanes": [
@@ -148,8 +148,8 @@
       "sources": [
         {
           "path": "src/agent_chat_mcp.py",
-          "line": 658,
-          "end_line": 711
+          "line": 663,
+          "end_line": 716
         }
       ]
     },
@@ -164,8 +164,8 @@
       "sources": [
         {
           "path": "src/agent_chat_mcp.py",
-          "line": 982,
-          "end_line": 1024
+          "line": 987,
+          "end_line": 1038
         }
       ]
     },
@@ -205,8 +205,8 @@
       "sources": [
         {
           "path": "src/agent_chat_mcp.py",
-          "line": 846,
-          "end_line": 935
+          "line": 851,
+          "end_line": 940
         }
       ]
     },
@@ -221,13 +221,13 @@
       "sources": [
         {
           "path": "src/agent_chat_mcp.py",
-          "line": 936,
-          "end_line": 943
+          "line": 941,
+          "end_line": 948
         },
         {
           "path": "src/agent_chat_mcp.py",
-          "line": 814,
-          "end_line": 833
+          "line": 819,
+          "end_line": 838
         }
       ]
     },
@@ -242,8 +242,8 @@
       "sources": [
         {
           "path": "src/web/api/conversations.py",
-          "line": 168,
-          "end_line": 219
+          "line": 173,
+          "end_line": 225
         }
       ]
     },
@@ -259,12 +259,12 @@
         {
           "path": "src/orchestrator/delivery.py",
           "line": 1,
-          "end_line": 59
+          "end_line": 60
         },
         {
           "path": "src/orchestrator/delivery.py",
-          "line": 633,
-          "end_line": 658
+          "line": 650,
+          "end_line": 675
         }
       ]
     }
