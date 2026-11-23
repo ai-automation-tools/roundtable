@@ -23,7 +23,7 @@ from orchestrator.personas import Persona
 
 from web.assets import EXPLORER_CSS
 from web.avatars import avatar_url, raster_avatar
-from web.render.common import _registry_layout, render_markdown
+from web.render.common import CARD_HEADING_LEVEL, _registry_layout, render_markdown
 from web.security import _is_public_readonly
 
 # Where the 2:3 cover portraits live: {PERSONA_MEDIA_URL}/covers/<slug>.webp,
@@ -202,7 +202,7 @@ def render_explorer(params: dict[str, str]) -> str:
     body = (
         '<div class="px">'
         '<header class="px-head"><div>'
-        '<h2 class="page-title">Agent Personas</h2>'
+        '<h1 class="page-title">Agent Personas</h1>'
         '<p class="page-sub">Every persona an agent can play. Read a card exactly as the '
         'model reads it, download it, or put it in a debate.</p></div>'
         f'{manage}</header>'
@@ -271,7 +271,7 @@ def render_persona_detail(p: Persona) -> str:
         '<div class="px-id">'
         f'<img class="px-av" src="{_e(avatar_url(p.slug))}" alt="" width="64" height="64">'
         f'<div><p class="px-kick">{html.escape(p.group.replace("-", " "))}</p>'
-        f'<h2 class="page-title">{html.escape(p.name)}</h2></div></div>'
+        f'<h1 class="page-title">{html.escape(p.name)}</h1></div></div>'
         + (f'<p class="px-summary">{html.escape(p.summary)}</p>' if p.summary else "")
         + (f'<div class="px-tags">{tags}</div>' if tags else "")
         + f'<div class="px-actions">{use}</div>'
@@ -281,8 +281,8 @@ def render_persona_detail(p: Persona) -> str:
         'Edit in the manager</a></p>'
         '</section></div>'
         '<section class="px-card-body">'
-        '<h3>The card <span>&mdash; exactly as the model reads it</span></h3>'
-        f'<div class="msg-body">{render_markdown(p.body)}</div></section>'
+        '<h2>The card <span>&mdash; exactly as the model reads it</span></h2>'
+        f'<div class="msg-body">{render_markdown(p.body, CARD_HEADING_LEVEL)}</div></section>'
         '</div>'
     )
     return _registry_layout(p.name, f"/ <strong>{html.escape(p.name)}</strong>", body,

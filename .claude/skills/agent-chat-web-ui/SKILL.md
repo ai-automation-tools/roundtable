@@ -22,7 +22,17 @@ route table, app assembly, `main()`. Implementation lives in the package.
 | Topic→logo classification | `web/topics.py` |
 | Persona avatar resolution (`avatar_url`/`avatar_response`, `GET /avatars/{slug}`, uploaded row → file art → default silhouette, `invalidate_index()`) | `web/avatars.py` |
 
-Three rules that break things quietly:
+Four rules that break things quietly:
+
+- **One `h1` per page, no skipped levels** (audit RT-40, pinned by
+  `test_every_page_has_one_h1_and_no_skipped_heading_level`). A page's title is
+  its `h1`; sections are `h2`. Markdown rendered inside the page goes through
+  `render_markdown(text, nest_under=N)` so its top heading becomes h(N+1):
+  messages nest under the speaker `h3` (`MESSAGE_HEADING_LEVEL`), persona cards
+  under an `h2` (`CARD_HEADING_LEVEL`). Style rendered headings by their
+  `md-hN` class (the authored level), never by tag. A form field gets a real
+  `<label for>` or `aria-labelledby`, and a radio set a `role="radiogroup"`
+  with a label.
 
 - **Handlers are plain `def`, not `async def`** (since 2026-11-22, audit RT-28).
   Starlette runs a sync endpoint in its threadpool, so SQLite's 10 s busy

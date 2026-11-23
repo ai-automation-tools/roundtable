@@ -1140,7 +1140,7 @@ main {
 }
 /* Below the fixed source bar (z 70), or the bar hides most of it. */
 .skip-link:focus { top: var(--srcbar-h); z-index: 80; text-decoration: none; }
-main h2.page-title {
+main .page-title {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
   font-size: 26px; font-weight: 800;
   letter-spacing: -0.01em;
@@ -1313,6 +1313,7 @@ td a:hover { color: var(--accent); }
   margin-bottom: 10px;
 }
 .msg-head .who {
+  margin: 0; line-height: inherit;
   color: var(--text);
   font-weight: 600;
   font-size: 13px;
@@ -1390,10 +1391,12 @@ td a:hover { color: var(--accent); }
   margin: 16px 0 8px; font-weight: 600; color: var(--text);
   letter-spacing: -0.01em;
 }
-.msg-body h1 { font-size: 19px; }
-.msg-body h2 { font-size: 17px; }
-.msg-body h3 { font-size: 15px; }
-.msg-body h4, .msg-body h5, .msg-body h6 { font-size: 14px; }
+/* Sized by the authored level (md-hN): rendered headings are shifted down to
+   nest under the page's outline (render_markdown, audit RT-40). */
+.msg-body h1, .msg-body .md-h1 { font-size: 19px; }
+.msg-body .md-h2 { font-size: 17px; }
+.msg-body .md-h3 { font-size: 15px; }
+.msg-body .md-h4, .msg-body .md-h5, .msg-body .md-h6 { font-size: 14px; }
 .msg-body table {
   border-collapse: collapse; margin: 10px 0;
   font-size: 13px;
@@ -1677,8 +1680,8 @@ body.home .muted { color: var(--muted); }
 .feat-row { display: block; padding: 14px 16px; color: inherit; text-decoration: none; transition: background 0.2s var(--ease); }
 .feat-row:hover { background: rgba(39, 39, 42, 0.35); text-decoration: none; }
 .feat-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.feat-top h3 { font-size: 15px; font-weight: 600; line-height: 1.35; color: var(--text); letter-spacing: -0.01em; transition: color 0.2s var(--ease); }
-.feat-row:hover h3 { color: var(--accent); }
+.feat-top h2 { font-size: 15px; font-weight: 600; line-height: 1.35; color: var(--text); letter-spacing: -0.01em; transition: color 0.2s var(--ease); }
+.feat-row:hover h2 { color: var(--accent); }
 .feat-n { flex: none; font-size: 10px; color: #52525b; margin-top: 3px; }
 .feat-teaser { margin: 4px 0 0; font-size: 12.5px; line-height: 1.45; color: var(--muted); }
 .feat-cast { margin-top: 8px; display: flex; align-items: center; gap: 8px; }
@@ -1756,7 +1759,7 @@ body.home .muted { color: var(--muted); }
 .cast-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
 .cast-av { width: 32px; height: 32px; border-radius: 8px; overflow: hidden; position: relative; flex: none; background: rgba(16, 185, 129, 0.15); color: var(--accent); display: inline-flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px; }
 .cast-av img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.cast-head h4 { font-size: 16px; font-weight: 600; line-height: 1.25; color: var(--text); }
+.cast-head h3 { font-size: 16px; font-weight: 600; line-height: 1.25; color: var(--text); }
 .clamp2 { margin: 0; font-size: 14px; line-height: 1.6; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .tags { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; }
 .tag { font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted-2); border: 1px solid #27272a; border-radius: 4px; padding: 2px 6px; }
@@ -1765,7 +1768,7 @@ body.home .muted { color: var(--muted); }
 .steps { list-style: none; margin: 40px 0 0; padding: 0; display: flex; flex-direction: column; gap: 24px; }
 .step { display: grid; grid-template-columns: 44px minmax(0, 1fr) minmax(0, 1.2fr); gap: 24px; align-items: start; }
 .step-n { width: 40px; height: 40px; border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.1); color: var(--accent); display: grid; place-items: center; font-weight: 600; font-size: 14px; }
-.step-body h4 { font-size: 16px; font-weight: 600; color: var(--text); line-height: 1.3; }
+.step-body h3 { font-size: 16px; font-weight: 600; color: var(--text); line-height: 1.3; }
 .step-body p { margin: 6px 0 0; font-size: 14px; line-height: 1.6; color: var(--muted); }
 .step-body a:hover { color: #6ee7b7; }
 /* Code blocks inside the steps — emerald accent rule on the left, mono. */
@@ -1870,13 +1873,13 @@ html.js .reveal.seen { opacity: 1; transform: none; }
 # form rules cannot leak into the conversations index / detail pages.
 ORCHESTRATE_CSS = """
 .orch-shell { max-width: var(--w-form); margin: 32px auto; padding: 0 24px 128px; }
-.orch-head h2 {
+.orch-head :is(h1, h2) {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
   font-size: 26px; font-weight: 800; letter-spacing: -0.01em;
   margin: 0 0 8px 0;
 }
 .orch-head p { color: var(--muted); margin: 0 0 8px 0; max-width: 68ch; }
-.orch-head h2 + * { margin-top: 14px; }
+.orch-head :is(h1, h2) + * { margin-top: 14px; }
 
 /* Same mechanic as the sub-type cards' "?": a floating tooltip, not a
    disclosure. Absolutely positioned, so revealing it reflows nothing;
@@ -2027,7 +2030,7 @@ ORCHESTRATE_CSS = """
   /* Hidden or not, the tooltip counted toward scroll width: hung off the "?"
      near the right edge it pushed /orchestrate ~200px sideways. Hang it off
      the heading and give it the column's width instead. */
-  .orch-shell h2 { position: relative; }
+  .orch-shell :is(h1, h2) { position: relative; }
   .orch-head-tip { position: static; }
   .orch-head-detail { left: 0; right: 0; top: 100%; width: auto; max-width: none; }
   .orch-head-help { width: 30px; height: 30px; }
@@ -2125,7 +2128,7 @@ ORCHESTRATE_CSS = """
   padding: 14px 16px;
   color: #fca5a5;
 }
-.orch-error h4 { margin: 0 0 8px 0; color: #fecaca; font-size: 14px; }
+.orch-error :is(h2, h4) { margin: 0 0 8px 0; color: #fecaca; font-size: 14px; }
 .orch-error ul { margin: 0; padding-left: 18px; }
 .orch-error li { margin-bottom: 4px; font-size: 13px; line-height: 1.5; }
 .orch-error .code {
@@ -2255,7 +2258,7 @@ _CAST_CSS = """\
              margin: 22px 0 1.25rem; }
   .cv-cast-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px;
                   padding: 0 6px; }
-  .cv-cast-label { font: 600 10px/1 'IBM Plex Mono', ui-monospace, monospace;
+  .cv-cast-label { margin: 0; font: 600 10px/1 'IBM Plex Mono', ui-monospace, monospace;
                    letter-spacing: 0.14em; text-transform: uppercase; color: var(--cv-ash); }
   .cv-cast-hint { font-size: 11px; color: var(--cv-ash); }
   .cast-list { list-style: none; margin: 0; padding: 0; }
@@ -2308,7 +2311,7 @@ _CAST_CSS = """\
                border-top: 1px solid var(--cv-line, #27272a);
                font-size: 13px; line-height: 1.65; color: var(--muted, #a1a1aa);
                max-height: 380px; overflow-y: auto; overscroll-behavior: contain; }
-  .cast-card h1, .cast-card h2, .cast-card h3 { font-size: 13px; margin: 12px 0 4px;
+  .cast-card :is(.md-h1, .md-h2, .md-h3) { font-size: 13px; margin: 12px 0 4px;
                color: #d4d4d8; }
   .cast-card p, .cast-card li { margin: 6px 0; }
   .cast-card > :first-child { margin-top: 0; }
@@ -2645,7 +2648,7 @@ main:has(.cv2) { max-width:none; padding:0; margin:0 0 0 var(--rail-w); }
   box-shadow:0 24px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(0,0,0,0.45); }
 .cv-pm-head { display:flex; align-items:flex-start; gap:16px; padding:16px 18px;
   border-bottom:1px solid var(--cv-line); }
-.cv-pm-head h3 { margin:0; font-size:15px; color:var(--text); }
+.cv-pm-head h2 { margin:0; font-size:15px; color:var(--text); }
 .cv-pm-sub { margin:4px 0 0; font-size:12.5px; color:var(--muted); max-width:60ch; }
 .cv-pm-head .icon-btn { margin-left:auto; flex:0 0 auto; }
 .cv-pm-text { flex:1 1 auto; min-height:240px; width:100%; resize:none; border:0;
@@ -2702,6 +2705,7 @@ main:has(.cv2) { max-width:none; padding:0; margin:0 0 0 var(--rail-w); }
   display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
 .cv-empty { height:100%; min-height:60vh; display:flex; flex-direction:column; align-items:center;
   justify-content:center; gap:14px; color:var(--cv-ash); text-align:center; padding:24px; }
+.cv-empty h1 { margin:0; font-size:15px; font-weight:600; color:var(--text); }
 .cv-empty svg { width:30px; height:30px; opacity:0.5; }
 /* ---- overview (no conversation selected) ---- */
 .cv-ov { max-width:var(--w-panel); margin:0 auto; padding:40px 32px 72px; }
@@ -2788,7 +2792,7 @@ body:has(.cv2.cv-fullscreen) .topbar { margin-left:0; }
 _ORCH_READONLY_CSS = """
 <style>
 .orch-ro-card{border:1px solid rgba(255,255,255,0.10);border-radius:10px;padding:16px 18px;margin:16px 0;background:rgba(24,24,27,0.4);}
-.orch-ro-card h3{margin:0 0 8px;font-size:14px;color:#e5e7eb;}
+.orch-ro-card :is(h2,h3){margin:0 0 8px;font-size:14px;color:#e5e7eb;}
 .orch-ro-card pre{margin:0 0 10px;padding:12px 14px;background:#0b0f0e;border:1px solid rgba(255,255,255,0.08);border-radius:6px;overflow-x:auto;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12.5px;color:#cbd5e1;}
 .orch-ro-card p{margin:0;color:#9ca3af;font-size:13px;}
 /* Per-format guide links. The homepage's debate + podcast CTAs both land on
@@ -3001,11 +3005,11 @@ EXTENSION_CSS = """
   background: rgba(245, 158, 11, 0.06);
   border-radius: 10px; padding: 18px 20px; margin: 4px 0 26px;
 }
-.xt-invariant h3 { margin: 0 0 8px; font-size: 17px; color: #fcd9a1; }
+.xt-invariant h2 { margin: 0 0 8px; font-size: 17px; color: #fcd9a1; }
 .xt-invariant p { margin: 0 0 10px; color: var(--muted); font-size: 13.5px; line-height: 1.65; }
 .xt-invariant p:last-child { margin-bottom: 0; }
 .xt-sec { margin: 30px 0; }
-.xt-sec > h3 {
+.xt-sec > h2 {
   margin: 0 0 10px; font-size: 12px; font-weight: 600;
   text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted-2);
 }
@@ -3021,7 +3025,7 @@ EXTENSION_CSS = """
   border: 1px solid rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.1);
   color: var(--good); font-size: 12px; font-weight: 700;
 }
-.xt-steps h4 { margin: 3px 0 4px; font-size: 14px; color: var(--text); font-weight: 600; }
+.xt-steps h3 { margin: 3px 0 4px; font-size: 14px; color: var(--text); font-weight: 600; }
 .xt-steps p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.65; }
 .xt-code {
   margin: 8px 0 0; padding: 10px 12px;
@@ -3099,9 +3103,9 @@ BATTLEGROUND_CSS = """
 }
 .bgc-card:hover { border-color: var(--border-strong); }
 .bgc-card-top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-.bgc-card-top h3 { margin: 0; font-size: 15px; font-weight: 600; flex: 1 1 260px; min-width: 0; }
-.bgc-card-top h3 a { color: var(--text); }
-.bgc-card-top h3 a:hover { color: var(--accent); text-decoration: none; }
+.bgc-card-top h2 { margin: 0; font-size: 15px; font-weight: 600; flex: 1 1 260px; min-width: 0; }
+.bgc-card-top h2 a { color: var(--text); }
+.bgc-card-top h2 a:hover { color: var(--accent); text-decoration: none; }
 .bgc-meta {
   margin: 8px 0 0; display: flex; gap: 8px 16px; flex-wrap: wrap;
   font-size: 12px; color: var(--muted-2);
@@ -3131,7 +3135,7 @@ BATTLEGROUND_CSS = """
                    background: rgba(59,130,246,0.10); }
 
 .bgc-sec { margin: 30px 0; }
-.bgc-sec > h3 {
+.bgc-sec > h2 {
   margin: 0 0 12px; font-size: 12px; font-weight: 600;
   text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted-2);
 }
@@ -3505,8 +3509,8 @@ EXPLORER_CSS = """\
 .px-meta dd { margin:0; }
 .px-hint { font-size:12px; color:var(--muted-2); margin:6px 0 0; }
 .px-card-body { margin-top:32px; border-top:1px solid var(--border); padding-top:20px; max-width:var(--measure); }
-.px-card-body h3 { font-size:15px; margin:0 0 14px; }
-.px-card-body h3 span { font-weight:400; color:var(--muted-2); }
+.px-card-body h2 { font-size:15px; margin:0 0 14px; }
+.px-card-body h2 span { font-weight:400; color:var(--muted-2); }
 @media (max-width: 760px) {
   .px-dgrid { grid-template-columns:1fr; }
   .px-dcover { max-width:240px; }
@@ -3658,7 +3662,7 @@ html.light .bgc-post.target { background: rgba(16, 185, 129, 0.05); }
 html.light .orch-actions { background: linear-gradient(180deg, rgba(250, 250, 250, 0.72), var(--bg) 55%); }
 html.light .orch-submit { color: #ffffff; box-shadow: 0 6px 18px -8px rgba(4, 120, 87, 0.6); }
 html.light .orch-error { color: #b91c1c; background: rgba(239, 68, 68, 0.06); }
-html.light .orch-error h4 { color: #991b1b; }
+html.light .orch-error :is(h2, h4) { color: #991b1b; }
 html.light .orch-error .code { color: #b91c1c; background: rgba(239, 68, 68, 0.1); }
 html.light .orch-brief > summary { border-color: rgba(0, 0, 0, 0.2); background: rgba(0, 0, 0, 0.02); }
 html.light .orch-brief > summary:hover { border-color: var(--accent); background: rgba(0, 0, 0, 0.04); }
@@ -3669,14 +3673,14 @@ html.light .orch-avail { background: rgba(0, 0, 0, 0.02); }
 html.light .orch-avail.warn { color: #92400e; background: rgba(245, 158, 11, 0.07); }
 html.light .orch-avail.warn a { color: #92400e; }
 html.light .orch-ro-card { border-color: rgba(0, 0, 0, 0.1); background: #ffffff; }
-html.light .orch-ro-card h3 { color: var(--text); }
+html.light .orch-ro-card :is(h2, h3) { color: var(--text); }
 html.light .orch-ro-card p, html.light .orch-ro-foot { color: var(--muted); }
 html.light .orch-ro-links a { border-color: rgba(0, 0, 0, 0.15); color: #3f3f46; }
 html.light .orch-ro-links a:hover { border-color: var(--accent); color: var(--accent); }
 html.light .su-pill.warn, html.light .su-plan-none, html.light .bgc-pill.pending { color: #b45309; }
 html.light .su-seatline code { background: rgba(0, 0, 0, 0.05); }
 html.light .set-tab:hover { background: rgba(0, 0, 0, 0.03); }
-html.light .xt-invariant h3, html.light .bgc-note strong { color: #92400e; }
+html.light .xt-invariant h2, html.light .bgc-note strong { color: #92400e; }
 html.light .bgc-pill.posted { color: #1d4ed8; }
 html.light .bgc-sub { background: rgba(0, 0, 0, 0.03); }
 
@@ -3693,7 +3697,7 @@ html.light .cast-item details[open] summary { background: rgba(0, 0, 0, 0.025); 
 html.light .cast-name { color: var(--text); }
 html.light .cast-model { color: var(--muted); }
 html.light .cast-role.is-lead { color: var(--accent); }
-html.light .cast-card h1, html.light .cast-card h2, html.light .cast-card h3 { color: #27272a; }
+html.light .cast-card :is(.md-h1, .md-h2, .md-h3) { color: #27272a; }
 
 /* ---- conversations console (_CONV_CSS) ---- */
 html.light .cv2 {

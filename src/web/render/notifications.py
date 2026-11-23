@@ -126,7 +126,7 @@ def notifications_body(state: dict) -> str:
     body = f"""
 <div class="orch-shell su-shell nt-shell">
   <header class="orch-head">
-    <h2>Tell me when something happens</h2>
+    <h1>Tell me when something happens</h1>
     <p>A conversation runs in CLI windows you've probably walked away from. This
        points one notification service at the four moments worth knowing about
        &mdash; most usefully <strong>it finished</strong> and <strong>it's
@@ -135,30 +135,30 @@ def notifications_body(state: dict) -> str:
 
   <form id="nt-form" class="orch-form">
     <section>
-      <span class="lbl">Where should it go?</span>
+      <span class="lbl" id="nt-svc-label">Where should it go?</span>
       <p class="hint">One service at a time. All five are a single HTTP POST &mdash;
          nothing is installed, and no account is needed for
          <a href="https://ntfy.sh" target="_blank" rel="noopener noreferrer">ntfy</a>,
          which is why it's the default.</p>
-      <div class="su-rows nt-svcs">{radios}</div>
+      <div class="su-rows nt-svcs" role="radiogroup" aria-labelledby="nt-svc-label">{radios}</div>
     </section>
 
     <section>
-      <span class="lbl" id="nt-target-label">Topic</span>
+      <label class="lbl" id="nt-target-label" for="nt-target">Topic</label>
       <p class="hint" id="nt-target-hint"></p>
-      <input type="text" id="nt-target" class="nt-input" autocomplete="off" spellcheck="false">
+      <input type="text" id="nt-target" aria-describedby="nt-target-hint" class="nt-input" autocomplete="off" spellcheck="false">
       <div id="nt-server-wrap" class="nt-server">
-        <span class="lbl">Server</span>
-        <p class="hint">Change this only if you self-host.</p>
-        <input type="text" id="nt-server" class="nt-input" autocomplete="off" spellcheck="false">
+        <label class="lbl" for="nt-server">Server</label>
+        <p class="hint" id="nt-server-hint">Change this only if you self-host.</p>
+        <input type="text" id="nt-server" aria-describedby="nt-server-hint" class="nt-input" autocomplete="off" spellcheck="false">
       </div>
     </section>
 
     <section>
-      <span class="lbl">Tell me when&hellip;</span>
+      <span class="lbl" id="nt-events-label">Tell me when&hellip;</span>
       <p class="hint">Each is a delivery event. Tick what you want to hear about;
          everything else stays silent.</p>
-      <div class="su-rows">{rows}</div>
+      <div class="su-rows" role="group" aria-labelledby="nt-events-label">{rows}</div>
     </section>
 
     <section>
@@ -266,7 +266,7 @@ def notifications_body(state: dict) -> str:
   }}
 
   function fail(title, detail) {{
-    errorPanel.innerHTML = '<h4>' + esc(title) + '</h4><p>' + esc(detail) + '</p>';
+    errorPanel.innerHTML = '<h2>' + esc(title) + '</h2><p>' + esc(detail) + '</p>';
     errorPanel.classList.remove('hidden');
   }}
 
@@ -340,7 +340,7 @@ def _render_notifications_readonly() -> str:
     body = f"""
 <div class="orch-shell">
   <header class="orch-head">
-    <h2>Notifications come from your own machine</h2>
+    <h1>Notifications come from your own machine</h1>
     <p>This hosted site is a <strong>read-only demo</strong>. It mirrors conversations
        for reading; it doesn't run them. The events that would notify you &mdash;
        a run finishing, a run going quiet &mdash; happen in the process driving your
@@ -348,7 +348,7 @@ def _render_notifications_readonly() -> str:
   </header>
 
   <div class="orch-ro-card">
-    <h3>What you can be told about</h3>
+    <h2>What you can be told about</h2>
     <p><strong>A conversation finishes</strong> &middot; <strong>a run goes
        quiet</strong> (the watchdog notices a stall while the run is still open, and
        says so once) &middot; <strong>a conversation starts</strong> &middot;
@@ -356,14 +356,14 @@ def _render_notifications_readonly() -> str:
   </div>
 
   <div class="orch-ro-card">
-    <h3>Where it can go</h3>
+    <h2>Where it can go</h2>
     <p>ntfy, Gotify, Discord, Slack, or any URL that accepts a POST &mdash; n8n, Home
        Assistant, a script of your own. Each is one HTTP request, so there's nothing
        to install and no account needed for ntfy.</p>
   </div>
 
   <div class="orch-ro-card">
-    <h3>Turn it on locally</h3>
+    <h2>Turn it on locally</h2>
     <pre><code>.\\.venv\\Scripts\\python.exe src\\web_ui.py
 # then open http://127.0.0.1:8765/notifications</code></pre>
     <p>Pick a service, paste a topic or URL, tick the events, send yourself a test.
