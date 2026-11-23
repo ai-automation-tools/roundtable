@@ -590,6 +590,52 @@ def test_orchestrate_is_local_only_when_readonly():
             importlib.reload(web_ui)
 
 
+def test_the_mirror_offers_no_launch_it_cannot_do():
+    """On the mirror every launch CTA opened the "runs on your machine"
+    explainer: they now say "locally", "+ New conversation" is gone, and the
+    registry's way back is a same-tab link to the demo (audit RT-42)."""
+    saved = os.environ.get("AGENT_CHAT_PUBLIC_READONLY")
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
+        tmp_db = Path(d) / "chat.db"
+        try:
+            client = TestClient(_reload_app_readonly(tmp_db), base_url=LOCAL)
+            home = client.get("/").text
+            assert "Run a debate locally" in home and "Launch a debate" not in home
+            assert "+ New conversation" not in client.get("/conversations").text
+            reg = client.get("/personas").text
+            assert 'class="reg-out" href="https://roundtable-demo.' in reg
+            assert 'target="_blank"' not in reg.split('class="reg-out"')[1].split(">")[0]
+
+            os.environ.pop("AGENT_CHAT_PUBLIC_READONLY", None)
+            importlib.reload(web_ui)
+            web_ui.set_db_path(str(tmp_db))
+            web_ui.db_init()
+            local = TestClient(web_ui.app, base_url=LOCAL)
+            assert "Launch a debate" in local.get("/").text
+            assert "+ New conversation" in local.get("/conversations").text
+            assert 'class="reg-out" href="/"' in local.get("/personas").text
+        finally:
+            os.environ.pop("AGENT_CHAT_PUBLIC_READONLY", None)
+            if saved is not None:
+                os.environ["AGENT_CHAT_PUBLIC_READONLY"] = saved
+            importlib.reload(web_ui)
+
+
+def test_an_explorer_search_says_how_many_it_found():
+    """A search reloads the page: the count goes in <title> and gets focus, so
+    a screen reader hears it (audit RT-42)."""
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
+        web_ui.set_db_path(str(Path(tmp) / "chat.db"))
+        web_ui.db_init()
+        c = TestClient(web_ui.app, base_url=LOCAL)
+        plain = c.get("/personas").text
+        assert "<title>Browse — Agent Personas</title>" in plain
+        assert "getElementById('px-count')" not in plain
+        hit = c.get("/personas?q=zzzz-nothing").text
+        assert re.search(r"<title>0 of \d+ — Browse — Agent Personas</title>", hit), hit[:400]
+        assert 'id="px-count"' in hit and "getElementById('px-count')" in hit
+
+
 def test_phones_get_the_transcript_before_the_list():
     """On a phone the conversation list used to stack above the reader, so a
     shared link opened ~700px of list before the title (audit RT-38). The

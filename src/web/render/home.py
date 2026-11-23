@@ -106,7 +106,7 @@ _HOMEPAGE_TEMPLATE = """<!doctype html>
               <path d="M13 4H4.5A1.5 1.5 0 0 0 3 5.5v4.6a1.5 1.5 0 0 0 1.5 1.5h.8v2.7l2.9-2.7H13a1.5 1.5 0 0 0 1.5-1.5V5.5A1.5 1.5 0 0 0 13 4z" transform="rotate(180 12 12)"/>
             </svg></span>
           <span class="cta-txt">
-            <b>Launch a debate</b>
+            <b>{cta_verb} debate{cta_where}</b>
             <small>Two agents, opposing sides, strict turns.</small>
           </span>
           <span aria-hidden="true" class="cta-arrow">&rarr;</span>
@@ -119,7 +119,7 @@ _HOMEPAGE_TEMPLATE = """<!doctype html>
               <path d="M12 17.3v4.2"/><path d="M8.6 21.5h6.8"/>
             </svg></span>
           <span class="cta-txt">
-            <b>Launch a podcast</b>
+            <b>{cta_verb} podcast{cta_where}</b>
             <small>A host interviews guests &mdash; nobody picks a fight.</small>
           </span>
           <span aria-hidden="true" class="cta-arrow">&rarr;</span>
@@ -131,7 +131,7 @@ _HOMEPAGE_TEMPLATE = """<!doctype html>
               <path d="M13.5 20.5h5a2 2 0 0 0 2-2v-5h-3.2a1.8 1.8 0 1 1 0-3.6h3.2v-5a2 2 0 0 0-2-2h-5"/>
             </svg></span>
           <span class="cta-txt">
-            <b>Launch a collaboration</b>
+            <b>{cta_verb} collaboration{cta_where}</b>
             <small>They work the problem &mdash; and hand you the result.</small>
           </span>
           <span aria-hidden="true" class="cta-arrow">&rarr;</span>
@@ -1009,6 +1009,10 @@ def _render_homepage(stats: dict[str, int], latest: list[dict[str, Any]]) -> str
         personas_total_display=personas_total_display,
         featured_html=featured_html,
         launch_note=launch_note,
+        # The mirror can't launch anything; its CTAs open the "run it on your
+        # machine" explainer, so they say so (audit RT-42).
+        cta_verb="Run a" if hosted else "Launch a",
+        cta_where=" locally" if hosted else "",
         clis_stat=clis_stat,
         clis_label=clis_label,
         clis_color=clis_color,

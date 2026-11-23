@@ -365,7 +365,7 @@ def _conversations_rail(convs: list[dict[str, Any]], active_cid: int | None) -> 
         "</div>"
         f'<div class="cv-list">{list_inner}'
         '<div class="cv-nomatch" id="cv-nomatch">No matches</div></div>'
-        '<div class="cv-railfoot"><a class="btn btn-primary" href="/orchestrate">+ New conversation</a></div>'
+        + _new_conversation_btn('<div class="cv-railfoot">{}</div>') +
         '<div class="cv-resizer" id="cv-resizer" role="separator" aria-orientation="vertical" '
         'title="Drag to resize · double-click to reset" aria-label="Resize conversation list"></div>'
         '<div class="cv-tip" id="cv-tip" role="tooltip" aria-hidden="true"></div>'
@@ -559,13 +559,22 @@ def _conv_rail_js() -> str:
 # Overview (main pane when nothing is selected)
 # ---------------------------------------------------------------------------
 
+def _new_conversation_btn(wrap: str = "{}") -> str:
+    """The "+ New conversation" button — absent on the read-only mirror, where
+    /orchestrate is only an explainer (audit RT-42)."""
+    if _is_public_readonly():
+        return ""
+    return wrap.format('<a class="btn btn-primary" href="/orchestrate">+ New conversation</a>')
+
+
 def _render_conversations_overview(convs: list[dict[str, Any]]) -> str:
     if not convs:
         return (
             '<section class="cv-main" id="cv-main"><div class="cv-empty">'
             + _pm_svg("chat")
             + "<p>No conversations yet.<br>Seed one and it shows up here live.</p>"
-            '<a class="btn btn-primary" href="/orchestrate">+ New conversation</a>'
+            + _new_conversation_btn()
+            +
             "</div></section>"
         )
     stats = list_stats()
@@ -614,7 +623,7 @@ def _render_conversations_overview(convs: list[dict[str, Any]]) -> str:
         + "".join(recent_rows) +
         "</div></div>"
         '<div class="cv-ov-actions">'
-        '<a class="btn btn-primary" href="/orchestrate">+ New conversation</a>'
+        + _new_conversation_btn() +
         '<a class="btn" href="/api/conversations" title="Raw JSON of every conversation row">JSON index</a>'
         "</div></div></section>"
     )
