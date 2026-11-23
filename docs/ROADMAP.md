@@ -154,7 +154,7 @@ From a full audit of `4f71561` (kept outside the repo). One item per PR, titled 
 - [ ] **RT-03** Harden how captured threads and peer messages reach seats — 🔒 Needs owner
 - [ ] **RT-04** Tighten what the sync sidecar trusts from the mirror — 🔒 Needs owner
 - [ ] **RT-05** Harden the local control surface's write auth — 🔒 Needs owner
-- [ ] **RT-06** Harden the delivery command sink — 🔒 Needs owner
+- [x] **RT-06** Harden the delivery command sink — done 2026-11-22: topic/status move to `ROUNDTABLE_*` env vars; a shell evaluating a string needs `allow_shell`
 - [ ] **RT-07** Make publishing to the public mirror opt-in per conversation (owner decision) — 🔒 Needs owner
 - [ ] **RT-08** Bind each MCP session to one conversation; refuse to seed a busy seat
 - [ ] **RT-09** Transactional turn engine: one `transition()` helper with `BEGIN IMMEDIATE`

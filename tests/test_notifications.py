@@ -549,6 +549,40 @@ def test_the_command_sink_cannot_be_enabled_without_the_folder_sink():
     raise AssertionError("accepted a command sink with no folder sink")
 
 
+def test_saving_a_shell_string_command_is_refused_unless_allowed():
+    """A shell evaluating a string turns any value into code, so the form
+    refuses it; an ``allow_shell`` the operator hand-wrote survives a save."""
+    from starlette.applications import Starlette
+    from starlette.routing import Route
+    from starlette.testclient import TestClient
+    client = TestClient(Starlette(routes=[Route(
+        "/s", dl.api_delivery_settings_save, methods=["POST"])]))
+    folder = {"enabled": True, "path": "deliveries", "events": ["complete"], "scope": "all"}
+
+    def save(argv: str):
+        return client.post("/s", json={"folder": folder, "command": {
+            "enabled": True, "argv": argv, "events": ["complete"]}})
+
+    _reset_config()
+    try:
+        r = save('pwsh -NoProfile -Command "Write-Host {dir}"')
+        assert r.status_code == 400 and "allow_shell" in r.json()["error"], r.text
+        r = save("tool.exe --title {topic}")
+        assert r.status_code == 400 and "ROUNDTABLE_TOPIC" in r.json()["error"], r.text
+        assert save("pwsh -NoProfile -File hook.ps1 {dir}").status_code == 200
+
+        _write_config({"enabled": True, "sinks": [
+            {"type": "folder", "enabled": True, "path": "deliveries"},
+            {"type": "command", "enabled": False, "argv": ["x"], "allow_shell": True},
+        ]})
+        r = save('pwsh -NoProfile -Command "Write-Host {dir}"')
+        assert r.status_code == 200, r.text
+        _i, cmd = dl._first(delivery.load_config(), "command")
+        assert cmd["allow_shell"] is True and cmd["argv"][2] == "-Command", cmd
+    finally:
+        _reset_config()
+
+
 def test_delivery_rejects_bad_input():
     base = {"enabled": True, "path": "d", "events": ["complete"], "scope": "all"}
     cases = [

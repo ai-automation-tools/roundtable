@@ -534,6 +534,63 @@ def test_command_sink_requires_the_folder_sink() -> None:
         assert "folder sink" in lines[0]
 
 
+def _cmd_config(root: Path, argv: list, **extra) -> dict:
+    cfg = _folder_config(root / "out")
+    cfg["sinks"].append({"type": "command", "enabled": True, "argv": argv, **extra})
+    return cfg
+
+
+def test_command_sink_keeps_the_topic_out_of_argv() -> None:
+    """The topic is agent- or mirror-supplied text: it reaches the command as
+    ROUNDTABLE_TOPIC, never as an argv token."""
+    with _env(None) as (root, db, cid):
+        conn = sqlite3.connect(db)
+        conn.execute("UPDATE conversations SET topic = ? WHERE id = ?", ("'; calc", cid))
+        conn.commit()
+        conn.close()
+        out = root / "seen.json"
+        # Doubled braces: every argv token goes through str.format.
+        script = ("import json,os,sys; json.dump({{'argv': sys.argv[1:], "
+                  "'topic': os.environ['ROUNDTABLE_TOPIC'], 'cid': os.environ['ROUNDTABLE_CID']}}, "
+                  f"open({str(out)!r}, 'w'))")
+        (root / "delivery.json").write_text(json.dumps(
+            _cmd_config(root, [sys.executable, "-c", script, "{cid}", "{event}"])), encoding="utf-8")
+        lines = delivery.deliver(cid, "complete", db)
+        assert lines[-1].startswith("command: "), lines
+        assert "ERROR" not in lines[-1], lines
+        seen = json.loads(out.read_text(encoding="utf-8"))
+        assert seen["argv"] == [str(cid), "complete"]
+        assert seen["topic"] == "'; calc" and seen["cid"] == str(cid)
+
+        # A config still written the old way is refused, not half-run.
+        (root / "delivery.json").write_text(json.dumps(
+            _cmd_config(root, [sys.executable, "-c", "pass", "{topic}"])), encoding="utf-8")
+        lines = delivery.deliver(cid, "complete", db)
+        assert lines[-1].startswith("command: ERROR") and "ROUNDTABLE_TOPIC" in lines[-1], lines
+
+
+def test_command_sink_refuses_a_shell_evaluating_a_string() -> None:
+    refuse = delivery.shell_eval_refusal
+    assert refuse(["pwsh", "-NoProfile", "-Command", "Write-Host {dir}"])
+    assert refuse(["C:/Windows/System32/cmd.exe", "/c", "dir"])
+    assert refuse(["bash", "-c", "ls"])
+    assert refuse(["powershell.exe", "-EncodedCommand", "AAAA"])
+    assert refuse(["pwsh", "-NoProfile", "-File", "hook.ps1", "{dir}"]) is None
+    assert refuse(["git", "-C", "{dir}", "status"]) is None  # not a shell
+    with _env(None) as (root, db, cid):
+        (root / "delivery.json").write_text(json.dumps(
+            _cmd_config(root, ["pwsh", "-NoProfile", "-Command", "Write-Host {dir}"])),
+            encoding="utf-8")
+        lines = delivery.deliver(cid, "complete", db)
+        assert lines[-1].startswith("command: ERROR") and "allow_shell" in lines[-1], lines
+
+
+def test_starter_command_sink_is_not_a_shell_string() -> None:
+    cmd = next(s for s in delivery.STARTER_CONFIG["sinks"] if s["type"] == "command")
+    assert delivery.shell_eval_refusal(cmd["argv"]) is None
+    assert not any("{topic}" in t for t in cmd["argv"])
+
+
 # ---------------------------------------------------------------------------
 # Webhook payload
 # ---------------------------------------------------------------------------

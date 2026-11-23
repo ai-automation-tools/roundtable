@@ -205,6 +205,16 @@ async def api_delivery_settings_save(request: Request) -> Response:
             merged = dict(existing or {})
             merged.update(built)
             sinks[idx] = merged
+        if kind == "command":
+            saved = sinks[idx] if idx is not None else built
+            refusal = (None if saved.get("allow_shell") is True
+                       else delivery.shell_eval_refusal(saved.get("argv") or []))
+            if saved.get("enabled") and refusal:
+                return JSONResponse({"ok": False, "error": refusal}, status_code=400)
+            if any("{topic}" in str(t) for t in saved.get("argv") or []):
+                return JSONResponse({"ok": False, "error": (
+                    "{topic} is not substituted into the command; read the "
+                    "ROUNDTABLE_TOPIC environment variable instead")}, status_code=400)
     cfg["sinks"] = sinks
 
     # Delivery's master switch. Turning a sink on while it stays false saves a

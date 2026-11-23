@@ -8,6 +8,11 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 - **The bridge, the extension and the `/battleground` console accept only `http`/`https` links.** A captured post's permalink with any other scheme is dropped at capture and at the bridge; an arena whose URL isn't http(s) is refused with a 400; and the console renders no link for a stored row that predates the check. Tests: `tests/test_battleground.py`.
 
+### Changed — the delivery command sink no longer puts the topic on the command line
+
+- **`{topic}` is no longer substituted into a command sink's argv.** Only `{dir}`, `{cid}` and `{event}` are. The command reads the topic and status from the new `ROUNDTABLE_TOPIC` / `ROUNDTABLE_STATUS` environment variables (beside `ROUNDTABLE_CID`, `ROUNDTABLE_EVENT`, `ROUNDTABLE_DIR`). **Action needed if your `config/delivery.json` command uses `{topic}`:** it is now refused with an error in `logs/delivery.log`; switch to the environment variable.
+- **A shell evaluating a string is refused** — `pwsh`/`powershell`/`cmd`/`bash`/`sh` with `-Command`, `-c`, `/c` or `-EncodedCommand`. Call a script file (`pwsh -NoProfile -File hook.ps1 {dir}`) or add `"allow_shell": true` to the sink by hand; the Settings → Delivery form refuses to save one without it and keeps the flag when it's there. The starter config and the form's placeholder now show the `-File` form. Docs: `docs/app/delivery.md`. Tests: `tests/test_delivery.py`, `tests/test_notifications.py`.
+
 ### Added — audit follow-ups on the roadmap
 
 - `docs/ROADMAP.md` gains an *Audit follow-ups, 2026-11-22* section: 44 items from a full audit, one PR each.
