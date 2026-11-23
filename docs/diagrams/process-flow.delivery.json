@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "receiptId": "73e19a6b-3957-4f54-8b35-c76e498b0767",
+  "receiptId": "a2717703-8c07-4183-929f-ad51b95cfe60",
   "status": "current",
   "command": "deliver",
   "type": "workflow",
-  "input": "C:\\Users\\mikes\\AppData\\Local\\Temp\\org-upkeep\\roundtable\\docs\\diagrams\\process-flow.json",
-  "output": "C:\\Users\\mikes\\AppData\\Local\\Temp\\org-upkeep\\roundtable\\docs\\diagrams\\process-flow.html",
+  "input": "D:\\AI_Agents\\Projects\\Mikes_AI_Lab\\Repos\\AI-Automation-Tools\\Live_Apps\\roundtable\\docs\\diagrams\\process-flow.json",
+  "output": "D:\\AI_Agents\\Projects\\Mikes_AI_Lab\\Repos\\AI-Automation-Tools\\Live_Apps\\roundtable\\docs\\Diagrams\\process-flow.html",
   "specification": {
-    "sha256": "178c783a13465054ce4c4c27fc46b10dc533971aceb2a5ae12ce88d9b8385e7e",
+    "sha256": "113495d1bf1a31d350d6a44db9a6322bcd2bc0abb0f60a1672713c18b7142d03",
     "bytes": 8967
   },
   "artifact": {
-    "sha256": "a5fd537e8dd1aaab26f6737689e877d1ff655e2864d7d8d27b2ccab3bba45af3",
+    "sha256": "c20ba90c3431530e990482730d132d72c19f468dd987cc4ed72c25caac00e3bd",
     "bytes": 840709
   }
 }
