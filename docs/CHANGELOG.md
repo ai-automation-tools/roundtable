@@ -6,6 +6,11 @@ Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changel
 
 ## 2026-11-23 (latest)
 
+### Fixed — the three installed agent-skills copies match upstream again
+
+- `agent-chat-delivery`, `agent-chat-conv-types` and `agent-chat-run-triage` were reinstalled from agent-skills `main` (#134). They name `src/schema.py` as the one `SCHEMA` and describe `deliver_later()`. Each carries an `.installed-from-agent-skills` marker naming the commit it came from.
+- Audit item RT-24.
+
 ### Changed — real people: parody framing, mandatory disclosure, review before publishing
 
 - A persona of a real person (`real_or_fictional: real` on its card) is tagged `real-person` and its body opens with a **Parody** line saying it's an AI sketch, not the person. `personas.py mark-real` frames rows imported earlier.
