@@ -4,6 +4,12 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 ## 2026-11-22 (latest)
 
+### Changed — local writes need a per-install secret; a tailnet host needs a password
+
+- **Every write to the local web UI must carry this install's write secret.** It is generated on first use into `config/web-write-secret` (gitignored). Any page GET sets it as an `HttpOnly`, `SameSite=Strict` cookie (`rt_write`), so the app's own pages work unchanged; a script sends it as the `X-Roundtable-Write` header. A write without it gets `401 missing write secret` (reload the page). `/api/ingest` keeps its bearer token, and the AgentBattleground bridge keeps its own: the `/battleground` console's same-origin pass now also needs the cookie. The read-only mirror is unaffected.
+- **The web UI refuses to start** when `AGENT_CHAT_ALLOWED_HOSTS` names a host other than `127.0.0.1`/`localhost` (a `tailscale serve` name) and no `AGENT_CHAT_BASIC_AUTH_PASSWORD` is set. The password and user are now read from `.env` as well as the environment, and `docs/guides/remote-access.md` puts them there instead of `setx`, which handed the password to every process the app spawns. The startup line `basic auth:` now reports the real state.
+- Tests: `tests/test_web_readonly.py`, `tests/test_battleground.py`. Audit item RT-05.
+
 ### Changed — turn tools return only the messages an agent hasn't seen
 
 - **`get_my_turn`, `wait_for_turn` and `send_message` return a history delta.** Every call used to carry the whole transcript, including each 180-second wait timeout: by the end of run #51 (28 messages, 213k characters) that was about 53k tokens per call, so cost grew with the square of run length. `history` now holds the other participants' messages this session hasn't been shown (`history_mode: "delta"`, with `history_since_id` and `last_message_id`). The server keeps the mark per process and conversation, and only advances it when a payload is actually returned.

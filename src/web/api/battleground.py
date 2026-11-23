@@ -53,7 +53,7 @@ from web.db import (
     bg_set_verdict,
     bg_update_arena,
 )
-from web.security import _env_file_value, _is_public_readonly, is_same_origin
+from web.security import _env_file_value, _is_public_readonly, has_write_secret, is_same_origin
 
 # Guardrails on what a page capture may push into the DB. A thread is a
 # snapshot for the agent to argue against, not an archive of the site.
@@ -129,12 +129,14 @@ def _unauthorized() -> Response:
 def _authorized(request: Request) -> bool:
     """True when the request may proceed.
 
-    A same-origin request (this app's ``/battleground`` console) passes.
-    Everything else needs an exact bearer match, and with no token
-    configured nothing else passes: an unset token used to mean "open",
-    which let any extension on the machine drive the bridge.
+    A same-origin request (this app's ``/battleground`` console) passes if
+    it also carries the write secret the console's page set: ``Origin`` alone
+    is a header any local process can send (audit RT-05). Everything else
+    needs an exact bearer match, and with no token configured nothing else
+    passes: an unset token used to mean "open", which let any extension on
+    the machine drive the bridge.
     """
-    if is_same_origin(request):
+    if is_same_origin(request) and (_is_public_readonly() or has_write_secret(request)):
         return True
     expected = _bridge_token()
     if not expected:

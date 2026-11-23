@@ -275,7 +275,9 @@ def _client(readonly: bool = False):
             importlib.reload(web_ui)
             web_ui.set_db_path(str(Path(d) / "chat.db"))
             web_ui.db_init()
-            yield TestClient(web_ui.app, base_url=LOCAL)
+            from web.security import WRITE_HEADER, write_secret
+            yield TestClient(web_ui.app, base_url=LOCAL,
+                             headers={WRITE_HEADER: write_secret()})
         finally:
             os.environ.pop("AGENT_CHAT_PUBLIC_READONLY", None)
             if saved_ro is not None:
