@@ -1,5 +1,5 @@
 {
-  "revision": "808c0a4f154a18bc1c9ea713d3866e72ce1f75aa",
+  "revision": "2d8f44c032770a22ffc06df27aeb14a2cf9d96e7",
   "files": {
     "src/agent_chat_mcp.py": "f1e83f3ed5295660cbb80e19a16cb317786c46be",
     "src/orchestrator/availability.py": "bc514541baa3df5323e6d7cad20db370aba9df1f",
