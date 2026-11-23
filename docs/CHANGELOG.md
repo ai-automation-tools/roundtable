@@ -6,6 +6,12 @@ Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changel
 
 ## 2026-11-22 (latest)
 
+### Fixed — `wait_for_turn` fits inside every CLI's tool timeout
+
+- The Codex config snippets set `tool_timeout_sec = 330`. `wait_for_turn` may block for 300 s and Codex abandons an MCP call at 300 s by default, so the longest wait could surface as a tool error. **If you registered Codex before this change, add that line to `[mcp_servers.roundtable]` in `~/.codex/config.toml`.** OpenCode v2 (12 h) and Claude Code have no short limit; the 180 s default fits all of them.
+- The seat role docs' tool table said `wait_for_turn(timeout_seconds=60)`, contradicting the 180 s default two sections up; regenerated.
+- Audit item RT-35.
+
 ### Changed — the app's fonts match the homepage and the org's other sites
 
 - **Inter for text, JetBrains Mono for code and numerals**, instead of IBM Plex Sans and IBM Plex Mono. One font stylesheet per page: the persona console no longer `@import`s a second one.

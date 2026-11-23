@@ -49,7 +49,7 @@ From a full audit of `4f71561` (kept outside the repo). One item per PR, titled 
 - [ ] **RT-32** Repo housekeeping: merged branches, release tags (owner settings) — 🔒 Needs owner
 - [ ] **RT-33** One copy of the generated diagram; EOL rule
 - [ ] **RT-34** Move inline CSS/JS into static files; nonce CSP
-- [ ] **RT-35** Align `wait_for_turn` default with client tool timeouts
+- [x] **RT-35** Align `wait_for_turn` default with client tool timeouts — done 2026-11-22: client limits checked against each CLI's source: Codex 300 s default (`tool_timeout_sec`), OpenCode v2 12 h, Claude Code no short limit, so the 180 s default fits all; only a 300 s wait on Codex was tight, so every Codex config snippet now sets `tool_timeout_sec = 330`. The seat docs' tool table said `timeout_seconds=60`; regenerated with 180. Not verified in a live 4-CLI run
 - [ ] **RT-36** Per-seat model choice
 - [ ] **RT-37** Close SQLite connections explicitly; escape quotes in the PS spawn string
 - [ ] **RT-42** Mirror and registry polish
