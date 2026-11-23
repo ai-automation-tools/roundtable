@@ -24,7 +24,8 @@ Don't create new top-level docs unless asked; new project docs go under `docs/`.
 - Feature branches off `main`. Confirm the current branch with `git status` — it's often `mike_desktop`.
 - **Commit style:** short imperative subject, body when needed, plain English. Conventional commits are **not** used here.
 - **Never commit:** `.venv/`, `db/*.db*`, `.env*`, `__pycache__/`, `.mcp.json`, local `.claude/` state (`settings.local.json`, `local-vs-public.md`, `images/`, `rules/`, `temp/`), any nested per-CLI `.claude/`, or a seat 2+ folder (`agents/CLIs/*_agent[2-9]/` — generated per machine by `add_agent_seat.py` / `/settings` / `/orchestrate`, carries this machine's launcher path; seat 1 stays tracked). Tracked despite the mostly-ignored tree: this file and `CLAUDE.md`, plus `.claude/agents/` + `.claude/commands/` + `.claude/skills/` — except the skill entries `setup-skill-links.ps1` junctions from `skills/`, since Windows would commit those as files full of this machine's `D:` paths.
-- **PRs:** small and focused, one Roadmap item each, referencing the Roadmap row. **Don't push to `main` directly** unless it's a doc-only typo fix or you're told to.
+- **PRs:** small and focused, one Roadmap item each, referencing the Roadmap row. `main` takes changes only through a PR, and the repo ruleset **Require CI** (since 2026-11-23, audit RT-11) blocks a merge until `test`, `test-linux` and `lint` pass on the PR's head. That's why `ci.yml` runs on every PR, `homepage/`-only ones included. Check it with `gh api repos/ai-automation-tools/roundtable/rulesets`.
+- **Merged branches are deleted** by GitHub on merge (`delete_branch_on_merge`, since 2026-11-23, audit RT-32).
 
 ### Deploying to Fly after a push
 

@@ -12,6 +12,13 @@ Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changel
 - The logon task (`register-startup-task.ps1`) now starts through `scripts/run-hidden.vbs`, like the other app tasks, so no console flashes at sign-in. Re-run the script to pick it up.
 - Audit item RT-32.
 
+### Changed — CI must pass before a merge into `main`
+
+- A repo ruleset (**Require CI**) makes `test`, `test-linux` and `lint` required checks on `main`; a PR with failing CI can't be merged.
+- `ci.yml` runs on every PR again, including `homepage/`-only ones, so the required checks always report. Pushes to `main` still skip a `homepage/`-only change.
+- GitHub now deletes a PR's branch when it merges.
+- Audit items RT-11 and RT-32 (branch cleanup).
+
 ## 2026-11-22
 
 ### Added — choose the model for each seat
