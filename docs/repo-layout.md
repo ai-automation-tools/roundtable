@@ -156,6 +156,7 @@ roundtable/
 │   ├── OPEN-QUESTIONS.md         # Decisions the scheduled roadmap runs need from the maintainer
 │   └── ROADMAP.md                # Priorities: checkbox items, High / Medium / Low
 ├── .github/workflows/ci.yml      # CI on push/PR: deps · import/compile · validate configs · tests
+├── .github/workflows/extension-release.yml  # extension-v<version> release + zips on a manifest bump
 ├── .claude/                      # Claude Code config (agents/ + commands/ + skills/ tracked)
 ├── requirements.txt              # Pinned: mcp, pydantic, starlette, markdown-it-py, …
 ├── requirements-dev.txt          # CI-only test pins on top: Playwright for the browser suite

@@ -10,7 +10,8 @@
 
   Trigger : At log on of the current user (runs with your interactive token;
             the sidecar reads its settings from the repo-root .env).
-  Action  : pwsh -File <repo>\scripts\startup-app.ps1  (hidden)
+  Action  : wscript <repo>\scripts\run-hidden.vbs <repo>\scripts\startup-app.ps1
+            (no console flash; the same launcher register-app-tasks.ps1 uses)
   Principal: current user, Interactive logon (no stored password needed),
              RunLevel Limited (no admin rights required at run time).
 
@@ -46,7 +47,8 @@ $TaskPath = '\AI-Automation-Tools-Org-LocalApps\Roundtable\'
 
 $ProjectRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
 $Launcher    = Join-Path $ProjectRoot 'scripts\startup-app.ps1'
-$Pwsh        = (Get-Process -Id $PID).Path   # the pwsh running this script
+$Wscript     = Join-Path $env:SystemRoot 'System32\wscript.exe'
+$RunHidden   = Join-Path $ProjectRoot 'scripts\run-hidden.vbs'
 $UserId      = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
 
 if (-not (Test-Path $Launcher)) { throw "launcher not found at $Launcher" }
@@ -65,9 +67,12 @@ if ($Unregister) {
     return
 }
 
-# --- Action: run the launcher hidden via pwsh -----------------------------
-$argline = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$Launcher`""
-$action = New-ScheduledTaskAction -Execute $Pwsh -Argument $argline -WorkingDirectory $ProjectRoot
+# --- Action: run the launcher through run-hidden.vbs -----------------------
+# pwsh.exe started by Task Scheduler paints a console before -WindowStyle Hidden
+# applies; wscript starts it hidden and hands back its exit code (audit RT-32).
+if (-not (Test-Path $RunHidden)) { throw "launcher not found at $RunHidden" }
+$argline = "`"$RunHidden`" `"$Launcher`""
+$action = New-ScheduledTaskAction -Execute $Wscript -Argument $argline -WorkingDirectory $ProjectRoot
 
 # --- Trigger: at logon of THIS user, with a short settle delay -------------
 $trigger = New-ScheduledTaskTrigger -AtLogOn -User $UserId
@@ -109,7 +114,7 @@ Register-ScheduledTask `
 
 Write-Host "[register] done." -ForegroundColor Green
 Write-Host "  User    : $UserId (Interactive, at logon, +${StartDelaySeconds}s delay)" -ForegroundColor Gray
-Write-Host "  Runs    : $Pwsh $argline" -ForegroundColor Gray
+Write-Host "  Runs    : $Wscript $argline" -ForegroundColor Gray
 Write-Host "  WorkDir : $ProjectRoot" -ForegroundColor Gray
 Write-Host ""
 Write-Host "  Test now : Start-ScheduledTask -TaskPath '$TaskPath' -TaskName '$TaskName'" -ForegroundColor Gray

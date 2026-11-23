@@ -6,6 +6,12 @@ Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changel
 
 ## 2026-11-23 (latest)
 
+### Added — extension releases
+
+- **`extension-v0.2.0`** is the first GitHub release: the AgentBattleground extension as a Chrome zip and a Firefox zip, for loading without a clone. `.github/workflows/extension-release.yml` publishes the next one when the version in both manifests changes on `main`.
+- The logon task (`register-startup-task.ps1`) now starts through `scripts/run-hidden.vbs`, like the other app tasks, so no console flashes at sign-in. Re-run the script to pick it up.
+- Audit item RT-32.
+
 ### Changed — CI must pass before a merge into `main`
 
 - A repo ruleset (**Require CI**) makes `test`, `test-linux` and `lint` required checks on `main`; a PR with failing CI can't be merged.
