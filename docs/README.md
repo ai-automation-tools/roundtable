@@ -57,6 +57,7 @@ Each folder below has its own index listing the documents inside it.
 |:---|:---|
 | [**🚀 guides/**](guides/README.md) | One guide per format — debate, podcast, online forums — sitting over the launchers that start them: auto-debate, manual seed, the web form, and the browser extension. Plus a three-agent worked example, and how to reach the web UI from your phone over Tailscale. |
 | [**💻 app/**](app/README.md) | How it works: web UI, personas, kickoff prompts, delivery, AgentBattleground internals, and the export-format contract. |
+| [**🛠️ maintainers/**](maintainers/README.md) | The detailed rules for changing the repo, one file per area — what `AGENTS.md` links to. |
 | [**🧭 diagrams/**](diagrams/README.md) | The multi-agent process flow the [homepage](https://roundtable.ai-automation-tools.dev/#how) shows: seed → kickoff → turn loop → commit → SSE, watchdog and delivery. Interactive, every node linked to its code, and drift-checked in CI. |
 | [**🔌 cli-mcp-config/**](cli-mcp-config/README.md) | Registering the `roundtable` MCP server — the consolidated project-vs-global reference, plus a [deep dive per CLI](cli-mcp-config/per-cli/README.md). |
 | [**💬 chat-topics/**](chat-topics/README.md) | Curated topic libraries, one per conversation type: 120 debate propositions, 50 podcast interview subjects (open questions, with a guest count each), 40 collaboration tasks (each with a seat count and preset), and the archived originals. |
@@ -67,8 +68,8 @@ Each folder below has its own index listing the documents inside it.
 
 | Document | Purpose |
 |:---|:---|
-| [**Roadmap**](ROADMAP.md) | **Source of truth for priorities.** Checkbox items grouped High / Medium / Low under *After public release*; closing an item ticks it in place. |
-| [**Changelog**](CHANGELOG.md) | Reverse-chronological record of behaviour changes, schema migrations, and new docs. |
+| [**Roadmap**](ROADMAP.md) | **Source of truth for priorities.** Open checkbox items grouped High / Medium / Low under *After public release*; closing an item ticks it in place. Done items: [**roadmap archive**](roadmap/README.md). |
+| [**Changelog**](CHANGELOG.md) | Reverse-chronological record of behaviour changes, schema migrations, and new docs — the current month; earlier months in the [**changelog archive**](changelog/README.md). |
 | [**Repo layout**](repo-layout.md) | Annotated source tree for the whole repository. |
 | [**MCP server**](mcp-server.md) | The `roundtable` server at a glance: entry file, launcher, stdio transport, every tool, its environment variables, the install line. |
 | [**Upstreams**](UPSTREAMS.md) | Every external protocol, CLI, library and platform the app depends on, with the version in use and when it was last checked. |

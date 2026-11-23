@@ -1,0 +1,29 @@
+# AgentBattleground
+
+> Read before changing `extension/`, the bridge, the console or the arena MCP tools. Moved out of `AGENTS.md` verbatim on 2026-11-22 (audit RT-26) so every agent session doesn't load it; `AGENTS.md` keeps a one-line pointer.
+
+## AgentBattleground (`extension/` + `web/api/battleground.py` + `web/render/battleground.py` + the arena MCP tools)
+
+Full reference: [`docs/app/battleground.md`](../app/battleground.md).
+
+- **The invariant: it drafts, it never posts.** A reply is written as a `pending` draft; only an explicit operator verdict moves it; approving *types text into the page's existing composer* and stops. Nothing may submit to a website, open a composer, or click a post button — that's the line between this and astroturfing. Any change that lets a draft reach a page without a human action needs the user's explicit sign-off. The same reasoning killed a "Launch selected CLI" button: `/roster` returns a `launch` map the panel renders as a *copyable string*; nothing local spawns a process on an HTTP request.
+- **The `/battleground` console renders; it does not act.** Its buttons call bridge routes that already existed (`/drafts/{id}/verdict`, `/arenas/{id}`, `/arenas/{id}/delete`) — no new write route, and **approving there does not insert into a page**, which needs the tab. Say so on the page, not just in the docs. Hosted, it renders an explainer rather than an empty list: the arena tables never sync, so "no arenas" there would read as the opposite of the guarantee.
+- **The panel is a package.** `src/panel/panel.js` is wiring + init; the work is nine ES modules in `src/panel/lib/`. They form import cycles, so they share one mutable `state` object, and every export crossing a cycle must be a hoisted `function` declaration — a `const fn = () => …` is `undefined` when a partially-evaluated module calls it. Composer insertion lives in `lib/compose.js` and nowhere else. **And every extension API call goes through `ext`** — exported by `lib/state.js` as `typeof browser !== 'undefined' ? browser : chrome`. Firefox exposes `chrome.*` only as a callback-based porting aid, so a bare `chrome.` is `undefined` on the first `await` and the panel never paints (it shipped that way from 2026-08-01 to 2026-09-08). `background.js` keeps its own copy — classic script on Gecko, must stay import-free.
+- **Nothing under `extension/` has a test that runs in a browser.** `tests/test_battleground.py` reaches the bridge and the MCP loop only, and the Firefox-namespace guard is a grep. Say so when reporting extension work. What *has* been exercised for real is the **Chrome** loop — five `posted` drafts on live Reddit threads against today's `extension/src/` (see the Roadmap row); **Firefox has never completed a run**, so don't describe the Gecko build as verified.
+- **House rules go in-band:** `_ARENA_RULES` ships with every `get_arena` payload so behavior doesn't depend on the `battleground` skill being installed. Keep it in sync with `skills/battleground/SKILL.md` — especially persona-voice-not-identity.
+- **The two tables are local-only.** `battleground_arenas` / `battleground_drafts` are deliberately absent from the sync column lists and `scripts/db_sync.py`, so captured third-party content never reaches the mirror. Don't "fix" that.
+- **Persona bodies are snapshotted** onto the arena row at capture time — editing a card must not retroactively change what a running arena's agent was told to be.
+- **An arena can be cast with a persona that isn't in the registry.** `✎ custom instructions…` sends `persona_instructions`, landing in the same snapshot columns with **`persona_slug` NULL**. So: `get_arena` gates the persona on **`persona_body`, never `persona_slug`**; re-casting onto a custom card must pass `bg_update_arena`'s `clear_persona_slug`; and passing both `persona` and `persona_instructions` is a **400, not a precedence rule**. Never write a one-off card into the `personas` table.
+- **The tab→arena link is keyed on tab id alone** — navigating a tab keeps the old arena attached. **↺ Start over** (`#unlink`) is the way out, and must clear `state.capture` as well as `state.arena`, or the Cast card re-offers the *previous* page's posts. Both callers use `clearCapture()`. Start over is deliberately **not** destructive — the arena and drafts survive; **Close arena** is the separate control that stops drafting.
+- **Re-capture merges on post `id`** — that's the contract a site adapter in `extension/src/capture.js` exists to satisfy: stable ids, the site's own comment id wherever possible, namespaced for third-party iframes (`disqus:501`). Ids invented per capture silently duplicate the thread on every refresh.
+- **A new adapter is two edits:** its label must also land in `KNOWN_SITES` (`web/api/battleground.py`) or the bridge silently coerces the arena to `generic`. `tests/test_battleground.py` pins the lists together.
+- **Never let the extension acquire access without a click.** Host permissions are per-origin, requested from a user gesture (a comment iframe is a separate origin and gets its own button). The auto re-capture timer checks `permissions.contains` and skips — it must never call `permissions.request`. Firefox discards the gesture across an `await`, so click handlers start the request **before** their first await.
+- **CORS and the extension exemption stay narrow.** `ExtensionCorsMiddleware` echoes, and `CrossSiteWriteGuard` exempts, only an extension origin whose id is in `AGENT_CHAT_EXTENSION_IDS`, and only under `/api/battleground/`. Any other extension is just another site. The bridge token is **required**: no token configured means every bridge call is refused (`/healthz` and same-origin requests from the `/battleground` console excepted). Never widen either.
+
+---
+
+<p align="center">
+  <a href="README.md">↩ Maintainer rules</a> ·
+  <a href="../../AGENTS.md">AGENTS.md</a> ·
+  <a href="../README.md">Docs home</a>
+</p>
