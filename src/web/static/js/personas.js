@@ -24,6 +24,12 @@
 
   // --- Avatar helpers -----------------------------------------------------
   const DEFAULT_AVATAR = DATA.defaultAvatar;
+  // A URL from the page's data, accepted only as a same-origin path or an
+  // https URL, and URI-encoded — so no value can become a javascript: link.
+  function safeUrl(u) {
+    u = String(u || '');
+    return /^(\/(?![\/\\])|https:\/\/)/.test(u) ? encodeURI(u) : '';
+  }
   const AVATAR_MAX_PX = 512;
   // Below this, ship the file's own bytes: no re-encode, and an animated
   // GIF keeps animating (canvas would flatten it to frame one).
@@ -223,7 +229,7 @@
   function setAvatarState(p) {
     avatarEdit = { avatar: null, remove: false };
     dAvFile.value = '';
-    dAvImg.src = (p && p.avatar) || DEFAULT_AVATAR;
+    dAvImg.src = safeUrl((p && p.avatar) || DEFAULT_AVATAR);
     dAvClear.hidden = !(p && p.has_avatar);
     dAvHint.classList.remove('err');
     dAvHint.textContent = AVATAR_HINT;
@@ -249,7 +255,7 @@
   dAvClear.addEventListener('click', () => {
     avatarEdit = { avatar: null, remove: true };
     dAvFile.value = '';
-    dAvImg.src = DEFAULT_AVATAR;
+    dAvImg.src = safeUrl(DEFAULT_AVATAR);
     dAvClear.hidden = true;
     dAvHint.classList.remove('err');
     dAvHint.textContent = 'Avatar removed on save.';

@@ -268,7 +268,7 @@ def test_sync_lists_match_the_tables():
     conn = sqlite3.connect(":memory:")
     schema.ensure_schema(conn)
     for table, cols in (
-        ("conversations", schema.CONV_COLUMNS),
+        ("conversations", schema.CONV_COLUMNS + schema.CONV_LOCAL_COLUMNS),
         ("messages", schema.MSG_COLUMNS),
         ("personas", schema.PERSONA_COLUMNS),
     ):
@@ -922,6 +922,23 @@ def test_a_member_lead_type_does_not_add_a_seat_the_operator_did_not_pick():
         assert json.loads(row["participant_roles"]) == {
             "codex": "facilitator", "claude-code": "collaborator"}
         assert row["current_turn"] == "codex"
+
+
+def test_orchestrate_publishes_only_when_the_box_is_ticked():
+    """RT-07: a run launched from /orchestrate stays local unless the operator
+    ticks *Publish*; only a real ``true`` counts."""
+    with tempfile.TemporaryDirectory(**_TMP) as tmp:
+        seen = []
+        for i, publish in enumerate((None, "yes", True)):
+            db_path = str(Path(tmp) / f"chat{i}.db")  # one run per seat pair
+            payload = {"publish": publish} if publish is not None else {}
+            status, data = _orchestrate(
+                db_path, topic=f"T{i}", participants=["claude-code", "codex"],
+                **payload)
+            assert status == 200, data
+            assert data["publish"] is (publish is True), data
+            seen.append(_conv_row(db_path, data["conversation_id"])["publish"])
+        assert seen == [0, 0, 1], seen
 
 
 def test_the_first_speaker_holds_the_lead_role_by_default():

@@ -52,6 +52,7 @@ import {
   startAutoRecapture,
   stopAutoRecapture,
   stopPolling,
+  syncDisclosure,
   unlinkArena,
 } from './lib/arena.js';
 import { render, wireHandoff } from './lib/view.js';
@@ -114,6 +115,7 @@ $('toggle-settings').onclick = () => {
 
 $('save-settings').onclick = async () => {
   await saveSettings();
+  await syncDisclosure();  // the bridge gates real-person drafts on it (RT-22)
   await loadHealth();
   const ok = await loadRoster();
   const msg = $('settings-msg');

@@ -7,6 +7,7 @@ tags:
 - professorial
 category: Debaters
 subcategory: Science
+real_or_fictional: real
 ---
 
 # Richard Dawkins

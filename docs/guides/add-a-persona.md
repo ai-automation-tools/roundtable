@@ -146,6 +146,32 @@ cast a random debate straight away.
 
 ---
 
+## 🧑 Real people
+
+A card of a real person, living or dead, says so in its frontmatter:
+
+```yaml
+real_or_fictional: real
+```
+
+Every importer then tags it `real-person` and puts one line on top of its body (since 2026-11-23, audit RT-22):
+
+> **Parody.** An AI character sketch of *Name*, a real person, written for debate. It is not *Name* and does not speak for them: never claim to be *Name*, and never present these words as theirs.
+
+In the battleground such a persona can't draft while the extension's AI disclosure is off. Rows imported before this change: `personas.py mark-real` tags and frames them once.
+
+**Never make a card of:**
+
+- a private individual: anyone who isn't a public figure in the role the card depicts
+- a minor
+- the victim of a crime or a tragedy, as that
+- someone who has asked not to be depicted
+- anyone in a sexual role
+
+The weekly content job follows the same list, and imports its new cards into the local-only `Pending-Review` group. The sidecar never syncs that group and random casting never draws from it. Once the PR merges, `personas.py promote-pending` (the job's next run does it) moves each row into its card's group, which is what puts it on the public registry.
+
+---
+
 ## 🎬 Casting what you made
 
 | Launcher | How your persona gets picked |

@@ -104,7 +104,7 @@ Explicitly **not** touched by a new type:
 | `src/web/render/orchestrate.py` | the radios and the *Special seats* dropdowns generate from `CONV_TYPES` |
 | `src/orchestrator/export.py` | the Type/Role rows read `type_label()` / `role_label()` |
 | `src/orchestrator/media_prompts.py` | generated from the registry |
-| Any `SCHEMA` copy | `conv_type` and `participant_roles` are existing columns |
+| `src/schema.py` | `conv_type` and `participant_roles` are existing columns |
 
 If you find yourself editing one of these to add a type, the registry is missing something —
 fix that instead.

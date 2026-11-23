@@ -16,8 +16,9 @@
   const presetGrid = document.getElementById('orch-preset-grid');
   const maxTurns = form.querySelector('input[name=max_turns]');
   const firstSelect = form.querySelector('select[name=first]');
-  const TOOL_OPTS = DATA.toolOpts;
-  const PERSONA_OPTS = DATA.personaOpts;
+  // The chair row is a server-rendered <template>: its option lists, icon and
+  // accept list are markup, so they are cloned, never assembled as a string.
+  const chairTpl = document.getElementById('orch-chair-tpl');
   const MAX_SEATS_PER_CLI = DATA.maxSeatsPerCli;
   const seatsBox = document.getElementById('orch-seats');
   const addSeatBtn = document.getElementById('orch-add-seat');
@@ -26,6 +27,7 @@
   const spawnToggle = form.querySelector('input[name=spawn]');
   const skipToggle = form.querySelector('input[name=skip_permissions]');
   const deliverToggle = form.querySelector('input[name=deliver_locally]');
+  const publishToggle = form.querySelector('input[name=publish]');
   const modEnable = form.querySelector('input[name=mod_enable]');
   const modFields = document.getElementById('orch-mod-fields');
   const modCli = form.querySelector('select[name=mod_cli]');
@@ -56,6 +58,22 @@
   // Re-label the form for the chosen format and force the lead seat on for a
   // type that requires one (a podcast without a host is not a podcast). The
   // server re-validates all of this — see orchestrator/conv_types.py.
+  // A URL from the page's data, accepted only as a same-origin path or an
+  // https URL, and URI-encoded — so no value can become a javascript: link.
+  function safeUrl(u) {
+    u = String(u || '');
+    return /^(\/(?![\/\\])|https:\/\/)/.test(u) ? encodeURI(u) : '';
+  }
+  // "Label<em class="mark">note</em>", built from text — #orch-data values
+  // never go through innerHTML.
+  function setLabel(el, text, note, live) {
+    el.textContent = text;
+    const em = document.createElement('em');
+    em.className = 'mark' + (live ? ' is-live' : '');
+    em.textContent = note;
+    el.appendChild(em);
+  }
+
   function updateConvType() {
     const key = currentType();
     const t = convTypes[key];
@@ -65,26 +83,26 @@
     const lo = t.leadNeedsOwnSeat ? t.minMembers : t.minParticipants;
     const hi = t.leadNeedsOwnSeat ? t.maxMembers : t.maxParticipants;
     if (partsLabel) {
-      partsLabel.innerHTML = t.membersLabel +
-        '<em class="mark">' + lo + '–' + hi + ' seats</em>';
+      setLabel(partsLabel, t.membersLabel, lo + '–' + hi + ' seats', false);
     }
     if (firstLabel) firstLabel.textContent = t.firstLabel || 'First speaker';
     if (firstHint) {
-      firstHint.innerHTML = t.firstHint || '';
+      firstHint.textContent = t.firstHint || '';
       firstHint.style.display = t.firstHint ? '' : 'none';
     }
     if (leadLabel) {
-      leadLabel.innerHTML = t.leadLabel +
-        '<em class="mark' + (t.leadRequired ? ' is-live' : '') + '">' +
-        (t.leadRequired ? 'required' : 'optional') + '</em>';
+      setLabel(leadLabel, t.leadLabel, t.leadRequired ? 'required' : 'optional', t.leadRequired);
     }
     if (modToggleText) modToggleText.textContent = 'Add a ' + t.leadLabel.toLowerCase();
     if (modPersonaLabel) modPersonaLabel.textContent = t.leadLabel + ' persona';
     if (guideLink && t.guideUrl) {
-      guideLink.href = t.guideUrl;
-      guideLink.innerHTML = t.guideLabel + ' \u2197';
+      guideLink.href = safeUrl(t.guideUrl);
+      guideLink.textContent = t.guideLabel + ' \u2197';
     }
-    if (leadHint && t.leadHint) leadHint.innerHTML = t.leadHint;
+    // One server-rendered hint per type; show this type's.
+    if (leadHint) leadHint.querySelectorAll('[data-type]').forEach(el => {
+      el.hidden = el.dataset.type !== key;
+    });
     // A lead that is one of the members has no separate seat to configure:
     // hide the section AND clear the toggle so the submit handler sends
     // moderator:null. Left checked-but-hidden it would post an unseen seat.
@@ -157,25 +175,12 @@
   }
 
   function addChair(tool, persona) {
-    if (!seatsBox) return null;
+    if (!seatsBox || !chairTpl) return null;
     const id = 'c' + (++chairSeq);
-    const row = document.createElement('div');
-    row.className = 'orch-seat';
+    const row = chairTpl.content.firstElementChild.cloneNode(true);
     row.dataset.chair = id;
-    row.innerHTML =
-      '<span class="seat-n"></span>' +
-      '<select class="seat-tool" aria-label="Tool for this seat">' + TOOL_OPTS + '</select>' +
-      '<span class="seat-id" title="the agent id this chair runs under"></span>' +
-      '<select class="seat-persona" aria-label="Persona for this seat">' + PERSONA_OPTS + '</select>' +
-      '<button type="button" class="orch-persona-custom" data-chair="' + id + '"' +
-      ' title="Use a persona card from a file, for this run only">' +
-      DATA.plusSvg + '<span class="w-off">custom</span><span class="w-on">remove</span></button>' +
-      '<input type="file" class="orch-persona-file" hidden data-chair="' + id + '"' +
-      ' accept="' + DATA.personaAccept + '" />' +
-      '<button type="button" class="seat-del" aria-label="Remove this seat">&times;</button>' +
-      '<input type="text" class="seat-model" aria-label="Model for this seat"' +
-      ' placeholder="model (blank = the CLI default)" autocomplete="off" spellcheck="false"' +
-      ' maxlength="100" />';
+    row.querySelector('.orch-persona-custom').dataset.chair = id;
+    row.querySelector('.orch-persona-file').dataset.chair = id;
     seatsBox.appendChild(row);
     const toolSel = row.querySelector('.seat-tool');
     if (tool && Array.from(toolSel.options).some(o => o.value === tool)) toolSel.value = tool;
@@ -499,19 +504,30 @@
     const modOn = moderatorOn();
     const total = seats.length + (modOn && t.leadNeedsOwnSeat ? 1 : 0);
     const preset = currentPreset();
+    // [bold, rest] pairs, built as nodes: the turn count is whatever was typed.
     const parts = [
-      '<b>' + (t.label || currentType()) + '</b>' +
-        (preset && preset !== currentType() ? ' · ' + preset : ''),
-      '<b>' + total + '</b> seat' + (total === 1 ? '' : 's') +
+      [t.label || currentType(), preset && preset !== currentType() ? ' · ' + preset : ''],
+      [String(total), ' seat' + (total === 1 ? '' : 's') +
         (seats.length ? ' — ' + seats.join(', ')
-                      + (modOn && t.leadNeedsOwnSeat ? ' + lead' : '') : ''),
-      '<b>' + (maxTurns && maxTurns.value ? maxTurns.value : '?') + '</b> turns each',
+                      + (modOn && t.leadNeedsOwnSeat ? ' + lead' : '') : '')],
+      [maxTurns && maxTurns.value ? maxTurns.value : '?', ' turns each'],
     ];
     const extras = extraRolePayload();
     Object.keys(extras).forEach(cli => {
-      parts.push('<b>' + extras[cli] + '</b> ' + cli);
+      parts.push([String(extras[cli]), ' ' + cli]);
     });
-    recap.innerHTML = parts.join('<span class="sep">/</span>');
+    recap.textContent = '';
+    parts.forEach(([bold, rest], i) => {
+      if (i) {
+        const sep = document.createElement('span');
+        sep.className = 'sep';
+        sep.textContent = '/';
+        recap.appendChild(sep);
+      }
+      const b = document.createElement('b');
+      b.textContent = bold;
+      recap.append(b, rest);
+    });
     updateSkipWarn();
   }
 
@@ -702,6 +718,7 @@
       // Absent (delivery off) or disabled (scope: all) both send false;
       // the server ignores it in the second case anyway.
       deliver_locally: !!(deliverToggle && !deliverToggle.disabled && deliverToggle.checked),
+      publish: !!(publishToggle && publishToggle.checked),
       moderator: (moderatorOn() && room.host)
         ? { cli: room.host, persona: (modPersona ? modPersona.value : '__none__') }
         : null,

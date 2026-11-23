@@ -21,8 +21,13 @@ Set shell = CreateObject("WScript.Shell")
 cmd = """C:\Program Files\PowerShell\7\pwsh.exe""" & _
       " -NoProfile -ExecutionPolicy Bypass -File """ & WScript.Arguments(0) & """"
 
+' WScript.Arguments has already stripped the quotes, so re-quote any argument
+' with a space in it (a path), or pwsh would split it in two.
+Dim a
 For i = 1 To WScript.Arguments.Count - 1
-    cmd = cmd & " " & WScript.Arguments(i)
+    a = WScript.Arguments(i)
+    If InStr(a, " ") > 0 Then a = """" & a & """"
+    cmd = cmd & " " & a
 Next
 
 WScript.Quit shell.Run(cmd, 0, True)

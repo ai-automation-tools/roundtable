@@ -6,6 +6,7 @@ tags:
 - self-discipline
 category: Historical Figures
 subcategory: Philosophy
+real_or_fictional: real
 ---
 
 # Marcus Aurelius

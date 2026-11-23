@@ -6,6 +6,7 @@ tags:
 - pragmatist
 category: Political Figures
 subcategory: Statecraft
+real_or_fictional: real
 ---
 
 # Abraham Lincoln

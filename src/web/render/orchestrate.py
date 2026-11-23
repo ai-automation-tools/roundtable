@@ -490,7 +490,6 @@ def _render_orchestrate(
             "defaultPreset": t.default_preset,
             "guideUrl": t.guide_url,
             "guideLabel": t.guide_label,
-            "leadHint": _lead_hint(key),
             "leadNeedsOwnSeat": t.lead_needs_own_seat,
             "minParticipants": t.min_participants,
             "maxParticipants": t.max_participants,
@@ -564,16 +563,39 @@ def _render_orchestrate(
     brief_max_kb = BRIEF_MAX_BYTES // 1000
     brief_exts_label = html.escape(", ".join(BRIEF_EXTENSIONS))
 
+    # One chair row, cloned by js/orchestrate.js for every chair: the option
+    # lists and icon are markup, so they ship as markup, not as JSON strings
+    # the script would have to feed to innerHTML.
+    chair_tpl = (
+        '<template id="orch-chair-tpl"><div class="orch-seat">'
+        '<span class="seat-n"></span>'
+        f'<select class="seat-tool" aria-label="Tool for this seat">{tool_opts_html}</select>'
+        '<span class="seat-id" title="the agent id this chair runs under"></span>'
+        f'<select class="seat-persona" aria-label="Persona for this seat">{persona_opts_html}</select>'
+        '<button type="button" class="orch-persona-custom" '
+        'title="Use a persona card from a file, for this run only">'
+        f'{_PLUS_SVG}<span class="w-off">custom</span><span class="w-on">remove</span></button>'
+        f'<input type="file" class="orch-persona-file" hidden accept="{persona_accept}" />'
+        '<button type="button" class="seat-del" aria-label="Remove this seat">&times;</button>'
+        '<input type="text" class="seat-model" aria-label="Model for this seat" '
+        'placeholder="model (blank = the CLI default)" autocomplete="off" spellcheck="false" '
+        'maxlength="100" />'
+        '</div></template>'
+    )
+    # Every type's lead-seat description, server-rendered; the script shows the
+    # chosen type's (it carries <strong>, so it isn't JSON data).
+    lead_hints_html = "".join(
+        f'<span data-type="{key}"{"" if key == checked_type else " hidden"}>'
+        f'{_lead_hint(key)}</span>'
+        for key in CONV_TYPE_KEYS
+    )
+
     # Everything js/orchestrate.js needs from the server, as one escaped JSON
     # block (audit RT-34 — the script is a static file, not an f-string).
     orch_data = json_script("orch-data", {
         "presets": presets_data,
         "convTypes": conv_types_data,
-        "toolOpts": tool_opts_html,
-        "personaOpts": persona_opts_html,
         "maxSeatsPerCli": orch_seats.MAX_SEATS_PER_CLI,
-        "plusSvg": _PLUS_SVG,
-        "personaAccept": persona_accept,
         "personaMax": persona_max,
         "topicMax": topic_max,
         "briefMax": brief_max,
@@ -691,6 +713,7 @@ def _render_orchestrate(
          have are listed &mdash; change that on the <a href="/setup">setup page</a>.</p>
       {avail_notice}
       <div class="orch-seats" id="orch-seats"></div>
+      {chair_tpl}
       <div class="orch-seat-actions">
         <button type="button" id="orch-add-seat" class="orch-seat-add">+ Add a seat</button>
         <button type="button" id="orch-cast-random" class="orch-cast-random"><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2.1" y="2.1" width="11.8" height="11.8" rx="3"/><circle cx="5.6" cy="5.6" r="0.95" fill="currentColor" stroke="none"/><circle cx="10.4" cy="10.4" r="0.95" fill="currentColor" stroke="none"/><circle cx="8" cy="8" r="0.95" fill="currentColor" stroke="none"/></svg><span>Cast every chair randomly</span></button>
@@ -699,10 +722,7 @@ def _render_orchestrate(
 
     <section id="orch-lead-section">
       <span class="lbl" id="orch-lead-label">Moderator / host<em class="mark">optional</em></span>
-      <p class="hint" id="orch-lead-hint">Adds a host that opens the debate, keeps turns on track, asks follow-ups,
-         and wraps up — it does not argue a side. Runs on its <strong>own</strong> seat (not one of
-         the debaters), speaks first, then interjects each round. Adding a moderator keeps the
-         conversation on orderly turn rotation.</p>
+      <p class="hint" id="orch-lead-hint">{lead_hints_html}</p>
       <label class="orch-toggle" id="orch-mod-toggle">
         <input type="checkbox" name="mod_enable" />
         <span id="orch-mod-toggle-text">Add a moderator</span>
@@ -774,6 +794,13 @@ def _render_orchestrate(
         card is seated. Its text reaches the agent as instructions &mdash; read it before you
         let that agent act without asking.</p>
       {delivery_toggle_html}
+      <!-- Publishing is opt-in (audit RT-07): unticked, the sync sidecar never
+           copies this conversation to the public mirror. -->
+      <label class="orch-toggle" id="orch-publish-toggle">
+        <input type="checkbox" name="publish" />
+        <span>Publish to the public mirror &mdash; unticked, it stays on this machine
+          (change it later with <code>inspect_conversations publish &lt;id&gt;</code>)</span>
+      </label>
     </section>
 
     <div id="orch-error" class="orch-error hidden"></div>

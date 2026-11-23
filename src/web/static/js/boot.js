@@ -43,10 +43,12 @@
   d.addEventListener('error', function (e) {
     var img = e.target;
     if (!img || img.tagName !== 'IMG') return;
-    var fb = img.getAttribute('data-fallback');
+    // Same-origin paths only, URI-encoded: a fallback can't become a
+    // javascript: or off-site URL.
+    var fb = img.getAttribute('data-fallback') || '';
     if (fb) {
       img.removeAttribute('data-fallback');
-      img.src = fb;
+      if (/^\/(?![\/\\])/.test(fb)) img.src = encodeURI(fb);
       var pc = img.getAttribute('data-fallback-class');   // restyle the frame too
       if (pc && img.parentNode) img.parentNode.classList.add(pc);
       return;

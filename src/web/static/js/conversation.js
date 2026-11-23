@@ -116,7 +116,8 @@
     btn.addEventListener('click', async () => {
       const kind = btn.dataset.kind;
       const meta = PM_META[kind] || { title: 'Prompt', sub: '' };
-      const url = '/api/conversations/' + cid + '/prompts/' + kind + '.md';
+      const url = '/api/conversations/' + encodeURIComponent(cid) + '/prompts/' +
+        encodeURIComponent(kind) + '.md';
       if (!pmModal) return;
       pmTitle.textContent = meta.title;
       pmSub.textContent = meta.sub;

@@ -142,6 +142,7 @@ def _seeded_db(tmp: Path) -> tuple[Path, int]:
         participants=["claude-code", "codex"],
         mode="turns",
         max_turns=2,
+        publish=True,  # these cases are about sync mechanics, not opt-in
     )
     return db_path, int(result.conversation_id)
 
@@ -724,7 +725,7 @@ def test_a_late_commit_behind_the_cursor_is_still_pushed():
         state = _tick(db_path, db_sync.State(), remote)
         second = seeding.seed_conversation(
             db_path=str(db_path), topic="late", participants=["alpha", "beta"],
-            mode="turns", max_turns=2,
+            mode="turns", max_turns=2, publish=True,
         ).conversation_id
         _set_updated_at(db_path, second, "late", "2026-11-22T10:00:01+00:00")
         remote.pushes.clear()
@@ -760,6 +761,72 @@ def test_a_big_push_is_paged_conversations_first():
         assert [x for p in pages for x in p[key]] == batch[key], key
     assert db_sync.batch_pages({**batch, "messages": [], "personas": []}) == [
         {**batch, "messages": [], "personas": []}]
+
+
+def _set_publish(db_path: Path, cid: int, on: bool) -> None:
+    with sqlite3.connect(str(db_path), timeout=10.0, factory=ClosingConnection) as conn:
+        conn.execute("UPDATE conversations SET publish = ? WHERE id = ?", (int(on), cid))
+
+
+def test_an_unpublished_conversation_stays_local_until_published():
+    """RT-07: publishing is opt-in. A default seed never reaches the mirror;
+    publishing it later ships the row and its messages, and unpublishing
+    withdraws it, all through the exclusion machinery."""
+    with tempfile.TemporaryDirectory(**_TMP) as td:
+        db_path = Path(td) / "chat.db"
+        cid = int(seeding.seed_conversation(
+            db_path=str(db_path), topic="private run",
+            participants=["claude-code", "codex"], mode="turns", max_turns=2,
+        ).conversation_id)
+        _add_message(db_path, cid, "codex", "not for the mirror yet")
+        remote = FakeRemote()
+
+        state = _tick(db_path, db_sync.State(), remote)
+        assert remote.pushed_conversation_ids() == []
+        assert [m for p in remote.pushes for m in p["messages"]] == []
+        assert db_sync.read_unpublished_ids(db_path) == {cid}
+
+        _set_publish(db_path, cid, True)
+        remote.pushes.clear()
+        state = _tick(db_path, state, remote)
+        assert remote.pushed_conversation_ids() == [cid]
+        assert [m["content"] for m in remote.pushes[-1]["messages"]] == [
+            "not for the mirror yet"]
+        assert "publish" not in remote.pushes[-1]["conversations"][0], \
+            "the flag is local-only and must not reach /api/ingest"
+
+        _set_publish(db_path, cid, False)
+        remote.pushes.clear()
+        state = _tick(db_path, state, remote)
+        assert remote.pushes[-1]["deleted_conversation_ids"] == [cid]
+        assert state.known_conversation_ids == []
+
+
+def test_an_upgraded_file_keeps_every_old_row_public_and_new_ones_private():
+    """The migration backfills 1 (those rows were already mirrored); a seed on
+    the upgraded file still writes 0, though the column's DEFAULT there is 1."""
+    with tempfile.TemporaryDirectory(**_TMP) as td:
+        db_path = Path(td) / "chat.db"
+        with sqlite3.connect(str(db_path), factory=ClosingConnection) as conn:
+            conn.execute(
+                "CREATE TABLE conversations (id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                "topic TEXT NOT NULL, participants TEXT NOT NULL, mode TEXT NOT NULL, "
+                "max_turns INTEGER NOT NULL, current_turn TEXT, status TEXT NOT NULL, "
+                "end_reason TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)")
+            conn.execute(
+                "INSERT INTO conversations (topic, participants, mode, max_turns, "
+                "status, created_at, updated_at) VALUES ('old', '[\"a\",\"b\"]', "
+                "'turns', 2, 'complete', '2026-01-01', '2026-01-01')")
+        assert db_sync.read_unpublished_ids(db_path) == set(), \
+            "a file from before the column has nothing unpublished"
+        new = int(seeding.seed_conversation(
+            db_path=str(db_path), topic="new", participants=["a", "b"],
+            mode="turns", max_turns=2,
+        ).conversation_id)
+        with sqlite3.connect(str(db_path), factory=ClosingConnection) as conn:
+            rows = dict(conn.execute("SELECT topic, publish FROM conversations"))
+        assert rows == {"old": 1, "new": 0}, rows
+        assert db_sync.read_unpublished_ids(db_path) == {new}
 
 
 def _main() -> int:

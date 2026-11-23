@@ -83,7 +83,7 @@ roundtable/
 │   ├── stop-app.ps1              # Stop web UI + sidecar (this clone's venv only)
 │   ├── restart-app.ps1           # Stop + start — needed after any src/ change
 │   ├── healthcheck-app.ps1       # HTTP-probe + repair; scheduled hourly
-│   ├── maintain-app.ps1          # Nightly SQLite-API backup, prune, log trim
+│   ├── maintain-app.ps1          # Nightly SQLite-API backup, prune, log trim, weekly off-disk copy
 │   ├── lib/spawn-agents.ps1      # Shared CLI registry + prompt-file/spawn helpers
 │   └── setup/                    # setup-skill-links · register-startup-task · register-app-tasks
 │                                 #   · add_agent_seat · gen_agent_role_docs (per-seat role docs)

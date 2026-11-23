@@ -6,6 +6,7 @@ tags:
 - old-school
 category: Athletes
 subcategory: Coaches
+real_or_fictional: fictional
 ---
 
 # Coach Dutch Halloran

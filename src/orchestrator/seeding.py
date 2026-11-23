@@ -203,6 +203,7 @@ def seed_conversation(
     conv_type: Optional[str] = None,
     participant_roles: Optional[dict[str, str]] = None,
     max_minutes: Optional[int] = None,
+    publish: bool = False,
 ) -> SeedResult:
     """Insert a conversation row, optionally rendering a kickoff template body.
 
@@ -224,6 +225,9 @@ def seed_conversation(
     also carries :func:`deliverable_clause` — the artifact's shape, taken from
     the preset. Both seeding callers (``start_conversation.py`` and
     ``POST /api/orchestrate``) come through here, so neither has to know.
+
+    ``publish`` (default False) lets the sync sidecar copy the conversation to
+    the public mirror; left off, it stays on this machine (audit RT-07).
 
     Returns a :class:`SeedResult`. Raises :class:`SeedError` on validation
     failure (caller renders the message). The DB connection is opened with the
@@ -324,12 +328,15 @@ def seed_conversation(
                 INSERT INTO conversations
                     (topic, participants, mode, max_turns, current_turn, status,
                      end_reason, created_at, updated_at, preset, kickoff_template,
-                     participant_personas, conv_type, participant_roles, max_minutes)
-                VALUES (?, ?, ?, ?, ?, 'active', NULL, ?, ?, ?, ?, ?, ?, ?, ?)
+                     participant_personas, conv_type, participant_roles, max_minutes,
+                     publish)
+                VALUES (?, ?, ?, ?, ?, 'active', NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (topic, json.dumps(participants), mode, max_turns,
                  current_turn, ts, ts, preset, kickoff_rendered, personas_json,
-                 resolved_type, json.dumps(resolved_roles), max_minutes),
+                 resolved_type, json.dumps(resolved_roles), max_minutes,
+                 # Always written: a migrated file's column DEFAULT is 1.
+                 1 if publish else 0),
             )
             conv_id = cur.lastrowid
 

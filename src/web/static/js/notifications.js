@@ -28,13 +28,25 @@
     return el ? el.value : DATA.defaultService;
   }
 
+  // A URL from the page's data, accepted only as a same-origin path or an
+  // https URL, and URI-encoded — so no value can become a javascript: link.
+  function safeUrl(u) {
+    u = String(u || '');
+    return /^(\/(?![\/\\])|https:\/\/)/.test(u) ? encodeURI(u) : '';
+  }
+
   function paint(to) {
     const meta = META[to] || {};
     tLabel.textContent = meta.target_label || 'URL';
-    tHint.innerHTML = meta.target_hint || '';
-    if (meta.docs) {
-      tHint.innerHTML += ' <a href="' + meta.docs + '" target="_blank" ' +
-        'rel="noopener noreferrer">Docs \u2197</a>';
+    tHint.textContent = meta.target_hint || '';
+    const docs = safeUrl(meta.docs);
+    if (docs) {
+      const a = document.createElement('a');
+      a.href = docs;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.textContent = 'Docs \u2197';
+      tHint.append(' ', a);
     }
     targetIn.placeholder = meta.placeholder || '';
     const saved = scratch[to] || {};

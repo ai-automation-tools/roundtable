@@ -78,7 +78,13 @@ returned as a string the message path ignores. One failing sink must not stop th
 The exception: **`send_test()` deliberately raises** where `deliver()` swallows — a human is
 waiting for the answer on the Settings page.
 
-Always call `deliver()` **outside** the write transaction.
+Always call `deliver()` **outside** the write transaction, and only when
+`schema.complete_conversation()` returned True (the caller that actually closed the run).
+
+**A caller on an event loop uses `deliver_later()`**: a non-daemon thread that runs the
+events in order, because a sink can take its whole timeout. `send_message()`,
+`web.db.stop_conversation()` and seeding's `started` do; `inspect_conversations` stays
+inline so it can print the result. Tests wait on the fan-outs with `wait_idle()`.
 
 ## 5. The call sites
 
@@ -100,8 +106,9 @@ A sink is `scope: "all"` (default) or `"opt-in"`. The `/orchestrate` Launch chec
 `config/delivery-optin.json`.
 
 Do **not** promote this to a `conversations` column. It is a fact about *this machine's
-filesystem*: it would have to cross four `SCHEMA` copies plus `scripts/db_sync.py` and
-`/api/ingest`, and it would reach a hosted mirror where `deliveries/` does not exist.
+filesystem*: it would need a migration in `src/schema.py` (the one `SCHEMA`), and a synced
+column crosses `scripts/db_sync.py` and `/api/ingest` to a hosted mirror where
+`deliveries/` does not exist.
 `tests/test_delivery.py` pins its absence.
 
 The `/orchestrate` control has **three** states — off / forced by `scope: "all"` / live. Don't

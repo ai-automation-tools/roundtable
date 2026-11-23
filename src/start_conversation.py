@@ -114,6 +114,10 @@ def main() -> int:
                         "persona_body}. Stored verbatim on the conversation so a debate's cast "
                         "(tool + personality) is self-describing in the DB and exports. "
                         "Written by scripts/debate.ps1; optional.")
+    p.add_argument("--publish", action="store_true",
+                   help="Let the sync sidecar copy this conversation to the public mirror. "
+                        "Off by default: it stays on this machine (audit RT-07). Change it "
+                        "later with `inspect_conversations publish <id> [--off]`.")
     args = p.parse_args()
 
     try:
@@ -191,6 +195,7 @@ def main() -> int:
             conv_type=conv_type.key,
             participant_roles=participant_roles,
             max_minutes=args.max_minutes,
+            publish=args.publish,
         )
     except seeding.SeedError as e:
         print(f"ERROR: {e}", file=sys.stderr)
@@ -209,6 +214,7 @@ def main() -> int:
         if held:
             print(f"  {extra.label.lower():<13}: {', '.join(held)}")
     print(f"  mode         : {result.mode}")
+    print(f"  public       : {'yes (synced to the mirror)' if args.publish else 'no (this machine only)'}")
     print(f"  max_turns    : {result.max_turns} (per agent)")
     if result.mode == "turns":
         print(f"  first turn   : {result.first}")
