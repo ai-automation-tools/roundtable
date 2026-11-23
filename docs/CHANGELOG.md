@@ -12,6 +12,11 @@ Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changel
 - The web UI's startup log prints `public read-only: on|off` next to `basic auth`.
 - Audit item RT-31.
 
+### Changed — the app's fonts match the homepage and the org's other sites
+
+- **Inter for text, JetBrains Mono for code and numerals**, instead of IBM Plex Sans and IBM Plex Mono. One font stylesheet per page: the persona console no longer `@import`s a second one.
+- Audit item RT-44.
+
 ### Changed — the docs every agent loads are a quarter of the size
 
 - **`AGENTS.md` is 13 KB, down from 58 KB.** Every agent session, and every Claude Code seat, loads it. The per-area rules (database and MCP server, web UI, AgentBattleground, delivery, conversation types and personas, testing, docs/git/deploy) moved verbatim to [`docs/maintainers/`](maintainers/README.md), one file per area; `AGENTS.md` keeps the rule most often broken in each area and a link.

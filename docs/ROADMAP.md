@@ -53,7 +53,7 @@ From a full audit of `4f71561` (kept outside the repo). One item per PR, titled 
 - [ ] **RT-36** Per-seat model choice
 - [ ] **RT-37** Close SQLite connections explicitly; escape quotes in the PS spawn string
 - [ ] **RT-42** Mirror and registry polish
-- [ ] **RT-44** House style: Inter body font
+- [x] **RT-44** House style: Inter body font — done 2026-11-22: the app uses the house pair, Inter and JetBrains Mono (was IBM Plex Sans/Mono), from one stylesheet; the persona console's second `@import` is gone, so a page makes one font request set
 
 ### 🔴 High
 
