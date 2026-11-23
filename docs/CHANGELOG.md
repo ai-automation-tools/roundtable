@@ -4,6 +4,10 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 ## 2026-11-22 (latest)
 
+### Changed — a conversation opens on its transcript on phones
+
+- **At 900px and below, a conversation page (and its not-found page) shows the transcript first.** The conversation list now follows the reader instead of stacking above it, and the Actions and kickoff panels follow the transcript: topic → cast → transcript → actions → list. On a 375×812 screen the title moved from y≈760 to ≈150 and the first message from ≈1420 to ≈550; the not-found message is on the first screen. `/conversations` keeps the list first, and desktop is unchanged. Test: `tests/test_web_readonly.py`. Audit item RT-38.
+
 ### Changed — local writes need a per-install secret; a tailnet host needs a password
 
 - **Every write to the local web UI must carry this install's write secret.** It is generated on first use into `config/web-write-secret` (gitignored). Any page GET sets it as an `HttpOnly`, `SameSite=Strict` cookie (`rt_write`), so the app's own pages work unchanged; a script sends it as the `X-Roundtable-Write` header. A write without it gets `401 missing write secret` (reload the page). `/api/ingest` keeps its bearer token, and the AgentBattleground bridge keeps its own: the `/battleground` console's same-origin pass now also needs the cookie. The read-only mirror is unaffected.

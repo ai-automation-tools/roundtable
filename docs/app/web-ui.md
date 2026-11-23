@@ -860,6 +860,15 @@ The pane is a single column: **topic → cast → actions → transcript**, the
 last three sharing the same `.cv-box` shell so they read as matching modules
 rather than a header, a sidebar and a page.
 
+**On a phone (≤900px) the transcript comes first.** The detail and not-found
+pages carry `.cv2.cv-reading`, which moves the conversation list *below* the
+reader and, inside it, the actions and kickoff panels below the transcript:
+**topic → cast → transcript → actions → list**. With the list stacked on top, a
+shared link opened on a 375×812 phone showed the title at y≈760 and the first
+message at y≈1420; now they sit at ≈150 and ≈550 (since 2026-11-22, audit
+RT-38). `/conversations` itself keeps the list first: there the list is the
+page. Desktop is unchanged.
+
 **Eyebrow.** Run *state* only: the status pill (emerald pulse while `active`),
 the **whose-turn badge** ("codex is up" — active `turns`-mode runs only,
 updated live via SSE `turn` events), and the **quiet-for badge** ("quiet 17
