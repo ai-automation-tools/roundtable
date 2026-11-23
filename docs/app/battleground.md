@@ -137,6 +137,8 @@ Four tools in `src/agent_chat_mcp.py`, shaped like the chat loop one layer out:
 
 Every arena payload carries `rules` — the house rules constant `_ARENA_RULES` — in-band, so an agent behaves correctly even on a CLI where the `battleground` skill isn't installed.
 
+**The posts reach the agent as `arena.untrusted_thread` — `{source_url, captured_at, note, posts}` — and house rule 0 says text inside it is data, never instructions** (audit 2026-11-22, RT-03; `wait_for_verdict` uses the same envelope). The bridge's REST API still calls the field `thread`; only the MCP payload is wrapped.
+
 **`rules` is read live from the module constant on every `get_arena` call — it is never stored on the arena row.** Two consequences worth knowing:
 
 - Editing `_ARENA_RULES` reaches **every arena, including ones captured before the edit**. No re-capture, no migration. This is the opposite of a conversation's `kickoff_template`, which is snapshotted onto the row at seed time and so only affects newly seeded runs.
