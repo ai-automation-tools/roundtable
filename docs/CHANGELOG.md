@@ -4,6 +4,13 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 ## 2026-11-22 (latest)
 
+### Fixed — the live stream no longer drops a run's final message
+
+- **The SSE stream sends every message before `complete`.** It read new messages and then the conversation's status; a final send landing between the two reads closed the stream without that message (often the closing statement or the deliverable) until a reload. It now reads the status first: since the send commits its message and the close together, a `complete` read means every message is already visible.
+- **`?since=` must be a message id**: anything else is a `400`, not a `500` with a traceback.
+- **Open streams are capped**: 100 per process and 10 per client (`Fly-Client-IP` on the mirror), else `429` with `Retry-After`. `fly.toml` adds a 200-connection hard limit at Fly's proxy. A browser opens at most ~6 connections to a host, so a reader never meets the per-client cap.
+- Tests: `tests/test_web_readonly.py`. Audit item RT-17.
+
 ### Fixed — a slow delivery sink no longer stalls the agent; a failed stall notice is retried
 
 - **Delivery runs on a background thread** wherever the caller is on an event loop: the MCP server's `send_message`, the web UI's Stop, and seeding's `started` event (which `/api/orchestrate` triggers). A webhook can take its whole timeout and a command sink up to two minutes; inline, either froze the MCP server, so the agent's `send_message` and every other call to that server waited on it. A run's `result` and `complete` still go out in that order, and the thread isn't a daemon, so `start_conversation.py` finishes a delivery before it exits. `inspect_conversations stop` and `deliver` stay inline, since they print each sink's result.

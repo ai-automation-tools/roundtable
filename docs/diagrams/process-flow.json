@@ -7,7 +7,7 @@
     "output": "docs/diagrams/process-flow.html",
     "repository": {
       "url": "https://github.com/ai-automation-tools/roundtable.git",
-      "revision": "f998b820929334e8081c0f5bdc7b75763a22b57f"
+      "revision": "37e481fab768fa109747195e7edc977d0cc2639e"
     }
   },
   "lanes": [
@@ -242,8 +242,8 @@
       "sources": [
         {
           "path": "src/web/api/conversations.py",
-          "line": 152,
-          "end_line": 180
+          "line": 168,
+          "end_line": 219
         }
       ]
     },
