@@ -191,7 +191,7 @@ From a full audit of `4f71561` (kept outside the repo). One item per PR, titled 
 - [ ] **RT-40** Transcript semantics, one h1 per page, real form labels
 - [ ] **RT-41** Front-end load: defer highlight.js, self-host fonts, slim the polled index
 - [ ] **RT-42** Mirror and registry polish
-- [ ] **RT-43** Extension side panel accessibility
+- [x] **RT-43** Extension side panel accessibility — done 2026-11-22: the panel's eight status lines are `role="status"` live regions, the bridge state reads *Connected* / *Offline* with an `aria-label` instead of a coloured dot alone, the ⚙ toggle has a name plus `aria-expanded`/`aria-controls`, the disclosure line has a label and the auto re-capture seconds field its own name outside the checkbox label, white-on-accent fills use `#b8441f` (5.4:1) while accent text gets a per-scheme shade (4.8:1 dark), hints use `--muted` rather than faded ink, and the panel has a `<main>`. Lighthouse accessibility on the panel page with every card shown: 94 before the last two fixes, **100** in both dark and light at 360 px (the JS doesn't run outside the extension, so this is the markup and contrast, not a live run). Pinned by a markup test in `test_battleground.py`
 - [ ] **RT-44** House style: Inter body font
 
 ### 🔴 High

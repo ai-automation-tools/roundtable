@@ -4,6 +4,13 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 ## 2026-11-22 (latest)
 
+### Fixed — the AgentBattleground side panel works with a screen reader
+
+- Status lines (capture, arena, hand-off, auto re-capture, settings) are announced as they change. The bridge indicator says *Connected* or *Offline* in words, not only in colour, and the settings toggle has a name and reports whether it's open.
+- The disclosure-line field and the auto re-capture seconds field have their own labels; the seconds field no longer sits inside the checkbox's label.
+- Contrast: white-on-accent buttons use a darker orange (5.4:1), accent text a per-scheme shade, and hint text the muted colour instead of faded ink. Lighthouse accessibility is 100 on the panel page in dark and light.
+- Reload the extension to pick it up. Audit item RT-43.
+
 ### Fixed — a locked database no longer freezes the web UI
 
 - **Route handlers run in Starlette's threadpool.** They were `async def` around blocking SQLite, so a Stop waiting out the 10 s busy timeout on a locked DB froze every other request and every live transcript; measured, an unrelated page load waited 10.7 s. 50 of 52 handlers are now plain `def`; the SSE stream and `/api/ingest` stay async and hand their DB work to the threadpool. Two settings saves can now run at once, so the delivery-config writers share a lock.
