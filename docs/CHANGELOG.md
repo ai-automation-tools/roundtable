@@ -6,6 +6,12 @@ Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changel
 
 ## 2026-11-23 (latest)
 
+### Added — a weekly backup copy on another disk
+
+- `maintain-app.ps1 -OffDiskDir <folder>` copies that night's verified backup to another disk once a week, checks the hash, and keeps the newest 8. A missing or full disk fails the run (exit 1 and one alert), like a failed backup. Register it with `register-app-tasks.ps1 -OffDiskDir`.
+- `scripts/run-hidden.vbs` now quotes extra arguments that contain a space.
+- Audit item RT-12.
+
 ### Changed — CI must pass before a merge into `main`
 
 - A repo ruleset (**Require CI**) makes `test`, `test-linux` and `lint` required checks on `main`; a PR with failing CI can't be merged.
