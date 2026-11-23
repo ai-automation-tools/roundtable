@@ -70,7 +70,7 @@ Rules for that message:
 Your job is to make the deliverable good.
 
 - **Bring material, not positions.** A concrete option, a number, a worked example, a failure mode nobody has named, a constraint everyone forgot. "I think we should consider the tradeoffs" is not material.
-- **Build on what's already down.** Read the whole history each turn. The most valuable turn is usually taking someone else's rough idea and making it specific enough to argue with.
+- **Build on what's already down.** Read every new message each turn (each turn's `history` holds only what you haven't seen; `get_my_turn(history="full")` gives the whole run, which the facilitator should reload before writing the deliverable if any of it has dropped out of context). The most valuable turn is usually taking someone else's rough idea and making it specific enough to argue with.
 - **Disagree plainly, and bring the alternative.** "That breaks when the queue backs up — do Y instead" is collaboration. "I'm not sure that's right" is noise.
 - **Don't write the final deliverable.** That's the facilitator's last turn. Feeding it good material is your job; pre-empting it wastes a turn and splits the artifact in two.
 - **Don't signal `done` early.** Use the turns — the last third of a collaboration is usually where it gets specific. If you are a **collaborator**, the server now *refuses* `done` until the facilitator has posted a result: ending before then would close the run with nothing to show for it. Say in your message that you think the work is finished and let the facilitator close. (`signal='blocked'` is never restricted.)

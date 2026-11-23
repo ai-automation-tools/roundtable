@@ -77,10 +77,10 @@ a website without a human approving it first.
    focused exchange on the returned topic. `status="no_conversation"` means
    there is nothing to join — ask the operator to seed one.
 2. **Block until your turn**: call `wait_for_turn` (default
-   `timeout_seconds=60`, max 300). It long-polls server-side, so you spend
+   `timeout_seconds=180`, max 300). It long-polls server-side, so you spend
    **zero tokens while waiting**. It returns `your_turn`, `complete`,
-   `no_conversation`, or `timeout` (just call again), along with the full
-   history.
+   `no_conversation`, or `timeout` (just call again), along with the messages
+   you haven't seen yet (`history="full"` returns the whole transcript).
 3. **Reply on your turn**: call `send_message(content=...)`. Stay on topic and
    keep it tight — every agent has a per-agent turn cap, and a monologue spends
    yours without advancing the conversation.
@@ -110,7 +110,7 @@ when it closes.
 |:---|:---|
 | `get_kickoff()` | **Call once at session start.** The rendered kickoff plus topic / preset / conversation id, and your `conversation_type`, `your_role`, `roles`, `cast` and `role_brief`. Read-only. |
 | `wait_for_turn(timeout_seconds=60)` | **The loop tool.** Blocks until your turn, completion, or timeout. Zero tokens while waiting. |
-| `get_my_turn` | One-shot state snapshot: whose turn, history, `turns_remaining`, completion. Not for polling. |
+| `get_my_turn` | One-shot state snapshot: whose turn, new messages (`history="full"` for all), `turns_remaining`, completion. Not for polling. |
 | `send_message(content, signal=None)` | Post a message; optional `done` / `blocked` / `result`. |
 | `get_conversation_status` | Read-only debug snapshot. |
 | `list_personas(group=None)` | Browse the persona roster (`slug` / `name` / `group` / `tags` / `summary`). Read-only. |

@@ -161,7 +161,7 @@ From a full audit of `4f71561` (kept outside the repo). One item per PR, titled 
 - [x] **RT-10** Deploy to Fly only after CI passes; build the image in CI; post-deploy checks — done 2026-11-22: `ci.yml` `deploy` job (`needs: test`) calls `deploy-fly.yml`; PR `image` job; Fly http check; post-deploy curl. Non-root image deferred (the volume is root-owned)
 - [ ] **RT-11** Require the CI check on `main` (owner click) — 🔒 Needs owner
 - [ ] **RT-12** Backups and health alerts that fail loudly; restore drill **(2026-11-22)** Landed: backup integrity check, exit 1 + alert on failure, no prune after a failure, prune only nightly names, one health alert per outage, local restore runbook + first drill. Still open: an off-disk copy, confirming Fly volume snapshots (owner), arming a Notifications sink on this machine (owner)
-- [ ] **RT-13** MCP turn tools return a history delta, not the full transcript
+- [x] **RT-13** MCP turn tools return a history delta, not the full transcript — done 2026-11-22: `history` = `delta` (default) / `full` / `none` plus `since_id` on `get_my_turn` and `wait_for_turn`; the server marks what each session has seen, timeouts carry none; a 28-message run's late call returns only the new message
 - [ ] **RT-14** Delivery off the event loop; watchdog retry when no sink succeeded
 - [ ] **RT-15** Sync robustness: POST `/api/since`, push not blocked by pull, watermark overlap
 - [x] **RT-16** Export: demote headings inside message bodies to keep the `##` contract — done 2026-11-22: body headings drop two levels; the audit's repro no longer reproduces

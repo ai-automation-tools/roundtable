@@ -32,7 +32,7 @@ import time
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any, Container, Optional
+from typing import Any, Container, Literal, Optional
 
 from mcp.server.mcpserver import MCPServer
 from pydantic import BaseModel, ConfigDict, Field
@@ -482,8 +482,26 @@ mcp = MCPServer("agent_chat_mcp")
 
 
 class GetMyTurnInput(BaseModel):
-    """No parameters. Reads agent identity from server config."""
+    """Agent identity comes from server config; the fields only shape history."""
     model_config = ConfigDict(extra="forbid")
+
+    history: Literal["delta", "full", "none"] = Field(
+        default="delta",
+        description=(
+            "Which messages to return. 'delta' (default): only messages from "
+            "the other participants that this session hasn't been shown yet. "
+            "'full': the whole transcript — use it after a restart or if you "
+            "lost track. 'none': no messages, just the state."
+        ),
+    )
+    since_id: Optional[int] = Field(
+        default=None,
+        ge=0,
+        description=(
+            "Delta only: return messages with an id above this one instead of "
+            "above the last one this session was shown."
+        ),
+    )
 
 
 class SendMessageInput(BaseModel):
@@ -519,6 +537,24 @@ class GetKickoffInput(BaseModel):
 
 class WaitForTurnInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
+
+    history: Literal["delta", "full", "none"] = Field(
+        default="delta",
+        description=(
+            "Which messages to return. 'delta' (default): only messages from "
+            "the other participants that this session hasn't been shown yet. "
+            "'full': the whole transcript — use it after a restart or if you "
+            "lost track. 'none': no messages, just the state."
+        ),
+    )
+    since_id: Optional[int] = Field(
+        default=None,
+        ge=0,
+        description=(
+            "Delta only: return messages with an id above this one instead of "
+            "above the last one this session was shown."
+        ),
+    )
 
     timeout_seconds: int = Field(
         default=180,
@@ -568,7 +604,51 @@ _HISTORY_NOTE = (
 )
 
 
-def _compute_turn_state() -> dict[str, Any]:
+# The highest message id each session has been shown, per (DB_PATH, AGENT_ID,
+# conversation). A turn payload used to carry the whole transcript on every
+# call, including every wait timeout: ~53k tokens per call by the end of run
+# #51 (audit RT-13). Process-local on purpose: a restarted server starts from 0,
+# so its first delta is the full history.
+_SEEN: dict[tuple[str, str, int], int] = {}
+
+
+def _history_view(conv_id: int, history: list[dict[str, Any]], mode: str,
+                  since_id: Optional[int], hidden: int) -> dict[str, Any]:
+    """The history fields of a turn payload, plus the private ``_mark`` the tool
+    commits only if it actually returns the payload (see ``_reply``)."""
+    key = (DB_PATH, AGENT_ID, conv_id)
+    last = history[-1]["id"] if history else 0
+    if mode == "none":
+        return {"history_mode": "none", "history": [], "last_message_id": last}
+    if mode == "full":
+        out: dict[str, Any] = {"history_mode": "full", "history": history}
+    else:
+        after = since_id if since_id is not None else _SEEN.get(key, 0)
+        out = {
+            "history_mode": "delta",
+            "history_since_id": after,
+            # Your own messages are left out: you wrote them.
+            "history": [m for m in history if m["id"] > after and m["sender"] != AGENT_ID],
+        }
+    out["last_message_id"] = last
+    # Under blind-first some messages are withheld; marking past them would
+    # drop them from the delta once they are revealed.
+    if not hidden:
+        out["_mark"] = (key, last)
+    return out
+
+
+def _reply(state: dict[str, Any]) -> str:
+    """Serialize a turn payload and record what this session has now seen."""
+    mark = state.pop("_mark", None)
+    if mark:
+        key, last = mark
+        _SEEN[key] = max(_SEEN.get(key, 0), last)
+    return json.dumps(state, indent=2)
+
+
+def _compute_turn_state(history_mode: str = "delta",
+                        since_id: Optional[int] = None) -> dict[str, Any]:
     """Read the current conversation state for AGENT_ID and return the dict that
     get_my_turn() and wait_for_turn() both serialize.
 
@@ -616,7 +696,7 @@ def _compute_turn_state() -> dict[str, Any]:
             "roles": roles,
             "cast": conversation_cast(conv),
             "history_note": _HISTORY_NOTE,
-            "history": history,
+            **_history_view(conv["id"], history, history_mode, since_id, hidden),
         }
         if my_role and my_role in _ROLE_BRIEFS:
             base["role_brief"] = _ROLE_BRIEFS[my_role]
@@ -686,7 +766,7 @@ def _compute_turn_state() -> dict[str, Any]:
     },
 )
 async def get_my_turn(params: GetMyTurnInput) -> str:
-    """Check whether it's your turn to speak and fetch the full conversation so far.
+    """Check whether it's your turn to speak and fetch the messages you haven't seen.
 
     This is the primary tool you call to participate in a conversation. Call it
     whenever you want to know if there's anything for you to do. If you expect to
@@ -719,11 +799,17 @@ async def get_my_turn(params: GetMyTurnInput) -> str:
     When status is "your_turn", produce a thoughtful response and call
     send_message() with your reply.
 
+    history: by default ("delta") only the other participants' messages this
+    session hasn't been shown yet; your own are left out. "history_since_id"
+    and "last_message_id" say what range that is. Pass history="full" for the
+    whole transcript (after a restart, or if you lost track), history="none"
+    for none, or since_id=N for everything after message N.
+
     A conversation whose preset sets a protocol also carries "protocol". Under
     "blind-first", history omits the other agents' messages until you have
     posted once, and "protocol_note" says how many are hidden.
     """
-    return json.dumps(_compute_turn_state(), indent=2)
+    return _reply(_compute_turn_state(params.history, params.since_id))
 
 
 def _advance_and_close(conn: sqlite3.Connection, conv: sqlite3.Row) -> Optional[str]:
@@ -903,6 +989,9 @@ async def wait_for_turn(params: WaitForTurnInput) -> str:
     - {"status": "timeout", "current_turn": "<other_agent>", ...}: the timeout
       elapsed while still waiting. The 'wait' shape is preserved alongside so
       you can show progress; just call wait_for_turn() again to keep waiting.
+      A timeout carries no history and marks nothing as seen: whatever arrived
+      meanwhile comes with the next response. ``history`` / ``since_id`` work
+      as in get_my_turn().
 
     Special cases:
     - If there is no conversation, returns 'no_conversation' immediately.
@@ -920,11 +1009,15 @@ async def wait_for_turn(params: WaitForTurnInput) -> str:
     """
     deadline = time.monotonic() + params.timeout_seconds
     while True:
-        state = _compute_turn_state()
+        state = _compute_turn_state(params.history, params.since_id)
         if state["status"] != "wait":
-            return json.dumps(state, indent=2)
+            return _reply(state)
         if time.monotonic() >= deadline:
-            return json.dumps({**state, "status": "timeout"}, indent=2)
+            # Nothing changed for you: no history, and nothing marked as seen,
+            # so whatever arrived meanwhile is in the next real response.
+            state.pop("_mark", None)
+            return json.dumps({**state, "status": "timeout", "history_mode": "none",
+                               "history": []}, indent=2)
         await asyncio.sleep(POLL_INTERVAL_SECONDS)
 
 

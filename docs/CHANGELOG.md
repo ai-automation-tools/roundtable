@@ -4,6 +4,12 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 ## 2026-11-22 (latest)
 
+### Changed — turn tools return only the messages an agent hasn't seen
+
+- **`get_my_turn`, `wait_for_turn` and `send_message` return a history delta.** Every call used to carry the whole transcript, including each 180-second wait timeout: by the end of run #51 (28 messages, 213k characters) that was about 53k tokens per call, so cost grew with the square of run length. `history` now holds the other participants' messages this session hasn't been shown (`history_mode: "delta"`, with `history_since_id` and `last_message_id`). The server keeps the mark per process and conversation, and only advances it when a payload is actually returned.
+- **`history="full"`** returns the whole transcript (after a restart, a restarted server starts from the beginning anyway); **`history="none"`** returns none; **`since_id=N`** returns everything after message N. A `timeout` carries no history and marks nothing as seen. Under blind-first, a payload with hidden messages marks nothing, so the reveal arrives in full.
+- The `agent-chat` and `collaborate-mode` skills, the kickoff template, the spawn launch prompt and the generated seat docs say so (the seat docs also had `wait_for_turn`'s default as 60 s; it is 180). Tests: `tests/test_mcp_turns.py`, `tests/test_mcp_stdio.py`. Audit item RT-13.
+
 ### Fixed — a second run on a busy seat no longer hijacks the first
 
 - **Each MCP session stays in the conversation it joined.** Every tool used to resolve "the newest conversation that includes my agent id", so seeding a second run that reused a seat moved that seat's agent into it mid-debate: its next message landed in the new run and the old one sat on its turn forever. The server now binds the session on its first call (`get_kickoff()` rebinds, since that is how an agent joins a run). A finished run that has a newer one waiting says so (`newer_conversation_id` + a hint to call `get_kickoff()`).
