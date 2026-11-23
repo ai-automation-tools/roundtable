@@ -23,8 +23,6 @@ from typing import Optional
 
 from . import seats
 
-_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-
 
 @dataclass
 class PreflightFailure:
@@ -256,8 +254,8 @@ def check_claude_code(agent_id: str = "claude-code") -> PreflightResult:
 
     Two places can register ``roundtable`` for Claude Code, and both are valid:
 
-    1. ``agents/CLIs/claude-code_agent<N>/.mcp.json`` — project scope, the
-       committed and reproducible one, and the **only** option for seat 2+.
+    1. ``<seat root>/claude-code_agent<N>/.mcp.json`` — project scope, the
+       **only** option for seat 2+ (see :func:`seats.seat_dir`).
     2. ``~/.claude.json``'s top-level ``mcpServers`` — user scope, where
        ``claude mcp add --scope user`` puts it. One entry for the whole
        machine, so it can only ever serve **seat 1**: the agent id is baked
@@ -270,7 +268,7 @@ def check_claude_code(agent_id: str = "claude-code") -> PreflightResult:
     Project scope wins when both define an entry — it matches Claude Code's own
     precedence, and it keeps an in-repo config authoritative for the repo.
     """
-    config_path = _REPO_ROOT / "agents" / "CLIs" / seats.seat_folder(agent_id) / ".mcp.json"
+    config_path = seats.seat_dir(agent_id) / ".mcp.json"
     is_seat_one = seats.seat_index(agent_id) == 1
 
     mcp_block = None
@@ -343,7 +341,7 @@ def codex_home(agent_id: str) -> Optional[Path]:
     """
     if seats.seat_index(agent_id) <= 1:
         return None
-    return _REPO_ROOT / "agents" / "CLIs" / seats.seat_folder(agent_id) / ".codex"
+    return seats.seat_dir(agent_id) / ".codex"
 
 
 def check_codex(agent_id: str = "codex") -> PreflightResult:
@@ -358,7 +356,7 @@ def check_codex(agent_id: str = "codex") -> PreflightResult:
             "[mcp_servers.roundtable] block."
             if home is None else
             f"Seat {seats.seat_index(agent_id)} needs its own CODEX_HOME. Create it "
-            f"with: .\\scripts\\setup\\add-agent-seat.ps1 -Cli codex -Seat "
+            f"with: .\\.venv\\Scripts\\python.exe scripts\\setup\\add_agent_seat.py --cli codex --seat "
             f"{seats.seat_index(agent_id)}  (then run 'codex login' once against it)."
         )
         return PreflightResult(
@@ -389,8 +387,9 @@ def check_codex(agent_id: str = "codex") -> PreflightResult:
 
 def check_antigravity(agent_id: str = "antigravity") -> PreflightResult:
     """Preflight for the Antigravity CLI — reads
-    ``agents/CLIs/antigravity_agent1/.agents/mcp_config.json``."""
-    config_path = _REPO_ROOT / "agents" / "CLIs" / seats.seat_folder(agent_id) / ".agents" / "mcp_config.json"
+    ``<seat root>/antigravity_agent<N>/.agents/mcp_config.json``, materialized from
+    the tracked ``agents/CLIs/antigravity_agent1/`` template."""
+    config_path = seats.seat_dir(agent_id) / ".agents" / "mcp_config.json"
     if not config_path.exists():
         return PreflightResult(
             cli=agent_id,
@@ -423,14 +422,15 @@ def check_antigravity(agent_id: str = "antigravity") -> PreflightResult:
 
 def check_opencode(agent_id: str = "opencode") -> PreflightResult:
     """Preflight for the OpenCode CLI — reads the project-scoped config at
-    ``agents/CLIs/opencode_agent1/opencode.json``.
+    ``<seat root>/opencode_agent<N>/opencode.json`` (template:
+    ``agents/CLIs/opencode_agent1/``).
 
     OpenCode auto-loads ``opencode.json`` from the launch directory (it looks in
     the current directory, then walks up to the nearest Git directory) and merges
     it with the global ``~/.config/opencode/opencode.json`` — project config wins
-    on conflicting keys. We check the in-repo project file because it's the
-    reproducible, committed source of truth — same rationale as antigravity's
-    in-repo ``.agents/mcp_config.json``.
+    on conflicting keys. We check the seat folder's project file because it's what
+    the seat actually launches with — same rationale as antigravity's
+    ``.agents/mcp_config.json``.
 
     OpenCode's MCP shape differs from the other CLIs: servers live under a top-
     level ``mcp`` key (not ``mcpServers``), each with ``type: "local"`` and a
@@ -438,7 +438,7 @@ def check_opencode(agent_id: str = "opencode") -> PreflightResult:
     ``command`` (str) / ``args`` (list) fields. We normalize that array into the
     (command, args) pair the shared ``_check_mcp_entry`` validator expects so the
     launcher-path extraction logic is reused unchanged."""
-    config_path = _REPO_ROOT / "agents" / "CLIs" / seats.seat_folder(agent_id) / "opencode.json"
+    config_path = seats.seat_dir(agent_id) / "opencode.json"
     if not config_path.exists():
         return PreflightResult(
             cli=agent_id,
@@ -491,7 +491,7 @@ def discover_seats() -> list[str]:
 
     Seat 1 of each supported tool is always listed — its absence is a preflight
     *failure* the operator should see on the form, not a row that quietly
-    vanishes. Extra seats are listed only when ``agents/CLIs/<cli>_agent<N>/``
+    vanishes. Extra seats are listed only when ``<seat root>/<cli>_agent<N>/``
     exists, so running ``scripts/setup/add_agent_seat.py`` makes the new seat
     appear on the next page load with no code change.
     """
@@ -499,7 +499,7 @@ def discover_seats() -> list[str]:
     for cli in SUPPORTED_CLIS:
         found.append(cli)
         for n in range(2, seats.MAX_SEATS_PER_CLI + 1):
-            if (_REPO_ROOT / "agents" / "CLIs" / f"{cli}_agent{n}").is_dir():
+            if seats.seat_dir(seats.seat_id(cli, n)).is_dir():
                 found.append(seats.seat_id(cli, n))
     return found
 

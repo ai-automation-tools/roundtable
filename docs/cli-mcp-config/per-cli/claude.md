@@ -18,13 +18,13 @@ Claude Code loads MCP servers from a `.mcp.json` resolved **relative to the dire
 
 Precedence when the same name exists in more than one scope: **local → project → user** (closest wins). Register in exactly one.
 
-In this repo the per-folder config lives at `agents/CLIs/claude-code_agent1/.mcp.json` — launching `claude` from that folder is what activates it. `.mcp.json` files at the repo root and inside `agents/` are gitignored (they may hold API keys for other servers) and stay on your machine.
+Roundtable's Claude Code seats launch from seat folders outside the repo, `<seat root>/claude-code_agent<N>/`, where `<seat root>` is `%LOCALAPPDATA%\Roundtable\seats\<clone folder name>\` ([where seat folders live](../../app/cli-setup.md#where-seat-folders-live)). Seat 1 normally keeps no `.mcp.json` and uses the user-scope entry in `~/.claude.json`; seat 2+ gets its own `.mcp.json` from `scripts/setup/add_agent_seat.py`. Launching `claude` from the seat folder is what activates it. `.mcp.json` files at the repo root and inside `agents/` are gitignored (they may hold API keys for other servers) and stay on your machine.
 
 ---
 
 ## Project-level registration
 
-Add `roundtable` inside the existing `mcpServers` object of `agents/CLIs/claude-code_agent1/.mcp.json` (preserve any other servers you already have):
+Add `roundtable` inside the existing `mcpServers` object of the seat's `.mcp.json`, `<seat root>/claude-code_agent<N>/.mcp.json` (preserve any other servers you already have). For seat 2+ `add_agent_seat.py` writes this for you:
 
 ```json
 "roundtable": {
@@ -94,10 +94,10 @@ Inside a session, `/mcp` shows live status. Or ask the agent directly:
 
 You should get back the `roundtable` tools — `get_kickoff`, `wait_for_turn`, `get_my_turn`, `send_message`, `list_personas`, `get_persona`, `get_conversation_status`. If not, check:
 
-1. The JSON parses — `python -m json.tool agents/CLIs/claude-code_agent1/.mcp.json`.
+1. The JSON parses — `python -m json.tool <seat root>/claude-code_agent<N>/.mcp.json` (seat 1 with user scope: `~/.claude.json`).
 2. The launcher path exists and `pwsh` is on PATH.
 3. `db/chat.db` exists or can be auto-created (the server creates it on first run if the parent dir exists).
-4. You launched from `agents/CLIs/claude-code_agent1/` — not the repo root.
+4. You launched from the seat folder `<seat root>/claude-code_agent<N>/` — not the repo root or the template under `agents/CLIs/`. `.\.venv\Scripts\python.exe scripts\setup\add_agent_seat.py --materialize` prints the folders.
 
 Editing `.mcp.json` does **not** hot-reload — quit and relaunch.
 
@@ -122,7 +122,7 @@ Once all three CLIs have `roundtable` registered:
 
    The `--participants` order defines turn rotation. With `--first claude-code` the cycle is `claude-code → codex → antigravity → …`, and `wait_for_turn` blocks each agent until the pointer lands on it.
 
-2. Open all three CLIs in separate terminals (each from its own `agents/CLIs/<name>_agent1/` folder).
+2. Open all three CLIs in separate terminals (each from its own seat folder, `<seat root>/<name>_agent1/`).
 3. Paste the canonical kickoff prompt from `prompts/Kickoff/kickoff.md` into each, replacing `{{TOPIC}}` and `{{TONE_INSTRUCTION}}`.
 4. Send the prompt to the `--first` agent first so its opening message is ready before the others wait.
 5. Watch live at `http://127.0.0.1:8765/` (run `src/web_ui.py` in a fourth terminal).

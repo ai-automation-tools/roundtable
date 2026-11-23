@@ -38,7 +38,7 @@ Every CLI loads the **same** launcher (`scripts/run-mcp-server.ps1`) under a dif
 .\.venv\Scripts\python.exe scripts\setup\add_agent_seat.py --cli claude-code --seat 2
 ```
 
-That writes `agents/CLIs/claude-code_agent2/` and the participant id becomes `claude-code-2`. Seats run to `-5`. Seat 2+ folders are gitignored — the copied config holds this machine's launcher path — so creating one never dirties `git status`. It works whether Claude Code is registered in the seat-1 folder or at user scope with `claude mcp add --scope user` — in the second case the new seat's `.mcp.json` is built from the `roundtable` entry in `~/.claude.json`. **Codex needs one extra step** — its seats relocate `CODEX_HOME`, so run `codex login` once against the new folder; the script prints the exact command.
+That writes `%LOCALAPPDATA%\Roundtable\seats\<clone>\claude-code_agent2\` and the participant id becomes `claude-code-2`. Seats run to `-5`. Every seat folder lives **outside the repo** (so a seat never loads the repo's `AGENTS.md`/`CLAUDE.md`; `$AGENT_CHAT_SEATS_DIR` moves them), and the tracked `agents/CLIs/<cli>_agent1/` folders are only templates. The web app copies them into place when it starts, and every launch refreshes them and pre-trusts each folder for Claude Code and Antigravity, so seat 1 needs no step at all — see [CLI setup](../app/cli-setup.md#where-seat-folders-live). It works whether Claude Code is registered in the seat-1 folder or at user scope with `claude mcp add --scope user` — in the second case the new seat's `.mcp.json` is built from the `roundtable` entry in `~/.claude.json`. **Codex needs one extra step** — its seats relocate `CODEX_HOME`, so run `codex login` once against the new folder; the script prints the exact command.
 
 > [!TIP]
 > You can skip this step entirely. `/orchestrate` creates the seat when you point a second chair at a tool you already have, so the shortest path to two agents on one CLI is the launch form.
@@ -67,7 +67,7 @@ Pick one of the three ways — [auto-debate](../guides/auto-debate.md), [manual 
 .\scripts\start.ps1 --topic "Smoke test: confirm roundtable works end to end" --participants claude-code,codex --first claude-code --mode turns --max-turns 5
 ```
 
-Then open each CLI from its `agents/CLIs/<cli>_agent1/` folder (so it loads the right `--agent-id` config) and paste the one-line `get_kickoff()` prompt — `--first` agent first.
+Then open each CLI from its seat folder, `%LOCALAPPDATA%\Roundtable\seats\<clone>\<cli>_agent1\` (so it loads the right `--agent-id` config and none of the repo's agent instructions), and paste the one-line `get_kickoff()` prompt — `--first` agent first. `.\.venv\Scripts\python.exe scripts\setup\add_agent_seat.py --materialize` prints the folders.
 
 ### 6 · Watch it live
 
@@ -148,7 +148,7 @@ Originally everything (the three `.py` files **and** the README) lived in a sing
 
 ## 3. Agent wiring
 
-Both agent folders already existed (`agents/CLIs/claude-code_agent1/` and `agents/CLIs/codex_agent1/`) with starter content. They were configured to talk to the same `roundtable` MCP server backed by the same SQLite database.
+Both agent folders already existed (`agents/CLIs/claude-code_agent1/` and `agents/CLIs/codex_agent1/`) with starter content. *(Since 2026-11-23 those are templates; seats launch from copies outside the repo — see [CLI setup](../app/cli-setup.md#where-seat-folders-live).)* They were configured to talk to the same `roundtable` MCP server backed by the same SQLite database.
 
 ### Shared paths
 
@@ -280,8 +280,8 @@ python src/start_conversation.py `
 (DB defaults to `<repo>/db/chat.db`; pass `--db-path` or set `$env:AGENT_CHAT_DB` to override.)
 
 Then:
-- Open Claude Code in `agents/CLIs/claude-code_agent1/` so it picks up the local `.mcp.json`.
-- Open Codex CLI in `agents/CLIs/codex_agent1/` (with the config caveat above honoured).
+- Open Claude Code in its seat folder, `%LOCALAPPDATA%\Roundtable\seats\<clone>\claude-code_agent1\`.
+- Open Codex CLI in `%LOCALAPPDATA%\Roundtable\seats\<clone>\codex_agent1\` (with the config caveat above honoured).
 - Ask each agent to call `get_kickoff` once, then drive itself through the `wait_for_turn` → `send_message` loop until the conversation ends. (Pre-`get_kickoff` flow — paste the rendered `prompts/Kickoff/kickoff.md` into each CLI — still works for rows seeded without `--preset`.)
 - Optionally tail the conversation in a third terminal:
   ```powershell

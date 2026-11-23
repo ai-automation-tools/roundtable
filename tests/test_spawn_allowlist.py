@@ -116,6 +116,46 @@ def test_every_seat_is_contained_ticked_or_not() -> None:
             assert cmd.index("Remove-Item Env:") < cmd.index("Read the file"), (seat, cmd)
 
 
+def test_every_seat_starts_in_its_folder_outside_the_repo() -> None:
+    """Audit RT-01: a CLI loads every CLAUDE.md/AGENTS.md above where it
+    starts, so no seat may start under the repo."""
+    if not _PWSH:
+        return
+    from orchestrator import seats
+    for seat, cmd in _plan(False).items():
+        want = str(seats.seat_dir(seat)).replace("'", "''")
+        assert f"Set-Location -LiteralPath '{want}';" in cmd, (seat, cmd)
+        assert not seats.seat_dir(seat).is_relative_to(_ROOT), seat
+
+
+def test_the_antigravity_seat_runs_sandboxed_with_deny_rules() -> None:
+    """Audit RT-01: --sandbox plus a session-only settings file whose deny
+    rules block shell, writes, URL reads and every MCP server but roundtable
+    (verified live against agy 1.5.15)."""
+    if not _PWSH:
+        return
+    cmd = _plan(False)["antigravity"]
+    assert "--sandbox --settings '" in cmd and "conv7-antigravity.agy-settings.json'" in cmd, cmd
+    assert cmd.index("Read the file") < cmd.index("--sandbox"), cmd
+    lib = _ROOT / "scripts" / "lib" / "spawn-agents.ps1"
+    seat = Path(tempfile.mkdtemp(prefix="agentchat-agy-"))
+    (seat / ".agents").mkdir()
+    (seat / ".agents" / "mcp_config.json").write_text(json.dumps({"mcpServers": {
+        "roundtable": {}, "seat-extra": {}}}), encoding="utf-8")
+    out = subprocess.run(
+        [_PWSH, "-NoProfile", "-NonInteractive", "-Command",
+         f". '{lib}'; New-AgySeatSettings -SeatDir '{seat}' -LaunchDir 'X:\\launch'"],
+        capture_output=True, text=True, encoding="utf-8", timeout=60)
+    assert out.returncode == 0, out.stderr
+    cfg = json.loads(out.stdout)
+    assert cfg["toolPermission"] == "request-review", cfg
+    assert cfg["permissions"]["allow"] == ["mcp(roundtable/*)", "read_file(X:\\launch)"], cfg
+    deny = cfg["permissions"]["deny"]
+    for rule in ("command(*)", "write_file(*)", "read_url(*)", "execute_url(*)", "mcp(seat-extra/*)"):
+        assert rule in deny, (rule, deny)
+    assert "mcp(roundtable/*)" not in deny, deny
+
+
 def test_the_opencode_seat_denies_everything_but_roundtable() -> None:
     cfg = json.loads((_ROOT / "agents" / "CLIs" / "opencode_agent1" / "opencode.json")
                      .read_text(encoding="utf-8"))
@@ -193,10 +233,12 @@ def test_a_path_with_an_apostrophe_still_parses() -> None:
                          capture_output=True, text=True, encoding="utf-8", timeout=120)
     assert out.returncode == 0, out.stdout + out.stderr
     rows = json.loads(out.stdout)
+    from orchestrator import seats as seats_mod
     assert {r["cli"] for r in rows} == set(_SEATS), rows
     for r in rows:
         assert r["errors"] == 0, r
         assert str(launch / f"conv7-{r['cli']}.pid") == r["paths"][0], r
+        assert str(seats_mod.seat_dir(r["cli"])) == r["paths"][1], r
 
 
 def test_no_spawn_refuses_a_launch() -> None:

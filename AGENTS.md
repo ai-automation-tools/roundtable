@@ -41,9 +41,11 @@ src/
                              #   watchdog.py (notice a stalled run — reuses delivery's sinks) ·
                              #   killswitch.py (config/NO_SPAWN + close a run's seat windows)
 
-agents/         # CLIs/<cli>_agent1|2 = one folder per SEAT (role doc + MCP config; make new
-                #   seats with scripts/setup/add_agent_seat.py). The four role docs are
-                #   GENERATED — edit scripts/setup/gen_agent_role_docs.py, not the output.
+agents/         # CLIs/<cli>_agent1 = TEMPLATES for each CLI's seat (role doc + MCP config).
+                #   Seats launch from %LOCALAPPDATA%\Roundtable\seats\<clone>\<cli>_agent<N>,
+                #   OUTSIDE the repo ($AGENT_CHAT_SEATS_DIR; add_agent_seat.py --materialize
+                #   copies them there). The four role docs are GENERATED — edit
+                #   scripts/setup/gen_agent_role_docs.py, not the output.
                 #   A seat is a full-stack developer that can also join a conversation.
                 #   Debate-Agents/ = one-time seed cards; live personas are DB rows.
 db/ config/     # chat.db at runtime; available-clis.json written by /setup. Both gitignored.
@@ -70,7 +72,7 @@ When you add a new top-level concern, update this map (here in `AGENTS.md`), `do
 - **Python 3.11+** in a local venv. Always invoke it explicitly: `.\.venv\Scripts\python.exe ...` — never rely on activation state. **On Windows that launcher re-execs the base interpreter**, so a running process reports `C:\Python312\python.exe` to WMI while being the venv (`sys.executable`/`sys.prefix` are the venv's). Never identify one of this app's processes by `ExecutablePath` — match the command line against this clone's path, as `healthcheck-app.ps1` / `startup-app.ps1` / `stop-app.ps1` do (pinned by `tests/test_availability.py`; `start.ps1` is exempt, it counts launchers).
 - **Deps** are pinned exactly in `requirements.txt`. Upgrade by regenerating the full pin set with `pip freeze`, not by hand-editing lines. `requirements-dev.txt` adds the CI-only browser-test pins (Playwright) on top — if you installed it into `.venv`, take `playwright`, `greenlet` and `pyee` back out of a fresh freeze before it lands in `requirements.txt`.
 - **Git user:** Mike, with the GitHub noreply address (`225616888+michaelschecht@users.noreply.github.com`). GitHub rejects pushes carrying a personal email (GH007).
-- **Paths:** `scripts/run-mcp-server.ps1` resolves the venv and server relative to itself, and the DB defaults to `<repo>/db/chat.db` (override with `$AGENT_CHAT_DB`), so the launcher path is the only absolute path left in each MCP config. Others still live in the README install blocks, the per-CLI configs under `agents/CLIs/`, the global `~/.codex/config.toml`, `docs/setup/INITIAL_SETUP.md`, and the CHANGELOG. Don't add **new** hardcoded paths; if you touch existing ones, change all sites in one PR.
+- **Paths:** `scripts/run-mcp-server.ps1` resolves the venv and server relative to itself, and the DB defaults to `<repo>/db/chat.db` (override with `$AGENT_CHAT_DB`), so the launcher path is the only absolute path left in each MCP config. Others still live in the README install blocks, the global `~/.codex/config.toml`, `docs/setup/INITIAL_SETUP.md`, and the CHANGELOG. Don't add **new** hardcoded paths; if you touch existing ones, change all sites in one PR.
 
 ---
 

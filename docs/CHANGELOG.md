@@ -6,6 +6,15 @@ Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changel
 
 ## 2026-11-23 (latest)
 
+### Changed — seat folders live outside the repo
+
+- Every CLI seat now launches from `%LOCALAPPDATA%\Roundtable\seats\<clone folder>\<cli>_agent<N>\` (`$XDG_DATA_HOME` or `~/.local/share` off Windows), or `$AGENT_CHAT_SEATS_DIR` when set. A CLI loads every `CLAUDE.md`/`AGENTS.md` above its launch folder, so a seat inside the repo inherited the repo's developer instructions. A seat root inside the repo is refused.
+- `agents/CLIs/<cli>_agent1/` are templates now. `scripts/setup/add_agent_seat.py --materialize` copies them into the seat root, writes this clone's launcher path and the seat's agent id into each MCP config, and keeps the folder's local state. It runs when the web app starts, when Settings → CLI tools is saved, before `/orchestrate`'s preflight and before every launch. The tracked Antigravity and OpenCode configs say `<repo>/scripts/run-mcp-server.ps1` instead of a machine path.
+- A launch pre-trusts each seat folder in the CLI's own user config (one entry each): `~/.claude.json` for Claude Code, the seat's Codex `config.toml`, and `~/.gemini/antigravity-cli/settings.json`. Without it a new folder stops on a "trust this folder?" screen.
+- Antigravity seats launch with `--sandbox --settings <file>`: session-only deny rules for shell commands, file writes, URL reads and every MCP server but `roundtable`.
+- Preflight, `/setup`, `discover_seats()`, the battleground launch hint and `setup-skill-links` read the new location. **Existing machines:** copy any seat 2+ folder (and seat 1's local `.claude/` / `.codex/` state) from `agents/CLIs/` to the seat root; the old folders are no longer read.
+- Audit item RT-01.
+
 ### Changed — no inline CSS or JS; every page sends a nonce CSP
 
 - **Every stylesheet and script moved out of Python strings into `src/web/static/`** (`css/`, `js/`), served at `/static` with a content-hash query (`?v=…`) and a year-long immutable cache, so a deploy that changes a file busts caches on its own. About 6,300 lines left `web/assets.py` and `web/render/*`; the HTML renderers stay in Python.

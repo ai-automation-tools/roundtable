@@ -34,7 +34,8 @@ def _add_seat_module():
     when the operator actually asks for a seat — so the import is deferred
     rather than paid at web-app boot. Calling it **in process** is deliberate:
     a web request that shells out to a script is a different thing to reason
-    about, and this one only writes inside ``agents/CLIs/``.
+    about, and this one only writes the seat folders (outside the repo, see
+    ``orchestrator.seats.seat_root``) plus each CLI's trust entry for them.
     """
     scripts_dir = _REPO_ROOT / "scripts" / "setup"
     if str(scripts_dir) not in sys.path:
@@ -103,6 +104,14 @@ def api_setup_save(request: Request) -> Response:
         return JSONResponse({"ok": False, "error": f"could not write {avail.config_file()}: {e}"},
                             status_code=500)
     saved = avail.load_declared() or []
+    # Seat 1 of each declared tool, materialized from its template now, so the
+    # preflight this page shows checks a real folder (audit RT-01). Folder
+    # trust (a write to each CLI's user config) is left to the launch.
+    try:
+        _add_seat_module().materialize(saved, trust=False)
+    except Exception as e:  # noqa: BLE001 — reported, the declaration still saved
+        return JSONResponse({"ok": False, "error": f"saved, but could not set up the seat folders: {e}"},
+                            status_code=500)
     return JSONResponse({
         "ok": True,
         "config_path": str(path),

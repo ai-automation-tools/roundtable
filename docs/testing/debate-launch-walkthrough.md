@@ -87,11 +87,16 @@ same registry by slug or display name.)
 
 CLI preference order is fixed by the `$Clis` ordered hashtable in `scripts/lib/spawn-agents.ps1`:
 
-| Order | CLI key       | Working dir                       | Exe   | Initial-prompt flag | `-SkipPermissions` allowlist (after the prompt) |
+| Order | CLI key       | Seat folder (launch dir)          | Exe   | Initial-prompt flag | `-SkipPermissions` allowlist (after the prompt) |
 |-------|---------------|-----------------------------------|-------|---------------------|----------------------------------|
-| 1     | `claude-code` | `agents\CLIs\claude-code_agent1`  | `claude` | `{0}`            | `--allowedTools mcp__roundtable --add-dir '<repo>\db\launch'` |
-| 2     | `antigravity` | `agents\CLIs\antigravity_agent1`  | `agy` | `-i {0}`            | *(none: no per-tool allowlist flag)* |
-| 3     | `codex`       | `agents\CLIs\codex_agent1`        | `codex` | `{0}`             | *(none: no per-tool allowlist flag)* |
+| 1     | `claude-code` | `<seat root>\claude-code_agent1`  | `claude` | `{0}`            | `--allowedTools mcp__roundtable --add-dir '<repo>\db\launch'` |
+| 2     | `antigravity` | `<seat root>\antigravity_agent1`  | `agy` | `-i {0}`            | *(none: no per-tool allowlist flag; every launch gets `--sandbox --settings <deny rules>`)* |
+| 3     | `codex`       | `<seat root>\codex_agent1`        | `codex` | `{0}`             | *(none: no per-tool allowlist flag)* |
+
+`$Clis` carries no folder: `Resolve-AgentSeat` builds it from `Get-SeatRoot`,
+which is `%LOCALAPPDATA%\Roundtable\seats\<clone folder name>\` outside the repo
+(see [where seat folders live](../app/cli-setup.md#where-seat-folders-live)), after
+`add_agent_seat.py --materialize` has copied the `agents\CLIs\` templates there.
 
 The first `$count` CLIs are used, and **the first is the `--first` speaker**. So for
 2 agents: `claude-code` (first) + `antigravity`. Personas are zipped onto CLIs by
@@ -177,7 +182,7 @@ the command line stays trivially quotable regardless of persona length or conten
 For each agent the script builds:
 
 ```powershell
-Set-Location -LiteralPath '<repo>\agents\CLIs\<cli>_agent1'; <exe> <prompt-arg>[ <allowlist>]
+Set-Location -LiteralPath '<seat root>\<cli>_agent1'; <exe> <prompt-arg>[ <allowlist>]
 ```
 
 e.g. for claude-code with `-SkipPermissions`:
@@ -213,8 +218,8 @@ CLI windows.
 Each window is now an independent CLI process. The lifecycle per agent:
 
 1. **CLI boots and loads MCP config** from its working directory:
-   - `claude-code` reads `agents/CLIs/claude-code_agent1/.mcp.json`
-   - `antigravity` reads `agents/CLIs/antigravity_agent1/.agents/mcp_config.json`
+   - `claude-code` reads `~/.claude.json` (user scope, seat 1) or `<seat root>/claude-code_agent<N>/.mcp.json`
+   - `antigravity` reads `<seat root>/antigravity_agent1/.agents/mcp_config.json`
 2. **The `roundtable` server starts.** Both configs register the *same* launcher:
    ```
    pwsh -NoProfile -File scripts/run-mcp-server.ps1 <agent-id>
@@ -469,7 +474,8 @@ personas not to emit `done`, or rely solely on the cap.
 - **Dry run first.** `.\scripts\debate.ps1 -DryRun` prints the topic, persona→CLI
   map, prompt-file paths, and exact launch command per agent — no windows, no seed.
 - **A window opens but no messages appear.** The CLI couldn't reach `roundtable`.
-  Confirm it launched from its `agents/CLIs/<cli>_agent1/` folder and that its MCP
+  Confirm it launched from its seat folder, `<seat root>\<cli>_agent1\` (`add_agent_seat.py --materialize`
+  prints them), and that its MCP
   config parses (`python -m json.tool <config>`). Run the preflight, or `/mcp`
   inside Claude Code.
 - **"could not parse conversation id".** The seed failed inside `start.ps1` /

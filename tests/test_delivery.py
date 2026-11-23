@@ -29,6 +29,9 @@ import zipfile
 from contextlib import contextmanager
 from pathlib import Path
 
+# Seat folders this suite materializes land in a temp root, never the real one.
+os.environ["AGENT_CHAT_SEATS_DIR"] = tempfile.mkdtemp(prefix="agentchat-seats-")
+
 _SRC = Path(__file__).resolve().parent.parent / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))

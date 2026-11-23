@@ -102,11 +102,13 @@ A conversation needs two to five participants. You do not need two to five CLIs.
 
 On the **CLI tools** tab, once you've saved your tools, the page plans the seats for a
 two-agent and a three-agent run and offers **Create the missing seat folders**.
-Each new folder is a copy of seat 1's MCP config with the agent id rewritten:
+Each new folder goes in the seat root, outside the repo (see
+[where seat folders live](../app/cli-setup.md#where-seat-folders-live)), and is a
+copy of seat 1's MCP config with the agent id rewritten:
 
 ```
-agents/CLIs/claude-code_agent1/   ->  agent id  claude-code
-agents/CLIs/claude-code_agent2/   ->  agent id  claude-code-2
+<seat root>/claude-code_agent1/   ->  agent id  claude-code
+<seat root>/claude-code_agent2/   ->  agent id  claude-code-2
 ```
 
 Seat 1 keeps the bare id — one spelling per seat, so participant lists and
@@ -161,7 +163,7 @@ Roughly, in order — do the canonical list first, because everything else mirro
 5. **`src/web/render/orchestrate.py`** — the id in the chair dropdown.
 6. **`src/orchestrator/model_personas.py`** — its `AI-Models` card. Write an **original** description; never paste a vendor's system prompt.
 7. **`scripts/lib/spawn-agents.ps1`** — a `$Clis` entry, *only* if it can be auto-spawned.
-8. **`agents/CLIs/<id>_agent1/`** — the role doc and the MCP config, at the exact path `check_<id>()` reads.
+8. **`agents/CLIs/<id>_agent1/`** — the template: the role doc and the MCP config, plus a `SHAPES` entry in `scripts/setup/add_agent_seat.py` so `--materialize` copies it into `<seat root>/<id>_agent1/`, the exact path `check_<id>()` reads.
 9. **Docs** — a new `docs/cli-mcp-config/per-cli/<id>.md`, the tables in this file and the README, plus a CHANGELOG entry.
 
 Then verify: the server and orchestrator import clean, Settings → CLI tools and

@@ -32,6 +32,9 @@ import sys
 import tempfile
 from pathlib import Path
 
+# Seat folders this suite materializes land in a temp root, never the real one.
+os.environ["AGENT_CHAT_SEATS_DIR"] = tempfile.mkdtemp(prefix="agentchat-seats-")
+
 from starlette.testclient import TestClient
 # The Host allowlist (web.security) refuses TestClient's default "testserver".
 LOCAL = "http://127.0.0.1:8765"

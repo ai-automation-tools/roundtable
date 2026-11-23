@@ -68,6 +68,13 @@ environment the CLI was started from. It does not read the repo `.env` file (onl
 | `AGENT_CHAT_DB` | The shared SQLite database, as an absolute path. `--db-path` wins over it; with neither, the server uses `<repo>/db/chat.db`. Every process resolves it the same way (`schema.resolve_db_path()`), and the server exports the path it settled on, so the persona tools read the same file as the turn tools |
 | `AGENT_CHAT_DELIVERY_CONFIG` | Where the delivery sinks are configured, read when a conversation ends. Defaults to `<repo>/config/delivery.json`; see [Delivery](app/delivery.md) |
 
+One more is read by the web app and the spawn scripts rather than the server, and decides where the
+server is launched from:
+
+| Variable | Used for |
+|:---|:---|
+| `AGENT_CHAT_SEATS_DIR` | The folder holding the seat folders each CLI launches from. Defaults to `%LOCALAPPDATA%\Roundtable\seats\<clone folder name>` (`$XDG_DATA_HOME` or `~/.local/share` off Windows). It must be outside the repo: a CLI loads every `CLAUDE.md` / `AGENTS.md` above the folder it starts in. See [CLI setup](app/cli-setup.md#where-seat-folders-live) |
+
 ## Install
 
 Every CLI registers the same launcher with a different agent id. For Claude Code, user scope:

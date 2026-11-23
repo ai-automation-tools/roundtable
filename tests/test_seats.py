@@ -22,6 +22,9 @@ from __future__ import annotations
 import dataclasses
 import importlib.util
 import json
+import os
+import shutil
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -32,6 +35,13 @@ if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
 from orchestrator import preflight, seats  # noqa: E402
+
+
+def _restore_env(name: str, value) -> None:
+    if value is None:
+        os.environ.pop(name, None)
+    else:
+        os.environ[name] = value
 
 
 def _load_add_agent_seat():
@@ -150,16 +160,17 @@ def test_claude_code_seat_one_accepts_a_user_scope_registration(monkeypatch=None
             json.dumps({"mcpServers": {"roundtable": _claude_entry(launcher, "claude-code")}}),
             encoding="utf-8",
         )
-        real_home, real_root = Path.home, preflight._REPO_ROOT
+        real_home, real_root = Path.home, os.environ.get(seats.SEATS_DIR_ENV)
         Path.home = staticmethod(lambda: home)      # type: ignore[assignment]
         # Point project scope at an empty tree, so only user scope can satisfy
         # the check — and so this does not depend on which seat folders happen
         # to exist in the working copy.
-        preflight._REPO_ROOT = home                 # type: ignore[assignment]
+        os.environ[seats.SEATS_DIR_ENV] = str(home)
         try:
             r = preflight.check_claude_code("claude-code")
         finally:
-            Path.home, preflight._REPO_ROOT = real_home, real_root
+            Path.home = real_home
+            _restore_env(seats.SEATS_DIR_ENV, real_root)
     # Either scope may satisfy it; what matters is that a user-scope-only
     # machine passes rather than reporting no_mcp_entry.
     assert r.ok, [f.code for f in r.failures]
@@ -179,17 +190,18 @@ def test_claude_code_seat_two_will_not_take_the_user_scope_entry():
             json.dumps({"mcpServers": {"roundtable": _claude_entry(launcher, "claude-code")}}),
             encoding="utf-8",
         )
-        real_home, real_root = Path.home, preflight._REPO_ROOT
+        real_home, real_root = Path.home, os.environ.get(seats.SEATS_DIR_ENV)
         Path.home = staticmethod(lambda: home)      # type: ignore[assignment]
         # Isolate project scope too. Creating a real claude-code_agent2 is now
         # possible (add_agent_seat synthesizes its config from the user-scope
         # entry), and reading the live tree made this assert on the machine
         # rather than on the rule.
-        preflight._REPO_ROOT = home                 # type: ignore[assignment]
+        os.environ[seats.SEATS_DIR_ENV] = str(home)
         try:
             r = preflight.check_claude_code("claude-code-2")
         finally:
-            Path.home, preflight._REPO_ROOT = real_home, real_root
+            Path.home = real_home
+            _restore_env(seats.SEATS_DIR_ENV, real_root)
     assert not r.ok
     assert "claude-code_agent2" in r.config_path
     assert "project" in r.failures[0].detail.lower()
@@ -306,20 +318,166 @@ def test_every_supported_cli_can_be_preflighted_and_seated():
 def test_powershell_resolver_shares_the_folder_convention():
     """`Resolve-AgentSeat` in PowerShell must derive the same folder names.
 
-    Checked textually (the suite runs without spawning pwsh): the resolver has
-    to rewrite the registry's `_agent1` suffix and cap the seat range the same
-    way ``seats.py`` does.
+    The seat cap and CODEX_HOME are checked textually; the folder itself is
+    checked for real by ``test_powershell_and_python_agree_on_the_seat_root``.
     """
     ps1 = (_ROOT / "scripts" / "lib" / "spawn-agents.ps1").read_text(encoding="utf-8")
     assert "function Resolve-AgentSeat" in ps1
-    assert "_agent1$" in ps1 and "_agent$seat" in ps1, \
+    assert '"$($cli)_agent$seat"' in ps1, \
         "the PowerShell seat resolver no longer derives <cli>_agent<N>"
     assert f"$seat -gt {seats.MAX_SEATS_PER_CLI}" in ps1, \
         f"PowerShell seat cap disagrees with MAX_SEATS_PER_CLI={seats.MAX_SEATS_PER_CLI}"
     assert "CODEX_HOME" in ps1, "Codex seat 2+ needs its CODEX_HOME set at launch"
-    # Every registered CLI still has a seat-1 dir the resolver can rewrite.
     for cli in seats.SUPPORTED_CLIS:
-        assert f"{cli}_agent1" in ps1, f"{cli} has no launch dir in the registry"
+        assert seats.template_dir(cli).is_dir(), f"{cli} has no tracked seat template"
+
+
+# ---------------------------------------------------------------------------
+# Seat folders live outside the repo (audit RT-01)
+# ---------------------------------------------------------------------------
+
+def test_the_seat_root_is_outside_the_repo_and_overridable():
+    """A CLI loads every CLAUDE.md/AGENTS.md above where it starts; the repo's
+    tell a developer agent to work on this codebase."""
+    real = os.environ.pop(seats.SEATS_DIR_ENV, None)
+    try:
+        root = seats.seat_root()
+        assert not root.resolve().is_relative_to(_ROOT.resolve()), root
+        assert root.name == _ROOT.name and root.parent.name == "seats", root
+        assert _ROOT.resolve() not in [p.parent for p in seats.instruction_files_above(root)]
+        with tempfile.TemporaryDirectory() as tmp:
+            os.environ[seats.SEATS_DIR_ENV] = tmp
+            assert seats.seat_root() == Path(os.path.abspath(tmp))
+            assert seats.seat_dir("codex-2") == Path(os.path.abspath(tmp)) / "codex_agent2"
+    finally:
+        _restore_env(seats.SEATS_DIR_ENV, real)
+
+
+def test_powershell_and_python_agree_on_the_seat_root():
+    """One rule, two languages: Resolve-AgentSeat's Dir == seats.seat_dir()."""
+    pwsh = shutil.which("pwsh")
+    if not pwsh:
+        print("SKIP  no pwsh")
+        return
+    lib = _ROOT / "scripts" / "lib" / "spawn-agents.ps1"
+    ids = ("claude-code", "codex-2", "opencode-5")
+    script = (f". '{lib}'; foreach ($s in {', '.join(repr(i) for i in ids)}) "
+              f"{{ (Resolve-AgentSeat -AgentId $s -RepoRoot '{_ROOT}').Dir }}")
+    real = os.environ.pop(seats.SEATS_DIR_ENV, None)
+    try:
+        # resolve(): a CI runner's temp dir is an 8.3 short name (RUNNER~1),
+        # which .NET expands and Python's abspath keeps — same folder, two spellings.
+        tmp = str(Path(tempfile.mkdtemp(prefix="agentchat-seatroot-")).resolve())
+        for override in (None, tmp):
+            env = {k: v for k, v in os.environ.items() if k != seats.SEATS_DIR_ENV}
+            if override:
+                env[seats.SEATS_DIR_ENV] = override
+                os.environ[seats.SEATS_DIR_ENV] = override
+            out = subprocess.run([pwsh, "-NoProfile", "-NonInteractive", "-Command", script],
+                                 capture_output=True, text=True, env=env, timeout=60)
+            assert out.returncode == 0, out.stderr
+            want = [str(seats.seat_dir(s)) for s in ids]
+            assert out.stdout.splitlines() == want, (override, out.stdout, want)
+    finally:
+        _restore_env(seats.SEATS_DIR_ENV, real)
+
+
+def test_no_seat_template_carries_a_machine_path():
+    """The templates name the launcher as <repo>/...; materialize fills it in."""
+    configs = list((_ROOT / "agents" / "CLIs").glob("*_agent1/**/*.json"))
+    configs += list((_ROOT / "agents" / "CLIs").glob("*_agent1/.agents/*.json"))
+    assert configs, "no tracked seat config found"
+    for cfg in configs:
+        text = cfg.read_text(encoding="utf-8")
+        assert "<repo>/scripts/run-mcp-server.ps1" in text, cfg
+        assert ":/" not in text.replace("https://", ""), f"{cfg} carries an absolute path"
+
+
+def test_materialize_fills_the_seat_root_keeps_local_state_and_trusts_once():
+    mod = _load_add_agent_seat()
+    launcher = (_ROOT / "scripts" / "run-mcp-server.ps1").as_posix()
+    real_env, real_home = os.environ.get(seats.SEATS_DIR_ENV), Path.home
+    with tempfile.TemporaryDirectory() as tmp:
+        root, home = Path(tmp) / "seats", Path(tmp) / "home"
+        (home / ".gemini" / "antigravity-cli").mkdir(parents=True)
+        # A lone surrogate, as a real ~/.claude.json can hold: must round-trip.
+        (home / ".claude.json").write_text('{"projects": {}, "other": 1, "half": "\\udc8f"}',
+                                           encoding="utf-8")
+        agy = home / ".gemini" / "antigravity-cli" / "settings.json"
+        agy.write_text('{"trustedWorkspaces": ["X:/kept"]}', encoding="utf-8")
+        codex = home / ".codex" / "config.toml"
+        codex.parent.mkdir()
+        codex.write_text('# keep me\nmodel = "x"\n', encoding="utf-8")
+        os.environ[seats.SEATS_DIR_ENV] = str(root)
+        Path.home = staticmethod(lambda: home)      # type: ignore[assignment]
+        try:
+            # A seat-2 folder made by a clone elsewhere: its launcher path moves.
+            two = root / "claude-code_agent2"
+            two.mkdir(parents=True)
+            (two / ".mcp.json").write_text(json.dumps({"mcpServers": {"roundtable": {
+                "command": "pwsh",
+                "args": ["-NoProfile", "-File", "D:/old/clone/scripts/run-mcp-server.ps1",
+                         "claude-code-2"]}}}), encoding="utf-8")
+            done = mod.materialize(trust=False)
+            assert "hasTrust" not in (home / ".claude.json").read_text(encoding="utf-8")
+            assert seats.seat_dir("claude-code-2") in done and len(done) == 5, done
+
+            ag = json.loads((root / "antigravity_agent1" / ".agents" / "mcp_config.json")
+                            .read_text(encoding="utf-8"))["mcpServers"]["roundtable"]["args"]
+            assert ag[-2:] == [launcher, "antigravity"], ag
+            oc = json.loads((root / "opencode_agent1" / "opencode.json").read_text(encoding="utf-8"))
+            assert oc["mcp"]["roundtable"]["command"][-2:] == [launcher, "opencode"], oc
+            assert oc["permission"]["*"] == "deny", "the template's limits must carry over"
+            c2 = json.loads((two / ".mcp.json").read_text(encoding="utf-8"))
+            assert c2["mcpServers"]["roundtable"]["args"][-2:] == [launcher, "claude-code-2"], c2
+            for cli, doc in (("claude-code", "claude.md"), ("codex", "AGENTS.md")):
+                assert (root / f"{cli}_agent1" / doc).read_text(encoding="utf-8") == \
+                    (seats.template_dir(cli) / doc).read_text(encoding="utf-8")
+
+            # Local state survives later runs.
+            local = root / "claude-code_agent1" / ".claude" / "settings.local.json"
+            local.write_text(json.dumps({"permissions": {"allow": ["mcp__roundtable"]},
+                                         "enabledMcpjsonServers": ["roundtable"],
+                                         "env": {"KEEP": "1"}}), encoding="utf-8")
+            (root / "codex_agent1" / ".codex").mkdir()
+            (root / "codex_agent1" / ".codex" / "auth.json").write_text("{}", encoding="utf-8")
+            mod.materialize()
+            mod.materialize()
+            assert json.loads(local.read_text(encoding="utf-8"))["env"] == {"KEEP": "1"}
+            assert (root / "codex_agent1" / ".codex" / "auth.json").exists()
+
+            claude = json.loads((home / ".claude.json").read_text(encoding="utf-8"))
+            for seat in ("claude-code", "claude-code-2"):
+                key = mod.claude_trust_key(seats.seat_dir(seat))
+                assert claude["projects"][key]["hasTrustDialogAccepted"] is True, claude
+            assert claude["other"] == 1, "the rest of ~/.claude.json must survive"
+            assert claude["half"] == "\udc8f", claude["half"]
+            trusted = json.loads(agy.read_text(encoding="utf-8"))["trustedWorkspaces"]
+            assert trusted == ["X:/kept", str(seats.seat_dir("antigravity"))], trusted
+            # Codex shows its folder-access screen even with --sandbox set.
+            text = codex.read_text(encoding="utf-8")
+            assert text.startswith('# keep me\nmodel = "x"\n'), text
+            import tomllib
+            projects = tomllib.loads(text)["projects"]
+            assert projects == {mod.codex_trust_key(seats.seat_dir("codex")):
+                                {"trust_level": "trusted"}}, projects
+        finally:
+            Path.home = real_home
+            _restore_env(seats.SEATS_DIR_ENV, real_env)
+
+
+def test_materialize_refuses_a_seat_root_inside_the_repo():
+    mod = _load_add_agent_seat()
+    real = os.environ.get(seats.SEATS_DIR_ENV)
+    os.environ[seats.SEATS_DIR_ENV] = str(_ROOT / "agents" / "CLIs")
+    try:
+        mod.materialize(trust=False)
+    except mod.SeatSetupError as e:
+        assert "inside the repo" in str(e), e
+    else:
+        raise AssertionError("a seat root inside the repo must be refused")
+    finally:
+        _restore_env(seats.SEATS_DIR_ENV, real)
 
 
 # ---------------------------------------------------------------------------
@@ -449,9 +607,6 @@ def test_generated_seat_folders_are_gitignored_and_seat_one_is_not():
     so tracked seat-1 files are checked against the pattern too. Skipped where
     there is no git checkout (the Fly image has none).
     """
-    import shutil
-    import subprocess
-
     if not shutil.which("git") or not (_ROOT / ".git").exists():
         print("SKIP  no git checkout")
         return
