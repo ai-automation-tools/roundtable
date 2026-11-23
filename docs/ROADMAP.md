@@ -177,7 +177,7 @@ From a full audit of `4f71561` (kept outside the repo). One item per PR, titled 
 - [ ] **RT-26** Cut agent-loaded docs: `AGENTS.md` ≤ 15 KB, archive done phases, split the changelog
 - [x] **RT-27** One schema module; parity tests for messages and battleground columns — done 2026-11-22: `src/schema.py` (stdlib only) holds the DDL, migrations, synced column lists and arena/draft statuses; the four copies and `db_sync.py`'s lists are gone. Tests fail on DDL outside it and pin the column lists and every `INSERT` against the real tables
 - [ ] **RT-28** Stop blocking the event loop; one `GROUP BY` for counts
-- [ ] **RT-29** CI hygiene: main-only push, timeouts, SHA pins, Linux leg, ruff
+- [x] **RT-29** CI hygiene: main-only push, timeouts, SHA pins, Linux leg, ruff — done 2026-11-22: CI pushes run on `main` only (one run per PR), 20-minute timeouts, an Ubuntu / Python 3.14 leg and a `ruff --select E9,F` job (15 findings fixed) both gating deploy, every action SHA-pinned with Dependabot allowed to bump action majors, the persona explorer's newest sort tie-broken. Hashed requirements skipped; cancelling the six runs queued since 2026-11-11 is in the PR
 - [ ] **RT-30** Docs accuracy sweep
 - [ ] **RT-31** Hosted mirror: refuse local-only routes; truthful startup log — 🔒 Needs owner
 - [ ] **RT-32** Repo housekeeping: merged branches, release tags (owner settings) — 🔒 Needs owner

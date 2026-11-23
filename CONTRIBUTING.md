@@ -48,6 +48,16 @@ Add cases for the behavior you changed — `tests/` is organised one file per su
 new suites standalone and named `test_*.py`: CI globs the directory rather than listing
 files, precisely so a new suite can't be silently left out.
 
+CI runs on every PR and every push to `main` (not on other branches' pushes, which a PR
+already covers): the suites on Windows / Python 3.12 (`test`) **and** on Ubuntu / Python
+3.14, where the hosted mirror runs (`test-linux`; a suite that needs a Windows-only tool
+must skip itself there), plus `ruff check --select E9,F` (`lint`: syntax errors, unused
+imports, undefined names). Run that locally before a PR:
+
+```powershell
+ruff check --select E9,F src scripts tests
+```
+
 ## The rules that are easy to break
 
 These are invariants, not preferences. Each one has cost someone a debugging session:
