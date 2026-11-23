@@ -306,7 +306,7 @@ def plan_seats(clis: list[str], count: int) -> list[str]:
 
 def seat_folder_path(seat: str) -> Path:
     """Where a seat's MCP config folder lives (whether or not it exists)."""
-    return _REPO_ROOT / "agents" / "CLIs" / seats.seat_folder(seat)
+    return seats.seat_dir(seat)
 
 
 def missing_seat_folders(seat_ids: list[str]) -> list[str]:

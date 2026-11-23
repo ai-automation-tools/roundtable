@@ -9,8 +9,8 @@ cares what program is on the other end.
 A **seat** decouples the two. Seat 1 of a tool keeps the bare CLI id, so every
 existing conversation, config, and avatar keeps working untouched:
 
-    claude-code      → tool 'claude-code', seat 1   (agents/CLIs/claude-code_agent1)
-    claude-code-2    → tool 'claude-code', seat 2   (agents/CLIs/claude-code_agent2)
+    claude-code      → tool 'claude-code', seat 1   (<seat root>/claude-code_agent1)
+    claude-code-2    → tool 'claude-code', seat 2   (<seat root>/claude-code_agent2)
 
 Identity still comes from config, not from the protocol: each seat folder holds
 its own MCP config passing its own ``--agent-id``, and the CLI is launched from
@@ -18,17 +18,34 @@ that folder. The bus itself needs no change — conversation lookup matches
 an exact string against the ``participants`` list, so `claude-code-2` is simply a
 different participant from `claude-code`.
 
+**Seat folders live outside the repo** (audit RT-01): a CLI loads every
+CLAUDE.md / AGENTS.md above its launch folder, and the repo's tell a developer
+agent to work on this codebase. :func:`seat_root` is the one place that says
+where they go; ``scripts/lib/spawn-agents.ps1``'s ``Get-SeatRoot`` mirrors it.
+The tracked ``agents/CLIs/<cli>_agent1/`` folders are templates that
+``scripts/setup/add_agent_seat.py --materialize`` copies there.
+
 **Parsing splits on the known tool list, not on a trailing-digits regex**, so a
 tool whose own name ends in a digit (`gpt-5`, say) can never be mistaken for a
 seat suffix.
 
-New seat folders are created by ``scripts/setup/add-agent-seat.ps1``, which
+New seat folders are created by ``scripts/setup/add_agent_seat.py``, which
 clones seat 1's config and rewrites the agent id inside it.
 """
 
 from __future__ import annotations
 
+import os
+from pathlib import Path
 from typing import Optional
+
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+
+#: Overrides :func:`seat_root`. Mirrored by ``Get-SeatRoot`` in spawn-agents.ps1.
+SEATS_DIR_ENV = "AGENT_CHAT_SEATS_DIR"
+
+#: Files a CLI loads as instructions from any folder above where it starts.
+INSTRUCTION_FILES = ("CLAUDE.md", "AGENTS.md", "GEMINI.md")
 
 # Supported CLI *tools*. Seat ids are derived from these — see seat_id().
 # Re-exported by orchestrator.preflight, which is where callers have always
@@ -97,8 +114,47 @@ def seat_id(cli: str, index: int = 1) -> str:
     return cli if index == 1 else f"{cli}-{index}"
 
 
+def seat_root() -> Path:
+    """The folder holding every seat folder of this clone. Outside the repo.
+
+    ``$AGENT_CHAT_SEATS_DIR`` if set; else ``%LOCALAPPDATA%`` (``$XDG_DATA_HOME``
+    or ``~/.local/share`` off Windows) ``/Roundtable/seats/<clone folder name>``,
+    so two clones don't share seats.
+    """
+    override = os.environ.get(SEATS_DIR_ENV)
+    if override:
+        return Path(os.path.abspath(os.path.expanduser(override)))
+    base = (os.environ.get("LOCALAPPDATA") or os.environ.get("XDG_DATA_HOME")
+            or str(Path.home() / ".local" / "share"))
+    return Path(base) / "Roundtable" / "seats" / _REPO_ROOT.name
+
+
+def seat_dir(agent_id: str) -> Path:
+    """Where a seat launches from: ``seat_root() / seat_folder(agent_id)``."""
+    return seat_root() / seat_folder(agent_id)
+
+
+def template_dir(cli: str) -> Path:
+    """The tracked seat-1 template for a tool: its role doc and MCP config."""
+    return _REPO_ROOT / "agents" / "CLIs" / f"{cli}_agent1"
+
+
+def instruction_files_above(path: Path) -> list[Path]:
+    """CLAUDE.md / AGENTS.md / GEMINI.md / ``.git`` in ``path``'s ancestors.
+
+    A seat launched under any of them would load it (or treat the folder as a
+    repo). Empty is what a seat root should give.
+    """
+    found: list[Path] = []
+    for parent in Path(path).resolve().parents:
+        for name in (*INSTRUCTION_FILES, ".git"):
+            if (parent / name).exists():
+                found.append(parent / name)
+    return found
+
+
 def seat_folder(agent_id: str) -> str:
-    """Folder name under ``agents/CLIs/`` holding this seat's MCP config.
+    """Folder name under :func:`seat_root` holding this seat's MCP config.
 
     ``claude-code`` → ``claude-code_agent1``, ``claude-code-2`` →
     ``claude-code_agent2``. Raises :class:`SeatError` on an unrecognised id.

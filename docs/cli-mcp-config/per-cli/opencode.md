@@ -13,7 +13,7 @@ Register the `roundtable` MCP server with [**OpenCode**](https://opencode.ai) (b
 
 - **Install:** `npm install -g opencode-ai` (or `curl -fsSL https://opencode.ai/install | bash`). Verify with `opencode --version`.
 - **Auth:** OpenCode talks to a model provider — run `opencode auth login` once and pick a provider (Anthropic, OpenAI, etc.). There is no single API-key env var assumed by this wiring; configure the provider before any unattended run.
-- **Instructions file:** OpenCode auto-loads a project **`AGENTS.md`** (root) — same `AGENTS.md` convention as Codex. This repo's role doc for the seat is `agents/CLIs/opencode_agent1/AGENTS.md`.
+- **Instructions file:** OpenCode auto-loads a project **`AGENTS.md`** (root) — same `AGENTS.md` convention as Codex. This repo's role doc for the seat is the template `agents/CLIs/opencode_agent1/AGENTS.md`, copied into the seat folder `<seat root>/opencode_agent1/`. `<seat root>` is `%LOCALAPPDATA%\Roundtable\seats\<clone folder name>\`, outside the repo ([where seat folders live](../../app/cli-setup.md#where-seat-folders-live)).
 
 ---
 
@@ -28,13 +28,13 @@ Register the `roundtable` MCP server with [**OpenCode**](https://opencode.ai) (b
 
 A **project** entry with the same name overrides the global entry (config sources are merged; later — higher-precedence — sources win on conflicting keys). MCP servers are declared under the top-level `mcp` object. Keep secrets in `environment` / `${ENV_VAR}`, never in committed JSON.
 
-In this repo the seat's registration lives in `agents/CLIs/opencode_agent1/opencode.json`; launching `opencode` from that folder auto-loads it. This is what the `/orchestrate` preflight and `scripts/debate.ps1` check/use.
+The seat's registration lives in `<seat root>/opencode_agent1/opencode.json`, written by `add_agent_seat.py --materialize` from the template `agents/CLIs/opencode_agent1/opencode.json`; launching `opencode` from the seat folder auto-loads it. This is what the `/orchestrate` preflight and `scripts/debate.ps1` check/use.
 
 ---
 
 ## Project-level registration
 
-Put `roundtable` in `<launch-dir>/opencode.json` — for this project's opencode seat, `agents/CLIs/opencode_agent1/opencode.json` (preserve any other servers under `mcp`):
+Put `roundtable` in `<launch-dir>/opencode.json` — for this project's opencode seat, edit the template `agents/CLIs/opencode_agent1/opencode.json`, which `--materialize` copies over the seat's file with this clone's launcher path (preserve any other servers under `mcp`):
 
 ```json
 {
@@ -58,7 +58,7 @@ Put `roundtable` in `<launch-dir>/opencode.json` — for this project's opencode
 Then just launch OpenCode from that folder — it auto-loads the file:
 
 ```powershell
-cd agents/CLIs/opencode_agent1
+cd "$env:LOCALAPPDATA\Roundtable\seats\roundtable\opencode_agent1"   # your seat folder
 opencode
 ```
 
@@ -102,7 +102,7 @@ Inside a session, `/mcp` shows live status. Or ask the agent directly:
 
 You should get back the `roundtable` tools — `get_kickoff`, `wait_for_turn`, `get_my_turn`, `send_message`, `list_personas`, `get_persona`, `get_conversation_status`. If not, check:
 
-1. The JSON parses — `python -m json.tool agents/CLIs/opencode_agent1/opencode.json`.
+1. The JSON parses — `python -m json.tool <seat root>/opencode_agent1/opencode.json`.
 2. The block is under `mcp` (not `mcpServers`), has `"type": "local"`, and uses a single `command` array.
 3. You launched `opencode` from a folder containing `opencode.json` (or put the block in the global config).
 4. The launcher path exists and `pwsh` is on PATH.
@@ -132,7 +132,7 @@ Once all four CLIs have `roundtable` registered:
 
    The `--participants` order defines turn rotation. With `--first claude-code` the cycle is `claude-code → codex → antigravity → opencode → …`, and `wait_for_turn` blocks each agent until the pointer lands on it.
 
-2. Open all four CLIs in separate terminals (each from its own `agents/CLIs/<name>_agent1/` folder). Launch OpenCode from `agents/CLIs/opencode_agent1/` with `opencode run "<kickoff>"`.
+2. Open all four CLIs in separate terminals (each from its own seat folder, `<seat root>/<name>_agent1/`). Launch OpenCode from `<seat root>/opencode_agent1/` with `opencode run "<kickoff>"`.
 3. Send the prompt to the `--first` agent first.
 4. Watch live at `http://127.0.0.1:8765/` (run `src/web_ui.py` in a sixth terminal).
 
@@ -153,7 +153,7 @@ OpenCode's headless agent is the **`run`** subcommand — `opencode run "<prompt
 | `-m` / `--model <provider/model>` | pick the model |
 | `-f` / `--file` · `--format json` | attach files · machine-readable output |
 
-`scripts/debate.ps1` launches OpenCode as `opencode run "<opening>"` from `agents/CLIs/opencode_agent1/` (so `opencode.json` auto-loads). The `run` subcommand is carried in the registry's `Exe` field. **Since 2026-11-19 it passes no `--auto`, even with `-SkipPermissions`:** `--auto` approves every tool, not just `roundtable`'s, and persona text is untrusted input to the agent. **Since 2026-11-22 the seat's `opencode.json` carries a `permission` block** (audit RT-01): `"*": "deny"`, then `read`, `roundtable_*` and reading the `db/launch` prompt folder allowed. That denies shell, edits, web fetches and every MCP server merged in from your global config (their tools disappear from the seat), with no prompt to answer. Check it with `opencode debug config` in the seat folder. A seat 2+ folder made before this date was cloned from the old file; delete it and re-create it with `scripts/setup/add_agent_seat.py`.
+`scripts/debate.ps1` launches OpenCode as `opencode run "<opening>"` from `<seat root>/opencode_agent1/` (so `opencode.json` auto-loads). The `run` subcommand is carried in the registry's `Exe` field. **Since 2026-11-19 it passes no `--auto`, even with `-SkipPermissions`:** `--auto` approves every tool, not just `roundtable`'s, and persona text is untrusted input to the agent. **Since 2026-11-22 the seat's `opencode.json` carries a `permission` block** (audit RT-01): `"*": "deny"`, then `read`, `roundtable_*` and reading the `db/launch` prompt folder allowed. That denies shell, edits, web fetches and every MCP server merged in from your global config (their tools disappear from the seat), with no prompt to answer. Check it with `opencode debug config` in the seat folder. A seat 2+ folder made before this date was cloned from the old file; delete it and re-create it with `scripts/setup/add_agent_seat.py`.
 
 > [!NOTE]
 > `--dangerously-skip-permissions` also exists and does the same thing, but it's an undocumented/hidden flag (not on the official CLI reference) — `--auto` is the documented, supported way to auto-approve.

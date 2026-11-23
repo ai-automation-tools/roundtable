@@ -60,13 +60,13 @@ Do these in order. **Reference every list by its symbol name, not by line number
    - `personas.py` and `web/api/orchestrate.py` consume the canonical tuple — **no change**.
 
 **Scripts:**
-5. `scripts/lib/spawn-agents.ps1` → add a `$Clis` entry (`Dir`/`Exe`/`PromptArg`/`Allow`/`Deny`, optional `Pre`) — **only if auto-spawnable**, and never with a blanket bypass flag (see reference.md §5). Skip for seedable-only CLIs.
+5. `scripts/lib/spawn-agents.ps1` → add a `$Clis` entry (`Exe`/`PromptArg`/`Allow`/`Deny`, optional `Pre`; the launch folder is derived, see reference.md §5) — **only if auto-spawnable**, and never with a blanket bypass flag (see reference.md §5). Skip for seedable-only CLIs.
 6. `scripts/debate.ps1` → if you added a spawnable CLI, bump the `[ValidateSet(...)]` cap on `-Agents` and sync the help text.
-7. `scripts/setup/setup-skill-links.ps1` (+ `.sh`) → add the workspace `.<id>/skills` junction target if you want runtime-skills parity.
+7. `scripts/setup/setup-skill-links.ps1` (+ `.sh`) → add the seat folder's `.<id>/skills` junction target (under the seat root) if you want runtime-skills parity.
 8. `skills/start-debate/SKILL.md` → update the CLI-order / agent-count lines if the spawn registry changed. (This is a *runtime* skill read by live agents — keep it in sync.)
 
 **Per-CLI config folder:**
-9. Create `agents/CLIs/<id>_agent1/` with a **role doc** (`AGENTS.md` unless the CLI needs its own) and the **MCP config file** at the exact path `check_<id>()` reads, registering `roundtable` → `pwsh -NoProfile -File scripts/run-mcp-server.ps1 <id>`. Use the matching template in reference.md.
+9. Create the **template** `agents/CLIs/<id>_agent1/` with a **role doc** (`AGENTS.md` unless the CLI needs its own) and the **MCP config file** at the path `check_<id>()` reads relative to the seat folder, registering `roundtable` → `pwsh -NoProfile -File <repo>/scripts/run-mcp-server.ps1 <id>` (literally `<repo>`). Add a `CliShape` to `SHAPES` in `scripts/setup/add_agent_seat.py`: `--materialize` copies the template to `<seat root>/<id>_agent1/`, outside the repo, and fills in the launcher. If the CLI has a folder-trust prompt, add it to `_trust_folder()` there.
 10. `.gitignore` → add a `!`-unignore exception if the config lives in an otherwise-ignored dotfolder (follow the existing antigravity/opencode pattern).
 
 **Docs:**
@@ -83,8 +83,9 @@ Run these (PowerShell, venv interpreter):
 .\.venv\Scripts\python.exe -c "import sys; sys.path.insert(0,'src'); from orchestrator.preflight import SUPPORTED_CLIS; print('<id>' in SUPPORTED_CLIS)"
 # homepage tiles + table render without error
 .\.venv\Scripts\python.exe -c "import sys; sys.path.insert(0,'src'); from web.render.home import _render_homepage_res_groups, _render_homepage_clis_table; assert '<id>' in _render_homepage_clis_table()"
-# any .mcp.json/opencode.json you wrote is valid
+# any .mcp.json/opencode.json you wrote is valid, and materializes
 .\.venv\Scripts\python.exe -m json.tool agents\CLIs\<id>_agent1\<config>.json
+.\.venv\Scripts\python.exe scripts\setup\add_agent_seat.py --materialize <id>
 ```
 
 Then run `/smoke-test`. If the CLI is a real installed tool, optionally run the actual preflight (`run_preflight`) to confirm the config passes.

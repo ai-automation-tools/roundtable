@@ -22,10 +22,14 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import sqlite3
 import sys
 import tempfile
 from pathlib import Path
+
+# Seat folders this suite materializes land in a temp root, never the real one.
+os.environ["AGENT_CHAT_SEATS_DIR"] = tempfile.mkdtemp(prefix="agentchat-seats-")
 
 _ROOT = Path(__file__).resolve().parent.parent
 _SRC = _ROOT / "src"

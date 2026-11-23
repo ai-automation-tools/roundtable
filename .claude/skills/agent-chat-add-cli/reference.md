@@ -10,7 +10,8 @@ Three edits:
 
 - **`SUPPORTED_CLIS`** tuple — append `"<id>"`.
 - **`check_<id>()`** — copy the existing checker whose config shape matches your CLI and change the path + the key the MCP block lives under. The four shapes already in the file:
-  - `check_claude_code()` — repo dotfile `agents/CLIs/<id>_agent1/.mcp.json`, JSON, block at `data["mcpServers"]["roundtable"]`.
+  - `check_claude_code()` — seat dotfile `seats.seat_dir(agent_id) / ".mcp.json"`, JSON, block at `data["mcpServers"]["roundtable"]` (user scope `~/.claude.json` for seat 1).
+  Every seat path goes through `seats.seat_dir()` — the seat folder is outside the repo (`<seat root>/<id>_agent<N>`), never `agents/CLIs/`.
   - `check_codex()` — **global** `~/.codex/config.toml`, TOML, block at `data["mcp_servers"]["roundtable"]`.
   - `check_antigravity()` — repo dotfolder JSON, `mcpServers.roundtable`.
   - `check_opencode()` — repo-root `opencode.json`, **top-level `mcp` key**, and it **normalizes a single `command` array** into `(command, args)` before calling `_check_mcp_entry`. Reuse this branch if your CLI uses a command array.
@@ -64,7 +65,6 @@ Add an entry to the **`$Clis`** ordered hashtable. Shape per entry:
 
 ```powershell
 '<id>' = @{
-    Dir       = 'agents\CLIs\<id>_agent1'   # launch dir (reads its role doc here)
     Exe       = '<binary-on-PATH>'           # e.g. 'opencode run'
     PromptArg = '<how the opening prompt is passed>'   # {0} = quoted opening prompt; e.g. '-i {0}'
     Allow     = '<roundtable-only allowlist flag>'     # used only with -SkipPermissions; '' if none verified
@@ -79,6 +79,8 @@ without verified flags, a `permission` block in the seat's own config, as OpenCo
 `opencode.json` has) must take away shell, file writes, web and every other MCP server (audit RT-01).
 `tests/test_spawn_allowlist.py` fails on a bypass flag in any launch plan.
 
+There is no `Dir`: `Resolve-AgentSeat` launches every seat from `<seat root>\<id>_agent<N>` (`Get-SeatRoot`, outside the repo) after `Invoke-SeatMaterialize` has copied the template there.
+
 Order matters — it's the CLI preference order; the first entry is the default `--first`. **Omit this entry entirely for a seedable-only CLI** (no prompt-arg / no unattended mode) — it stays in `SUPPORTED_CLIS` (detectable and seedable) but is never auto-launched.
 
 If you added a spawnable entry, in **`scripts/debate.ps1`** bump the `[ValidateSet(2,3,4,5)]` on `-Agents` to include the new count, and update the `.PARAMETER Cli` / `.PARAMETER SkipPermissions` help text.
@@ -87,13 +89,13 @@ If you added a spawnable entry, in **`scripts/debate.ps1`** bump the `[ValidateS
 
 ## 6. `scripts/setup/setup-skill-links.ps1` (+ `.sh`) — skills junctions
 
-Optional (runtime-skills parity). The script hardcodes the workspaces it junctions `skills/` into. Add `agents/CLIs/<id>_agent1/.<id>/skills` (or the CLI's skills dir) if the tool supports skills. OpenCode is currently absent here — parity is nice-to-have, not required to add a CLI.
+Optional (runtime-skills parity). The script lists the seat folders it junctions `skills/` into, under `Get-SeatRoot`. Add `<seat root>/<id>_agent1/.<id>/skills` (or the CLI's skills dir) if the tool supports skills. OpenCode is currently absent here — parity is nice-to-have, not required to add a CLI.
 
 ---
 
-## 7. `agents/CLIs/<id>_agent1/` — the config folder
+## 7. `agents/CLIs/<id>_agent1/` — the seat template
 
-Create two files. **The MCP config path must exactly match what `check_<id>()` reads.**
+Create two files. This folder is a **template**: `add_agent_seat.py --materialize` copies it to `<seat root>/<id>_agent1/`, outside the repo, which is where the CLI launches and where `check_<id>()` reads. **The MCP config's path inside the folder must match what `check_<id>()` reads.**
 
 **Role doc** — `AGENTS.md` (default standard) unless the CLI reads a specific name (`claude.md`). Copy an existing one (e.g. `agents/CLIs/opencode_agent1/AGENTS.md`) — it's the full-stack-developer role plus the agent-chat participation loop (the three conversation types, the signals, the tool table); swap in the new CLI's agent id and config location.
 
@@ -138,7 +140,7 @@ tool_timeout_sec = 330
 - **Tool-call timeout.** `wait_for_turn` blocks up to 300 s (default 180). A new CLI whose MCP client gives up sooner needs its per-server timeout raised above 300 s, or seats will see tool errors instead of `status: timeout`. Known defaults: Codex 300 s (`tool_timeout_sec`), OpenCode v2 12 h (`mcp.timeout.execution`), Claude Code no short limit (`MCP_TOOL_TIMEOUT`).
 
 Notes:
-- `run-mcp-server.ps1` resolves the venv + server + DB relative to itself, so the **only** hardcoded absolute path is the launcher path string — match the convention in the sibling configs (forward slashes, full `D:/…` path).
+- `run-mcp-server.ps1` resolves the venv + server + DB relative to itself, so the only path in the config is the launcher — write it as `<repo>/scripts/run-mcp-server.ps1`, as the sibling templates do. Materialize swaps in this clone's path; `tests/test_seats.py` fails on a template carrying a machine path.
 - `.sh` twin (`run-mcp-server.sh`) exists for POSIX; mirror the config if cross-platform matters.
 
 **`.gitignore`** — if the config sits in an otherwise-ignored dotfolder, add an un-ignore exception mirroring the existing pattern, e.g.:
@@ -154,7 +156,7 @@ agents/CLIs/<id>_agent1/.<id>/*
 - **`README.md`** — add a row to the "CLI MCP Registration" table (CLI → config file → setup-guide link); update the "Supported CLIs" shields.io badge string (it's currently stale — safe to refresh the whole list while you're there).
 - **`docs/cli-mcp-config/README.md`** — three tables to update: the "Jump to your CLI × scope" table, the canonical-id prose list, and the vendor-docs table.
 - **`docs/cli-mcp-config/per-cli/<id>.md`** — NEW deep-dive file. Copy `opencode.md` as the template; preflight failure messages reference these by name.
-- **`CLAUDE.md`** — the intro one-paragraph CLI list, and the `agents/CLIs/` annotation in the repo-layout tree (one line: role doc + MCP config filename). If this skill list is shown there, it's already covered.
+- **`AGENTS.md`** — the intro one-paragraph CLI list, and the `agents/CLIs/` annotation in the repo-layout tree (one line: role doc + MCP config filename). If this skill list is shown there, it's already covered.
 - **`docs/guides/start-new-chat.md`** — the per-CLI "where each CLI reads its config" bullet list.
 - **`docs/CHANGELOG.md`** — new reverse-chron entry. The "OpenCode CLI support" entry is a ready-made template listing exactly what a CLI-add touched.
 - **`docs/ROADMAP.md`** — if an "add <tool>" item is open, tick it in place with ` — done YYYY-MM-DD: …` (today's date).

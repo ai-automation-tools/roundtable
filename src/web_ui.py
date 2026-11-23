@@ -38,6 +38,7 @@ from starlette.routing import Mount, Route
 from orchestrator import availability as orch_availability  # noqa: E402
 from orchestrator import preflight as orch_preflight  # noqa: E402
 from orchestrator import personas as orch_personas  # noqa: E402
+from orchestrator import seats as orch_seats  # noqa: E402
 from orchestrator.model_personas import ensure_model_personas  # noqa: E402
 
 from web.api.conversations import (  # noqa: E402
@@ -83,6 +84,7 @@ from web.api.notifications import (  # noqa: E402
     api_notifications_test,
 )
 from web.api.setup import (  # noqa: E402
+    _add_seat_module,
     api_setup,
     api_setup_save,
     api_setup_seats,
@@ -494,12 +496,23 @@ def main() -> None:
     # is never touched (the tree is a seed, the DB is the source of truth).
     seeded = (orch_personas.import_personas_from_files()
               if not orch_personas.list_debater_personas() else None)
+    # Seat 1 of each tool, from its tracked template into the seat root (outside
+    # the repo, audit RT-01), so a fresh clone's /orchestrate preflight checks
+    # real folders. Local only: the hosted mirror spawns nothing. Folder trust
+    # (a write to each CLI's own user config) is left to the launch itself.
+    seats_note = "skipped (read-only)"
+    if not _is_public_readonly():
+        try:
+            seats_note = f"{len(_add_seat_module().materialize(trust=False))} at {orch_seats.seat_root()}"
+        except Exception as e:  # noqa: BLE001 — a broken seat root must not stop the UI
+            seats_note = f"FAILED: {e}"
     ingest_on = bool(os.environ.get("AGENT_CHAT_INGEST_TOKEN"))
     print(f"roundtable web UI — DB: {resolved}")
     print(f"  bind: http://{args.host}:{args.port}/")
     print(f"  basic auth: {'on' if basic_auth_password() else 'off'}")
     print(f"  public read-only: {'on' if _is_public_readonly() else 'off'}")
     print(f"  /api/ingest: {'on' if ingest_on else 'off'}")
+    print(f"  seat folders: {seats_note}")
     print(f"  AI-Models cards: {models['created']} created, {models['skipped']} present")
     if seeded:
         print(f"  persona cards seeded from agents/Debate-Agents: {seeded['imported']}")

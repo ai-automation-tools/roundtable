@@ -24,7 +24,9 @@
 
 # --------------------------------------------------------------------------
 # CLI registry  --  EDIT THESE if your CLI binaries/flags differ.
-#   Dir       : working directory the CLI must launch from (per-folder MCP config).
+#   (No launch folder here: a seat launches from <seat root>\<cli>_agent<N>,
+#   outside the repo -- see Get-SeatRoot. The tracked agents\CLIs\<cli>_agent1
+#   folders are templates that Invoke-SeatMaterialize copies there first.)
 #   Exe       : the launcher binary on PATH.
 #   PromptArg : how the CLI takes an INITIAL prompt. {0} is the quoted opening prompt.
 #   Allow     : flags that allowlist ONLY the roundtable MCP tools (used only with
@@ -41,8 +43,10 @@
 #               RT-01). A seat reads text anyone could have written -- persona
 #               cards, topics, peers' messages, captured threads -- so it gets no
 #               shell, no file writes, no web, and no MCP server but roundtable.
-#               {1} is the seat's roundtable-only MCP config file. Appended after
-#               the prompt, for the same variadic reason as Allow. Empty = this
+#               {1} is the seat's roundtable-only MCP config file, {2} its
+#               session-only Antigravity settings file (New-AgySeatSettings).
+#               Appended after the prompt, for the same variadic reason as
+#               Allow. Empty = this
 #               CLI has no verified flag; its seat config carries the limits
 #               instead (OpenCode: the "permission" block in opencode.json).
 # The opening prompt is intentionally tiny (it just points at a file), so
@@ -80,11 +84,14 @@ $Clis = [ordered]@{
     # mcp__roundtable is the server-wide rule add_agent_seat.py writes for seat
     # 2+; --add-dir lets the seat Read its prompt file under db\launch without a
     # prompt (read-only tools are allowed inside working directories).
-    'claude-code' = @{ Dir = 'agents\CLIs\claude-code_agent1'; Exe = 'claude'; PromptArg = '{0}';        Allow = '--allowedTools mcp__roundtable --add-dir {0}'; Deny = $ClaudeDeny }
-    'antigravity' = @{ Dir = 'agents\CLIs\antigravity_agent1'; Exe = 'agy';    PromptArg = '-i {0}';     Allow = ''; Deny = '' }
+    'claude-code' = @{ Exe = 'claude'; PromptArg = '{0}';        Allow = '--allowedTools mcp__roundtable --add-dir {0}'; Deny = $ClaudeDeny }
+    # antigravity: --sandbox restricts its terminal, and --settings layers a
+    # session-only settings.json (never saved) whose deny rules block every
+    # shell command, file write, URL read and non-roundtable MCP server.
+    'antigravity' = @{ Exe = 'agy';    PromptArg = '-i {0}';     Allow = ''; Deny = '--sandbox --settings {2}' }
     # codex: a read-only sandbox, approvals on request (this Codex accepts only
     # on-request|never), and every config.toml MCP server but roundtable off.
-    'codex'       = @{ Dir = 'agents\CLIs\codex_agent1';       Exe = 'codex';  PromptArg = '{0}';         Allow = ''; Deny = '--sandbox read-only --ask-for-approval on-request @off'; Pre = $CodexMcpOff }
+    'codex'       = @{ Exe = 'codex';  PromptArg = '{0}';         Allow = ''; Deny = '--sandbox read-only --ask-for-approval on-request @off'; Pre = $CodexMcpOff }
     # opencode: auto-loads opencode.json from the launch dir (no config flag).
     # `opencode run "<prompt>"` is the headless agent loop (no TUI) — it keeps
     # executing tool calls (wait_for_turn -> send_message -> ...) until the agent
@@ -94,14 +101,91 @@ $Clis = [ordered]@{
     # unchanged; only -Agents 4 uses it. Auth via `opencode auth login`
     # (provider creds, no API-key env var assumed). Wired per the opencode docs,
     # not yet live-validated.
-    'opencode'    = @{ Dir = 'agents\CLIs\opencode_agent1';    Exe = 'opencode run'; PromptArg = '{0}';    Allow = ''; Deny = '' }
+    'opencode'    = @{ Exe = 'opencode run'; PromptArg = '{0}';    Allow = ''; Deny = '' }
+}
+
+# --------------------------------------------------------------------------
+# Get-SeatRoot — the folder holding this clone's seat folders, OUTSIDE the repo.
+#
+# Mirrors seats.seat_root() in src\orchestrator\seats.py (tests\test_seats.py
+# pins the two): $env:AGENT_CHAT_SEATS_DIR, else
+# %LOCALAPPDATA%\Roundtable\seats\<clone folder name> ($XDG_DATA_HOME or
+# ~/.local/share off Windows). A CLI loads every CLAUDE.md/AGENTS.md above the
+# folder it starts in, and the repo's tell a developer agent to work on this
+# codebase -- so a seat must not start anywhere under it (audit RT-01).
+# --------------------------------------------------------------------------
+function Get-SeatRoot {
+    param([Parameter(Mandatory)] [string] $RepoRoot)
+    if ($env:AGENT_CHAT_SEATS_DIR) { return [IO.Path]::GetFullPath($env:AGENT_CHAT_SEATS_DIR) }
+    $base = if ($env:LOCALAPPDATA) { $env:LOCALAPPDATA }
+            elseif ($env:XDG_DATA_HOME) { $env:XDG_DATA_HOME }
+            else { Join-Path $HOME '.local/share' }
+    $name = [IO.Path]::GetFileName($RepoRoot.TrimEnd('\', '/'))
+    [IO.Path]::Combine($base, 'Roundtable', 'seats', $name)
+}
+
+# --------------------------------------------------------------------------
+# Invoke-SeatMaterialize — bring the seat folders up to date before a launch.
+#
+# Runs scripts\setup\add_agent_seat.py --materialize: copies each tracked
+# template (role doc + MCP config) into the seat folder, points the config at
+# this clone's launcher, and pre-trusts the folder in each CLI's user config so
+# a window never stops on a trust dialog. Idempotent; keeps local seat state.
+# --------------------------------------------------------------------------
+function Invoke-SeatMaterialize {
+    param(
+        [Parameter(Mandatory)] [string[]] $AgentIds,
+        [Parameter(Mandatory)] [string]   $RepoRoot
+    )
+    $py = @('.venv\Scripts\python.exe', '.venv/bin/python') |
+        ForEach-Object { Join-Path $RepoRoot $_ } | Where-Object { Test-Path -LiteralPath $_ } |
+        Select-Object -First 1
+    if (-not $py) { throw "venv python not found under $RepoRoot\.venv -- needed to materialize the seat folders" }
+    $null = & $py (Join-Path $RepoRoot 'scripts\setup\add_agent_seat.py') --materialize @AgentIds
+    if ($LASTEXITCODE) { throw "could not materialize seat folders for $($AgentIds -join ', ') (exit $LASTEXITCODE)" }
+}
+
+# --------------------------------------------------------------------------
+# New-AgySeatSettings — the session-only settings an Antigravity seat runs with.
+#
+# agy --settings layers these keys over ~/.gemini/antigravity-cli/settings.json
+# for one session and never saves them. Rules are Deny > Ask > Allow, so the
+# roundtable server can't be carved out of an mcp(*) deny: every other server
+# the user or seat config declares is denied by name (an unlisted one falls to
+# Ask, i.e. a prompt, never a silent call). 'request-review' replaces a global
+# 'always-proceed'; 'strict' would also prompt for the allowed roundtable tools.
+# Verified live 2026-11-23 against agy 1.5.15: shell and file writes refused
+# ("Matches user-configured deny rule"). Its built-in web search is not a
+# read_url call and stays available.
+# --------------------------------------------------------------------------
+function New-AgySeatSettings {
+    param(
+        [Parameter(Mandatory)] [string] $SeatDir,
+        [Parameter(Mandatory)] [string] $LaunchDir
+    )
+    $servers = foreach ($cfg in @((Join-Path $HOME '.gemini\antigravity-cli\mcp_config.json'),
+                                  (Join-Path $SeatDir '.agents\mcp_config.json'))) {
+        if (Test-Path -LiteralPath $cfg) {
+            try { @((Get-Content -LiteralPath $cfg -Raw | ConvertFrom-Json).mcpServers.PSObject.Properties.Name) } catch { }
+        }
+    }
+    $deny = @('command(*)', 'write_file(*)', 'read_url(*)', 'execute_url(*)') +
+        @($servers | Where-Object { $_ -and $_ -ne 'roundtable' } | Sort-Object -Unique | ForEach-Object { "mcp($_/*)" })
+    [ordered]@{
+        toolPermission = 'request-review'
+        enableTerminalSandbox = $true
+        permissions = [ordered]@{
+            allow = @('mcp(roundtable/*)', "read_file($LaunchDir)")
+            deny  = $deny
+        }
+    } | ConvertTo-Json -Depth 5
 }
 
 # --------------------------------------------------------------------------
 # Resolve-AgentSeat — map an agent id to the launch spec for its seat.
 #
 # Seat 1 of a tool is the bare CLI id ('codex'); seat N is '<cli>-N' ('codex-2')
-# and launches from 'agents\CLIs\<cli>_agent<N>' instead of '..._agent1'. That
+# and launches from '<seat root>\<cli>_agent<N>' instead of '..._agent1'. That
 # folder holds the seat's own MCP config passing its own --agent-id, which is
 # the only thing that makes two windows of the same tool distinct participants.
 # Create one with scripts\setup\add_agent_seat.py.
@@ -111,7 +195,7 @@ $Clis = [ordered]@{
 # digits keeps a tool whose own name ends in a digit unambiguous.
 #
 # Returns @{ Cli; Seat; AgentId; Dir; Exe; PromptArg; Allow; Deny; Pre; EnvPrefix },
-# where EnvPrefix is a pwsh statement to run before the CLI (Codex seat 2+ needs
+# where Dir is the seat's absolute folder under Get-SeatRoot and EnvPrefix is a pwsh statement to run before the CLI (Codex seat 2+ needs
 # CODEX_HOME relocated; everything else is empty). Throws on an id that is
 # neither a registered CLI nor a seat on one.
 # --------------------------------------------------------------------------
@@ -142,14 +226,13 @@ function Resolve-AgentSeat {
     }
 
     $spec = $Clis[$cli]
-    # $spec.Dir is seat 1's folder; swap the trailing _agent1 for this seat's.
-    $dir = $spec.Dir -replace '_agent1$', "_agent$seat"
+    $dir = Join-Path (Get-SeatRoot -RepoRoot $RepoRoot) "$($cli)_agent$seat"
 
     # Codex ignores per-folder config, so an extra seat only gets its own
     # --agent-id by relocating Codex's whole user root. See add_agent_seat.py.
     $envPrefix = ''
     if ($cli -eq 'codex' -and $seat -ge 2) {
-        $codexHome = Join-Path (Join-Path $RepoRoot $dir) '.codex'
+        $codexHome = Join-Path $dir '.codex'
         $envPrefix = "`$env:CODEX_HOME = $(ConvertTo-PsLiteral $codexHome); "
     }
 
@@ -215,7 +298,7 @@ function Assert-SeatFolders {
     )
     foreach ($seat in $Seats) {
         $spec = Resolve-AgentSeat -AgentId $seat -RepoRoot $RepoRoot
-        if ($spec.Seat -ge 2 -and -not (Test-Path -LiteralPath (Join-Path $RepoRoot $spec.Dir))) {
+        if ($spec.Seat -ge 2 -and -not (Test-Path -LiteralPath $spec.Dir)) {
             throw ("seat '$seat' has no config folder ($($spec.Dir)). Create it with: " +
                    ".\.venv\Scripts\python.exe scripts\setup\add_agent_seat.py --cli $($spec.Cli) --seat $($spec.Seat)" +
                    "  (or use the 'Create the missing seat folders' button on http://127.0.0.1:8765/setup)")
@@ -392,7 +475,11 @@ function New-AgentLaunchPlan {
         [switch] $DryRun
     )
 
-    if (-not $DryRun) { New-Item -ItemType Directory -Path $LaunchDir -Force | Out-Null }
+    if (-not $DryRun) {
+        New-Item -ItemType Directory -Path $LaunchDir -Force | Out-Null
+        # Every seat folder this plan launches from, refreshed from its template.
+        Invoke-SeatMaterialize -AgentIds @($Assignments | ForEach-Object { [string]$_.Cli }) -RepoRoot $RepoRoot
+    }
 
     foreach ($a in $Assignments) {
         # .Cli carries the agent id, which may be a seat ('codex-2') rather than
@@ -426,9 +513,14 @@ function New-AgentLaunchPlan {
             } } } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $mcpFile -Encoding UTF8
         }
 
-        $dir     = Join-Path $RepoRoot $spec.Dir
+        $dir     = $spec.Dir
+        # An Antigravity seat's session-only settings (see New-AgySeatSettings).
+        $agyFile = Join-Path $LaunchDir ("conv{0}-{1}.agy-settings.json" -f $ConvId, $a.Cli)
+        if (-not $DryRun -and $spec.Deny -like '*{2}*') {
+            New-AgySeatSettings -SeatDir $dir -LaunchDir $LaunchDir | Set-Content -LiteralPath $agyFile -Encoding UTF8
+        }
         $argPart = $spec.PromptArg -f ('"' + $opening + '"')
-        $deny    = if ($spec.Deny) { ' ' + ($spec.Deny -f (ConvertTo-PsLiteral $LaunchDir), (ConvertTo-PsLiteral $mcpFile)) } else { '' }
+        $deny    = if ($spec.Deny) { ' ' + ($spec.Deny -f (ConvertTo-PsLiteral $LaunchDir), (ConvertTo-PsLiteral $mcpFile), (ConvertTo-PsLiteral $agyFile)) } else { '' }
         $allow   = if ($SkipPermissions -and $spec.Allow) { ' ' + ($spec.Allow -f (ConvertTo-PsLiteral $LaunchDir)) } else { '' }
         $scrub   = 'Remove-Item ' + (($SeatScrubbedEnv | ForEach-Object { "Env:$_" }) -join ',') + ' -ErrorAction Ignore; '
         # First thing the window does: record its PID and start time, so the web

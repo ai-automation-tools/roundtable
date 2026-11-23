@@ -25,29 +25,36 @@
 
 | Folder | What it holds |
 |:---|:---|
-| [**CLIs/**](CLIs/) | One workspace per supported CLI — a role doc (`claude.md` / `AGENTS.md`) plus that CLI's own MCP config. Launch a CLI **from inside its folder** and it picks up the `roundtable` server automatically. |
+| [**CLIs/**](CLIs/) | One workspace **template** per supported CLI — a role doc (`claude.md` / `AGENTS.md`) plus that CLI's own MCP config. They are copied to a seat folder outside the repo, and a CLI launched **from inside that seat folder** picks up the `roundtable` server automatically. |
 | [**Debate-Agents/**](Debate-Agents/) | Persona seed cards, organised by where they came from: `Debate-Agents-Random/` (the original hand-written roster + `Debate-Hosts/` moderators) and `AI-Library-Imports/` (cards imported from the AI-Automation-Library, each with a cover image). |
 | [**Debate-Agent-Templates/**](Debate-Agent-Templates/README.md) | The authoring templates — the persona card schema and the generator prompt used to write a new one. |
 
 ## 🖥️ The CLI workspaces
 
-Each folder carries a working registration for one agent id. This is why a CLI
-started at the repo root has no `roundtable` tools but the same CLI started here
-does.
+Each folder here is a **template** for one agent id. Nothing launches from
+`agents/CLIs/`: `scripts/setup/add_agent_seat.py --materialize` copies each one
+into a seat folder under the seat root,
+`%LOCALAPPDATA%\Roundtable\seats\<clone folder name>\` (see
+[where seat folders live](../docs/app/cli-setup.md#where-seat-folders-live)),
+and fills in this clone's launcher path and the seat's agent id. The seats sit
+outside the repo because a CLI loads every `CLAUDE.md` / `AGENTS.md` above the
+folder it starts in, and the repo's are for developer agents. A CLI started at
+the repo root has no `roundtable` tools; the same CLI started in its seat folder
+does. The web app re-materializes on start, so edit the template, not the copy.
 
 | Workspace | Agent id | Role doc | Config file | Setup guide |
 |:---|:---|:---|:---|:---|
-| [**claude-code_agent1/**](CLIs/claude-code_agent1/) | `claude-code` | [claude.md](CLIs/claude-code_agent1/claude.md) | `.mcp.json` | [→](../docs/cli-mcp-config/per-cli/claude.md) |
+| [**claude-code_agent1/**](CLIs/claude-code_agent1/) | `claude-code` | [claude.md](CLIs/claude-code_agent1/claude.md) | user scope `~/.claude.json` (seat 2+: `.mcp.json`) | [→](../docs/cli-mcp-config/per-cli/claude.md) |
 | [**codex_agent1/**](CLIs/codex_agent1/) | `codex` | [AGENTS.md](CLIs/codex_agent1/AGENTS.md) | global `~/.codex/config.toml` | [→](../docs/cli-mcp-config/per-cli/codex.md) |
 | [**antigravity_agent1/**](CLIs/antigravity_agent1/) | `antigravity` | [AGENTS.md](CLIs/antigravity_agent1/AGENTS.md) | `.agents/mcp_config.json` | [→](../docs/cli-mcp-config/per-cli/antigravity.md) |
 | [**opencode_agent1/**](CLIs/opencode_agent1/) | `opencode` | [AGENTS.md](CLIs/opencode_agent1/AGENTS.md) | `opencode.json` | [→](../docs/cli-mcp-config/per-cli/opencode.md) |
 
 Those are **seat 1** of each tool. Extra seats (`<cli>_agent2/` … `_agent5/`,
-agent ids `codex-2` …) are created per machine by
-`scripts/setup/add_agent_seat.py`, Settings → CLI tools, or `/orchestrate` on
-launch, and are **gitignored** — each holds this machine's launcher path.
+agent ids `codex-2` …) are created per machine in the seat root by
+`scripts/setup/add_agent_seat.py --cli <cli> --seat <N>`, Settings → CLI tools,
+or `/orchestrate` on launch. They are never in the repo.
 
-Each **role doc** is what that CLI reads on startup from its own folder. All
+Each **role doc** is what that CLI reads on startup from its seat folder. All
 five say the same thing with per-CLI config details swapped in: the seat is a
 **full-stack developer** on this repo that can *also* join a Roundtable
 conversation — carrying its agent id, how the three conversation types
@@ -55,8 +62,11 @@ conversation — carrying its agent id, how the three conversation types
 `roundtable` tool table.
 
 ```powershell
+# Print the seat folders (and create any that are missing)
+.\.venv\Scripts\python.exe scripts\setup\add_agent_seat.py --materialize
+
 # Launch an agent that can actually see the roundtable tools
-cd agents\CLIs\claude-code_agent1
+cd "$env:LOCALAPPDATA\Roundtable\seats\roundtable\claude-code_agent1"
 claude
 ```
 

@@ -1,12 +1,28 @@
-"""add_agent_seat.py — give a CLI tool a second (third, …) seat.
+"""add_agent_seat.py — make the seat folders: materialize them, or add a seat.
 
 A **seat** is one participant slot. Seat 1 of a tool is the bare CLI id
-(`codex`, launched from `agents/CLIs/codex_agent1/`); seat 2 is `codex-2`,
-launched from `agents/CLIs/codex_agent2/`. Identity is config-only — the seat
-folder's MCP config passes its own ``--agent-id`` to the launcher — so this
-script's whole job is:
+(`codex`, launched from ``<seat root>/codex_agent1/``); seat 2 is `codex-2`,
+launched from ``<seat root>/codex_agent2/``. The seat root is outside the repo
+(``orchestrator.seats.seat_root()``, audit RT-01): a CLI loads every CLAUDE.md /
+AGENTS.md above where it starts, and the repo's would turn a debater into a
+developer of this codebase.
 
-1. create ``agents/CLIs/<cli>_agent<N>/``,
+**Materialize** (``--materialize``) copies the tracked templates under
+``agents/CLIs/<cli>_agent1/`` (role doc + MCP config) into the seat root,
+points each config at this clone's ``scripts/run-mcp-server.ps1``, and
+pre-trusts the folder in each CLI's own config (Claude Code, Codex,
+Antigravity) so a spawned window never stops
+on a "do you trust this folder?" dialog. It is idempotent and keeps whatever
+local state a seat has (``.claude/``, ``.codex/``, ``.agents/settings.json``).
+The spawn layer runs it (from this command line) before every launch; the web
+app runs it in process with ``trust=False``, so only a launch ever writes to a
+CLI's user config.
+
+**Adding a seat** (``--cli X --seat N``) is the rest of this docstring.
+Identity is config-only — the seat folder's MCP config passes its own
+``--agent-id`` to the launcher — so its whole job is:
+
+1. create ``<seat root>/<cli>_agent<N>/``,
 2. copy seat 1's MCP config (and its role doc) into it,
 3. rewrite the agent id inside that copy.
 
@@ -16,17 +32,17 @@ be registered at user scope with no project file at all** — that one is
 synthesized from the ``roundtable`` entry in ``~/.claude.json``. See
 :func:`_seat_one_config_text`.
 
-Run it once per extra seat, per machine. Seat 2+ folders are gitignored
-(``agents/CLIs/*_agent[2-9]/``) — the copied config holds this machine's
-launcher path — so this is setup, not source.
+Run it once per extra seat, per machine. Seat folders hold this machine's
+launcher path, so they are setup, not source, and live outside the repo.
 
+    .\\.venv\\Scripts\\python.exe scripts\\setup\\add_agent_seat.py --materialize
     .\\.venv\\Scripts\\python.exe scripts\\setup\\add_agent_seat.py --cli claude-code --seat 2
     .\\.venv\\Scripts\\python.exe scripts\\setup\\add_agent_seat.py --cli codex --seat 2 --dry-run
 
 **Codex is the awkward one.** Its loader ignores per-folder config by default,
 so a second Codex seat only gets its own agent id by relocating Codex's entire
 user root with ``CODEX_HOME`` — which moves *credentials* too. This script seeds
-``agents/CLIs/codex_agent<N>/.codex/config.toml`` from the global
+``<seat root>/codex_agent<N>/.codex/config.toml`` from the global
 ``~/.codex/config.toml``, but you must run ``codex login`` once against the new
 home (or copy ``auth.json`` into it) before that seat can talk to anything. The
 spawn layer sets ``CODEX_HOME`` for seat 2+ automatically.
@@ -39,19 +55,21 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
-import shutil
 import sys
+import tempfile
+import tomllib
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Iterable, Optional
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(_REPO_ROOT / "src"))
 
 from orchestrator import preflight, seats  # noqa: E402
 
-_CLI_DIR = _REPO_ROOT / "agents" / "CLIs"
+_SCRIPTS_DIR = _REPO_ROOT / "scripts"
 
 
 def _claude_user_entry() -> Optional[dict]:
@@ -85,7 +103,7 @@ class CliShape:
         ``~/.claude.json``, and a project-scope ``.mcp.json`` next to it makes
         Claude Code raise an approval prompt on every launch (which silently
         stalls a spawned agent — it cost 30 minutes of run #51), so the seat-1
-        folder here deliberately has none to clone. See
+        template deliberately has none to clone. See
         ``agents/CLIs/claude-code_agent1/MCP-NOTE.md``.
     """
     config_rel: str
@@ -194,11 +212,14 @@ def _rewrite_json(text: str, shape: CliShape, old_id: str, new_id: str) -> str:
 
 
 def _replace_agent_arg(argv: list, old_id: str, new_id: str) -> list:
-    """Set the launcher's agent-id argument to ``new_id``.
+    """Set the launcher's agent-id argument to ``new_id``, and the launcher
+    itself to this clone's copy of it.
 
     Prefers the element after the launcher script path; falls back to replacing
     an element that is exactly the old id, and appends when the launcher is the
-    last element (a config that relies on the launcher's default).
+    last element (a config that relies on the launcher's default). The tracked
+    templates carry ``<repo>/scripts/run-mcp-server.ps1``; any launcher whose
+    file name exists under this clone's ``scripts/`` is pointed there.
     """
     launcher_idx = next(
         (i for i, a in enumerate(argv)
@@ -206,6 +227,9 @@ def _replace_agent_arg(argv: list, old_id: str, new_id: str) -> list:
         None,
     )
     if launcher_idx is not None:
+        ours = _SCRIPTS_DIR / Path(argv[launcher_idx].replace("\\", "/")).name
+        if ours.exists():
+            argv[launcher_idx] = ours.as_posix()
         if launcher_idx + 1 < len(argv):
             argv[launcher_idx + 1] = new_id
         else:
@@ -265,21 +289,172 @@ def _allow_agent_chat_tools(seat_dir: Path) -> Path:
     path = seat_dir / ".claude" / "settings.local.json"
     doc = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
     allow = doc.setdefault("permissions", {}).setdefault("allow", [])
+    changed = False
     if "mcp__roundtable" not in allow:
         allow.append("mcp__roundtable")   # server-wide rule: every roundtable tool
+        changed = True
     # The seat's .mcp.json is project scope; without this Claude Code asks to
     # approve the server itself on launch.
     enabled = doc.setdefault("enabledMcpjsonServers", [])
     if "roundtable" not in enabled:
         enabled.append("roundtable")
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+        changed = True
+    if changed or not path.exists():
+        _write_text(path, json.dumps(doc, indent=2) + "\n")
     return path
+
+
+# ---------------------------------------------------------------------------
+# Materialize: templates -> seat root, plus each CLI's folder trust
+# ---------------------------------------------------------------------------
+
+def _write_text(path: Path, text: str) -> bool:
+    """Write ``text`` atomically, only when it differs. True if written."""
+    if path.exists() and path.read_text(encoding="utf-8") == text:
+        return False
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=path.name + ".", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
+            f.write(text)
+        os.replace(tmp, path)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
+    return True
+
+
+def claude_trust_key(folder: Path) -> str:
+    """The ``projects`` key Claude Code files a folder under: forward slashes."""
+    return folder.as_posix()
+
+
+def agy_settings_file() -> Path:
+    """Antigravity CLI's user settings, which hold ``trustedWorkspaces``."""
+    return Path.home() / ".gemini" / "antigravity-cli" / "settings.json"
+
+
+def codex_trust_key(folder: Path) -> str:
+    """The ``[projects."<key>"]`` Codex files a folder under: ``normcase``'d."""
+    return os.path.normcase(str(folder))
+
+
+def _trust_folder(agent_id: str, folder: Path) -> Optional[Path]:
+    """Mark ``folder`` trusted in the CLI's own user config, if it isn't yet.
+
+    A spawned seat opens a real console, and each CLI asks "do you trust this
+    folder?" the first time it starts somewhere new: Claude Code's workspace
+    trust dialog (``-p`` would skip it, the visible window would not), Codex's
+    folder-access screen (shown even with ``--sandbox`` and
+    ``--ask-for-approval``), and Antigravity's ``trustedWorkspaces`` check.
+    Any of them stalls a seat. Only the one entry is added; a missing config
+    file means the CLI isn't set up here, and nothing is created. OpenCode has
+    no trust prompt. Returns the file written, if any.
+    """
+    cli = seats.seat_cli(agent_id)
+    if cli == "codex":
+        path = (preflight.codex_home(agent_id) or Path.home() / ".codex") / "config.toml"
+        if not path.exists():
+            return None
+        key = codex_trust_key(folder)
+        header = f"[projects.'{key}']" if "'" not in key else f"[projects.{json.dumps(key)}]"
+        if key in tomllib.loads(path.read_text(encoding="utf-8")).get("projects", {}):
+            return None
+        text = path.read_text(encoding="utf-8").rstrip("\n")
+        _write_text(path, f'{text}\n\n{header}\ntrust_level = "trusted"\n')
+        return path
+    if cli == "claude-code":
+        path = preflight.claude_user_config()
+        if not path.exists():
+            return None
+        data = json.loads(path.read_text(encoding="utf-8"))
+        entry = data.setdefault("projects", {}).setdefault(claude_trust_key(folder), {})
+        if entry.get("hasTrustDialogAccepted") is True:
+            return None
+        entry["hasTrustDialogAccepted"] = True
+    elif cli == "antigravity":
+        path = agy_settings_file()
+        if not path.exists():
+            return None
+        data = json.loads(path.read_text(encoding="utf-8"))
+        trusted = data.setdefault("trustedWorkspaces", [])
+        if str(folder) in trusted:
+            return None
+        trusted.append(str(folder))
+    else:
+        return None
+    # ASCII-escaped on purpose: ~/.claude.json can hold lone surrogates (a
+    # half emoji in a pasted prompt), which UTF-8 can't encode. Same JSON.
+    _write_text(path, json.dumps(data, indent=2) + "\n")
+    return path
+
+
+def _check_seat_root(root: Path) -> None:
+    """Refuse a seat root inside the repo; warn about anything else above it."""
+    if root.resolve().is_relative_to(_REPO_ROOT.resolve()):
+        raise SeatSetupError(
+            f"seat root {root} is inside the repo, so every seat would load the "
+            f"repo's AGENTS.md/CLAUDE.md. Point ${seats.SEATS_DIR_ENV} elsewhere."
+        )
+    above = seats.instruction_files_above(root)
+    if above:
+        print(f"WARNING: seats under {root} will also see "
+              f"{', '.join(map(str, above))}", file=sys.stderr)
+
+
+def default_seats() -> list[str]:
+    """Seat 1 of every tool, plus each extra seat whose folder exists."""
+    return [s for cli in seats.SUPPORTED_CLIS
+            for s in seats.seats_for(cli, seats.MAX_SEATS_PER_CLI)
+            if seats.seat_index(s) == 1 or seats.seat_dir(s).is_dir()]
+
+
+def materialize(agent_ids: Optional[Iterable[str]] = None, *,
+                trust: bool = True) -> list[Path]:
+    """Bring each seat folder up to date with its template. Idempotent.
+
+    Per seat: copy the template's role docs, write its MCP config (from the
+    template when it has one, else the seat's own) with this clone's launcher
+    and the seat's agent id, allow the roundtable tools for a Claude Code seat,
+    and pre-trust the folder. Nothing else in the folder is touched, so local
+    state (``.claude/``, ``.codex/``, ``.agents/settings.json``) survives.
+
+    An extra seat whose folder doesn't exist is skipped: creating one is
+    :func:`add_seat`'s job. Returns the folders materialized.
+    """
+    root = seats.seat_root()
+    _check_seat_root(root)
+    done: list[Path] = []
+    for aid in (default_seats() if agent_ids is None else agent_ids):
+        parsed = seats.parse_seat(aid)
+        if parsed is None:
+            raise SeatSetupError(f"unrecognised agent id {aid!r}")
+        cli, index = parsed
+        dst = seats.seat_dir(aid)
+        if index > 1 and not dst.is_dir():
+            continue
+        shape, tpl = SHAPES[cli], seats.template_dir(cli)
+        dst.mkdir(parents=True, exist_ok=True)
+        for doc in shape.role_docs:
+            if (tpl / doc).exists():
+                _write_text(dst / doc, (tpl / doc).read_text(encoding="utf-8"))
+        if shape.fmt == "json":
+            src = next((p for p in (tpl / shape.config_rel, dst / shape.config_rel)
+                        if p.exists()), None)
+            if src is not None:
+                text = _rewrite_json(src.read_text(encoding="utf-8"), shape, cli, aid)
+                _write_text(dst / shape.config_rel, text)
+        if cli == "claude-code":
+            _allow_agent_chat_tools(dst)
+        if trust:
+            _trust_folder(aid, dst)
+        done.append(dst)
+    return done
 
 
 def add_seat(cli: str, seat: int, *, force: bool = False,
              dry_run: bool = False) -> Path:
-    """Create ``agents/CLIs/<cli>_agent<seat>/``. Returns the new folder."""
+    """Create ``<seat root>/<cli>_agent<seat>/``. Returns the new folder."""
     if cli not in SHAPES:
         raise SeatSetupError(
             f"unknown CLI {cli!r}; supported: {', '.join(sorted(SHAPES))}"
@@ -291,8 +466,9 @@ def add_seat(cli: str, seat: int, *, force: bool = False,
         )
     shape = SHAPES[cli]
     new_id = seats.seat_id(cli, seat)
-    src_dir = _CLI_DIR / f"{cli}_agent1"
-    dst_dir = _CLI_DIR / f"{cli}_agent{seat}"
+    src_dir = seats.template_dir(cli)
+    dst_dir = seats.seat_dir(new_id)
+    _check_seat_root(seats.seat_root())
 
     text, src_label = _seat_one_config_text(cli, shape, src_dir)
 
@@ -319,12 +495,11 @@ def add_seat(cli: str, seat: int, *, force: bool = False,
         print(out)
         return dst_dir
 
-    dst_config.parent.mkdir(parents=True, exist_ok=True)
-    dst_config.write_text(out, encoding="utf-8")
-    for doc in copied_docs:
-        shutil.copy2(src_dir / doc, dst_dir / doc)
-    if cli == "claude-code":
-        print(f"permissions : {_allow_agent_chat_tools(dst_dir)}")
+    _write_text(dst_config, out)
+    # Role docs and roundtable permissions: the same step every spawn runs, so
+    # a new seat and a materialized one can't differ. Folder trust is left to
+    # that spawn-time run: this is also called in-process by the web app.
+    materialize([new_id], trust=False)
 
     print("\nwritten.")
     if cli == "codex":
@@ -339,11 +514,14 @@ def add_seat(cli: str, seat: int, *, force: bool = False,
 
 def main() -> int:
     p = argparse.ArgumentParser(
-        description="Create an extra participant seat for a CLI tool.",
+        description="Materialize the seat folders, or create an extra seat for a CLI tool.",
     )
-    p.add_argument("--cli", required=True, choices=sorted(SHAPES),
+    p.add_argument("--materialize", nargs="*", metavar="AGENT_ID",
+                   help="bring seat folders up to date with their templates "
+                        "(default: seat 1 of every tool plus each existing extra seat)")
+    p.add_argument("--cli", choices=sorted(SHAPES),
                    help="the CLI tool to add a seat for")
-    p.add_argument("--seat", required=True, type=int,
+    p.add_argument("--seat", type=int,
                    help=f"seat number, 2..{seats.MAX_SEATS_PER_CLI} "
                         f"(seat 1 is the existing bare id)")
     p.add_argument("--force", action="store_true",
@@ -351,7 +529,13 @@ def main() -> int:
     p.add_argument("--dry-run", action="store_true",
                    help="print what would be written and exit")
     args = p.parse_args()
+    if args.materialize is None and (args.cli is None or args.seat is None):
+        p.error("pass --materialize, or both --cli and --seat")
     try:
+        if args.materialize is not None:
+            for folder in materialize(args.materialize or None):
+                print(folder)
+            return 0
         add_seat(args.cli, args.seat, force=args.force, dry_run=args.dry_run)
     except SeatSetupError as e:
         print(f"ERROR: {e}", file=sys.stderr)

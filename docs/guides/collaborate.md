@@ -282,7 +282,7 @@ you actually have.
 .\.venv\Scripts\python.exe scripts\setup\add_agent_seat.py --cli codex --seat 2
 ```
 
-Launch that seat from `agents/CLIs/codex_agent2/` rather than `codex_agent1/`.
+Launch that seat from `codex_agent2\` in the seat root (`%LOCALAPPDATA%\Roundtable\seats\<clone>\`) rather than `codex_agent1\`; the script prints the folder.
 The [**Settings → CLI tools**](http://127.0.0.1:8765/settings) tab has a button that does the
 same thing.
 

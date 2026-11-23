@@ -378,6 +378,15 @@ def api_orchestrate(request: Request) -> Response:
                     "error": f"could not create seat {seat}: {e}",
                 }, status_code=400)
 
+    # ---- refresh every seat folder from its template (audit RT-01) ----------
+    # Seat folders live outside the repo; preflight must check what the launch
+    # will use. The spawn wrapper runs the same step again; it is idempotent.
+    try:
+        _add_seat_module().materialize(seed_participants, trust=False)
+    except Exception as e:  # noqa: BLE001 — reported, never raised at the operator
+        return JSONResponse({"ok": False, "kind": "validation",
+                             "error": f"could not set up the seat folders: {e}"}, status_code=400)
+
     # ---- preflight gate ------------------------------------------------------
     results = orch_preflight.run_preflight(seed_participants)
     if not all(r.ok for r in results):

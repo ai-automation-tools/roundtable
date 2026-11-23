@@ -67,18 +67,15 @@ def test_404_forwards_deep_links_to_demo():
 def test_docs_carry_no_dead_host_or_machine_path():
     """Audit RT-30: the deploy command and bug template pointed at a host that
     answers 400, and the setup log carried one machine's absolute paths. The
-    two seat MCP configs are the known exception until seat folders move out of
-    the repo (RT-01)."""
+    seat MCP configs are templates now (RT-01) and carry none either."""
     import subprocess
     root = SITE.parent
-    seat_configs = {"agents/CLIs/antigravity_agent1/.agents/mcp_config.json",
-                    "agents/CLIs/opencode_agent1/opencode.json"}
     for needle in ("agent-chat-demo.ai-automation-tools.dev", "D:/AI_Agents", r"D:\AI_Agents"):
         out = subprocess.run(["git", "grep", "-l", "-F", needle, "--", ".",
                               ":!docs/Local", ":!docs/changelog", ":!docs/roadmap",
                               ":!docs/CHANGELOG.md", ":!tests/test_site_homepage.py"],
                              cwd=root, capture_output=True, text=True).stdout.split()
-        assert set(out) <= seat_configs, (needle, out)
+        assert not out, (needle, out)
 
 
 def test_every_suite_is_in_the_tests_readme():
