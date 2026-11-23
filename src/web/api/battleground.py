@@ -33,6 +33,7 @@ import os
 import secrets
 import sqlite3
 from typing import Any
+from urllib.parse import urlsplit
 
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
@@ -163,6 +164,18 @@ def _clip(value: Any, limit: int = MAX_FIELD_CHARS) -> str | None:
     return text[:limit]
 
 
+def _http_url(value: Any, limit: int) -> str | None:
+    """A clipped http(s) URL, or None. A captured page picks its own links, and
+    a ``javascript:`` href clicked on the console runs on the app's origin."""
+    url = _clip(value, limit)
+    if not url:
+        return None
+    try:
+        return url if urlsplit(url).scheme.lower() in ("http", "https") else None
+    except ValueError:
+        return None
+
+
 def _clean_posts(raw: Any) -> list[dict[str, Any]] | str:
     """Normalize a captured thread, or return an error string.
 
@@ -187,7 +200,10 @@ def _clean_posts(raw: Any) -> list[dict[str, Any]] | str:
             "author": _clip(item.get("author"), 200) or "unknown",
             "text": text,
         }
-        for key, limit in (("permalink", 500), ("score", 50), ("timestamp", 100)):
+        permalink = _http_url(item.get("permalink"), 500)
+        if permalink:
+            post["permalink"] = permalink
+        for key, limit in (("score", 50), ("timestamp", 100)):
             val = _clip(item.get(key), limit)
             if val:
                 post[key] = val
@@ -315,10 +331,12 @@ async def api_bg_create_arena(request: Request) -> Response:
     if body is None:
         return JSONResponse({"error": "body must be a JSON object"}, status_code=400)
 
-    url = _clip(body.get("url"), 2_000)
-    title = _clip(body.get("title"), 500)
-    if not url:
+    if not _clip(body.get("url"), 2_000):
         return JSONResponse({"error": "url is required"}, status_code=400)
+    url = _http_url(body.get("url"), 2_000)
+    if not url:
+        return JSONResponse({"error": "url must be http(s)"}, status_code=400)
+    title = _clip(body.get("title"), 500)
     site = (_clip(body.get("site"), 50) or "generic").lower()
     if site not in KNOWN_SITES:
         site = "generic"

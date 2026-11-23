@@ -168,14 +168,17 @@ def _delivery_body(state: dict) -> str:
       </label>
       <div class="set-sub">
         <span class="lbl">Command</span>
-        <p class="hint"><code>{{dir}}</code>, <code>{{cid}}</code>,
-           <code>{{topic}}</code> and <code>{{event}}</code> are substituted.
+        <p class="hint"><code>{{dir}}</code>, <code>{{cid}}</code> and
+           <code>{{event}}</code> are substituted; the topic and status arrive as
+           <code>ROUNDTABLE_TOPIC</code> / <code>ROUNDTABLE_STATUS</code> environment
+           variables, never in the command line. A shell evaluating a string
+           (<code>pwsh -Command</code>, <code>bash -c</code>) is refused: call a script file.
            Quoting works like a shell, so a path with a space stays one argument.
            This runs whatever you put here, with your privileges &mdash; it is
            exactly as trusted as a shell alias, which is the point of it.</p>
         <input type="text" id="dl-cmd-argv" class="nt-input"
                value="{html.escape(str(command.get('argv') or ''), quote=True)}"
-               placeholder="pwsh -NoProfile -Command &quot;Write-Host {{dir}}&quot;"
+               placeholder="pwsh -NoProfile -File scripts/my-hook.ps1 {{dir}}"
                autocomplete="off" spellcheck="false">
 
         <span class="lbl">Run it when a conversation&hellip;</span>

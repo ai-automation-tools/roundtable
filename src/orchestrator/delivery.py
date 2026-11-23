@@ -472,35 +472,65 @@ def _sink_webhook(data: dict[str, Any], sink: dict[str, Any],
     return post_webhook(sink, webhook_payload(data, sink, ctx), ctx["event"])
 
 
+_SHELLS = {"pwsh", "powershell", "cmd", "bash", "sh", "zsh", "dash", "fish", "wsl"}
+_SHELL_EVAL = {"-command", "-c", "/c", "/k", "-encodedcommand", "-ec", "-enc"}
+
+
+def shell_eval_refusal(argv: list[Any]) -> str | None:
+    """Why ``argv`` is refused, or None. A shell told to evaluate a string
+    (``pwsh -Command …``, ``bash -c …``) turns any substituted value into code,
+    so it needs ``"allow_shell": true`` written into the sink by hand."""
+    if not argv:
+        return None
+    exe = Path(str(argv[0])).name.lower().removesuffix(".exe")
+    if exe in _SHELLS and any(str(t).lower() in _SHELL_EVAL for t in argv[1:]):
+        return (f"command sink: {argv[0]} evaluating a string is refused; call a "
+                "script file instead (pwsh -File x.ps1 {dir}), or set "
+                '"allow_shell": true on the sink in config/delivery.json')
+    return None
+
+
 def _sink_command(data: dict[str, Any], sink: dict[str, Any],
                   ctx: dict[str, Any]) -> str:
     """Run a local command against the delivered folder.
 
-    ``{dir}``, ``{cid}``, ``{topic}`` and ``{event}`` are substituted into each
-    argv token. Requires the folder sink to have run first — this sink acts on
-    files, so with nothing on disk there is nothing to hand it.
+    ``{dir}``, ``{cid}`` and ``{event}`` are substituted into each argv token.
+    The topic is agent- or mirror-supplied text, so it never reaches argv: the
+    command reads it from ``ROUNDTABLE_TOPIC`` (beside ``ROUNDTABLE_CID``,
+    ``ROUNDTABLE_STATUS``, ``ROUNDTABLE_EVENT`` and ``ROUNDTABLE_DIR``).
+    Requires the folder sink to have run first — this sink acts on files, so
+    with nothing on disk there is nothing to hand it.
 
-    This runs whatever the config says, which is the point: the config file is
-    per-machine, gitignored, and written by the operator, so it is exactly as
-    trusted as a shell alias.
+    The config is per-machine, gitignored and written by the operator, so this
+    runs whatever it says — except a shell evaluating a string, which needs
+    ``allow_shell`` (see ``shell_eval_refusal``).
     """
     argv = sink.get("argv")
     if not isinstance(argv, list) or not argv:
         raise ValueError("command sink has no 'argv' list")
     if not ctx.get("dir"):
         raise ValueError("command sink needs the folder sink enabled for the same event")
+    if any("{topic}" in str(tok) for tok in argv):
+        raise ValueError("command sink: {topic} is no longer substituted into argv; "
+                         "read the ROUNDTABLE_TOPIC environment variable instead")
+    refusal = None if sink.get("allow_shell") is True else shell_eval_refusal(argv)
+    if refusal:
+        raise ValueError(refusal)
 
     conv = data["conversation"]
-    subs = {
-        "dir": ctx["dir"],
-        "cid": str(conv["id"]),
-        "topic": conv.get("topic") or "",
-        "event": ctx["event"],
-    }
+    subs = {"dir": ctx["dir"], "cid": str(conv["id"]), "event": ctx["event"]}
     resolved = [str(tok).format(**subs) for tok in argv]
+    env = {
+        **os.environ,
+        "ROUNDTABLE_DIR": str(ctx["dir"]),
+        "ROUNDTABLE_CID": subs["cid"],
+        "ROUNDTABLE_EVENT": str(ctx["event"]),
+        "ROUNDTABLE_TOPIC": conv.get("topic") or "",
+        "ROUNDTABLE_STATUS": conv.get("status") or "",
+    }
     timeout = float(sink.get("timeout") or 120)
     proc = subprocess.run(resolved, capture_output=True, text=True,
-                          timeout=timeout, cwd=str(_REPO_ROOT))
+                          timeout=timeout, cwd=str(_REPO_ROOT), env=env)
     if proc.returncode != 0:
         tail = (proc.stderr or proc.stdout or "").strip().splitlines()[-3:]
         raise RuntimeError(f"exit {proc.returncode}: {' / '.join(tail)}")
@@ -664,7 +694,7 @@ STARTER_CONFIG: dict[str, Any] = {
         {
             "type": "command",
             "enabled": False,
-            "argv": ["pwsh", "-NoProfile", "-Command", "Write-Host {dir}"],
+            "argv": ["pwsh", "-NoProfile", "-File", "scripts/my-hook.ps1", "{dir}"],
             "timeout": 120,
         },
     ],

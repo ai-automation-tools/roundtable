@@ -62,7 +62,7 @@ Two tables, declared in all three `SCHEMA` mirrors (`src/agent_chat_mcp.py`, `sr
 | Column | Notes |
 |:---|:---|
 | `url` · `site` · `title` | Where it came from. `site` is an adapter label — `KNOWN_SITES` in `web/api/battleground.py` (`reddit` / `x` / `hackernews` / `youtube` / `linkedin` / `substack` / `discourse` / `disqus` / `generic`); anything else is coerced to `generic`. |
-| `thread` | JSON array of posts: `{id, author, text, permalink?, score?, timestamp?, depth?}`. |
+| `thread` | JSON array of posts: `{id, author, text, permalink?, score?, timestamp?, depth?}`. A `permalink` (and the arena `url`) must be http(s); any other scheme is dropped (or, for `url`, refused). |
 | `stance` | The operator's brief — which side, what to hit. |
 | `reply_to` | The captured post the **operator** picked for the agent to answer (**Answer this one** in the panel's capture preview), or `NULL` for "you choose". Validated against the stored thread on write. Distinct from the drafts table's `reply_to`, which is what the agent actually answered. |
 | `agent_id` | Assigned CLI, or `NULL` for "whoever picks it up". |
