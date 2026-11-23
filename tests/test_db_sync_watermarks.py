@@ -92,8 +92,7 @@ class FakeRemote:
         self.deleted_persona_keys: list[str] = []
         self.pushes: list[dict[str, Any]] = []
 
-    def get_since(self, url, token, updated_after, known_ids, timeout,
-                  personas_updated_after, known_persona_keys):
+    def get_since(self, url, token, updated_after, known_ids, timeout):
         return {
             "conversations": self.conversations,
             "deleted_conversation_ids": self.deleted_conversation_ids,
@@ -596,6 +595,171 @@ def test_env_file_fills_unset_settings_only():
 # ---------------------------------------------------------------------------
 # Standalone runner (no pytest required)
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Audit RT-15: pull size, pull failure, transport surprises, late commits, paging
+# ---------------------------------------------------------------------------
+
+def test_a_pull_with_5000_known_ids_round_trips_over_real_http():
+    """The known-id list rides in a POST body. It used to be a query string,
+    and uvicorn refuses a request head past ~64 KB before the app sees it."""
+    import os
+    import socket
+    import threading
+    import time
+
+    import uvicorn
+    from starlette.applications import Starlette
+    from starlette.routing import Route
+
+    from orchestrator import personas
+    from web import db as web_db
+    from web.api.sync import api_since
+    import web_ui
+
+    saved = (web_db.DB_PATH, personas.DB_PATH,
+             os.environ.get("AGENT_CHAT_DB"), os.environ.get("AGENT_CHAT_INGEST_TOKEN"))
+    with tempfile.TemporaryDirectory(**_TMP) as tmp:
+        db_path, cid = _seeded_db(Path(tmp))
+        os.environ["AGENT_CHAT_INGEST_TOKEN"] = "t0k"
+        web_db.set_db_path(str(db_path))
+        app = Starlette(routes=[Route("/api/since", api_since, methods=["GET", "POST"])],
+                        middleware=web_ui._build_middleware())
+        s = socket.socket()
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+        s.close()
+        server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port,
+                                               log_level="critical"))
+        threading.Thread(target=server.run, daemon=True).start()
+        try:
+            deadline = time.time() + 10
+            while not server.started and time.time() < deadline:
+                time.sleep(0.05)
+            known = [cid] + list(range(100_000, 105_000))
+            got = db_sync.get_since(f"http://127.0.0.1:{port}/api/since", "t0k",
+                                    db_sync.EPOCH, known, 10)
+            assert sorted(got["deleted_conversation_ids"]) == known[1:]
+            assert [c["id"] for c in got["conversations"]] == [cid]
+        finally:
+            server.should_exit = True
+            web_db.DB_PATH, personas.DB_PATH = saved[0], saved[1]
+            for k, v in (("AGENT_CHAT_DB", saved[2]), ("AGENT_CHAT_INGEST_TOKEN", saved[3])):
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
+
+
+def test_a_failed_pull_still_pushes():
+    """One bad pull used to abort the tick before the push, every tick."""
+    with tempfile.TemporaryDirectory(**_TMP) as tmp:
+        db_path, cid = _seeded_db(Path(tmp))
+        remote = FakeRemote()
+
+        def broken(*a, **k):
+            raise db_sync.SyncError("HTTP 400: Invalid HTTP request received.")
+
+        remote.get_since = broken
+        state = _tick(db_path, db_sync.State(), remote)
+        assert remote.pushed_conversation_ids() == [cid]
+        assert state.conversations_updated_after != db_sync.EPOCH
+
+
+def test_transport_surprises_are_transient():
+    """A reset while reading an error body and a 200 that isn't JSON used to
+    escape main() and end the hidden daemon."""
+    import io
+    import urllib.error
+    import urllib.request
+
+    class _Resp(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    class _ResetBody:
+        def read(self, *a):
+            raise ConnectionResetError(10054, "reset")
+
+        def close(self):
+            pass
+
+    cases = [
+        ConnectionResetError(10054, "reset"),
+        _Resp(b"<html>502 Bad Gateway</html>"),
+        _Resp(b"[1, 2]"),
+        urllib.error.HTTPError("http://x", 502, "bad", {}, _ResetBody()),
+    ]
+    real = urllib.request.urlopen
+    try:
+        for case in cases:
+            def fake(req, timeout=None, _c=case):
+                if isinstance(_c, BaseException):
+                    raise _c
+                return _c
+            urllib.request.urlopen = fake
+            for call in (lambda: db_sync.get_since("http://x", "t", db_sync.EPOCH, [], 1),
+                         lambda: db_sync.post_batch("http://x", "t", {}, 1)):
+                try:
+                    call()
+                except db_sync.SyncError:
+                    pass
+                else:
+                    raise AssertionError(f"{case!r} did not raise SyncError")
+    finally:
+        urllib.request.urlopen = real
+
+
+def test_a_late_commit_behind_the_cursor_is_still_pushed():
+    """A writer stamps updated_at before waiting on the write lock, so a row
+    can commit with a stamp older than one already pushed (repro_13)."""
+    with tempfile.TemporaryDirectory(**_TMP) as tmp:
+        db_path, cid = _seeded_db(Path(tmp))
+        remote = FakeRemote()
+        _set_updated_at(db_path, cid, "newer", "2026-11-22T10:00:02+00:00")
+        state = _tick(db_path, db_sync.State(), remote)
+        second = seeding.seed_conversation(
+            db_path=str(db_path), topic="late", participants=["alpha", "beta"],
+            mode="turns", max_turns=2,
+        ).conversation_id
+        _set_updated_at(db_path, second, "late", "2026-11-22T10:00:01+00:00")
+        remote.pushes.clear()
+        state = _tick(db_path, state, remote)
+        assert remote.pushed_conversation_ids() == [second], remote.pushed_conversation_ids()
+        assert state.conversations_updated_after == "2026-11-22T10:00:02+00:00"
+        # Already shipped: the overlap re-read doesn't send either row again.
+        remote.pushes.clear()
+        state = _tick(db_path, state, remote)
+        assert remote.pushes == [], remote.pushes
+        # Outside the window the bookkeeping is dropped.
+        _set_updated_at(db_path, cid, "much later", "2026-11-22T11:00:00+00:00")
+        state = _tick(db_path, state, remote)
+        assert list(state.recent_pushed) == [str(cid)], state.recent_pushed
+
+
+def test_a_big_push_is_paged_conversations_first():
+    """/api/ingest refuses a body over 32 MB; a --force-push can be bigger."""
+    batch = {
+        "conversations": [{"id": 1}],
+        "messages": [{"id": i} for i in range(1, 1201)],
+        "deleted_conversation_ids": [9],
+        "personas": [{"slug": str(i)} for i in range(30)],
+        "deleted_persona_keys": ["g\x1fs"],
+    }
+    pages = db_sync.batch_pages(batch)
+    assert len(pages) == 4, len(pages)
+    assert pages[0]["conversations"] == [{"id": 1}]
+    assert pages[0]["deleted_conversation_ids"] == [9]
+    assert all(set(p) == set(batch) for p in pages)
+    assert all(not p["conversations"] for p in pages[1:])
+    for key in ("messages", "personas"):
+        assert [x for p in pages for x in p[key]] == batch[key], key
+    assert db_sync.batch_pages({**batch, "messages": [], "personas": []}) == [
+        {**batch, "messages": [], "personas": []}]
+
 
 def _main() -> int:
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]

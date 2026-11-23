@@ -298,6 +298,24 @@ def _hosted_stack_client(host: str, allowed: str | None = None) -> TestClient:
     return TestClient(app, base_url=f"http://{host}")
 
 
+def test_the_readonly_mirror_takes_a_posted_pull():
+    """/api/since is a read the sidecar POSTs (its id list outgrew a query
+    string, RT-15), so the read-only gate and the write secret let it by;
+    the handler checks the bearer token. Any other POST is still refused."""
+
+    async def ok(request):
+        return JSONResponse({"ok": True})
+
+    app = Starlette(
+        routes=[Route("/api/since", ok, methods=["POST"]),
+                Route("/api/settings/delivery", ok, methods=["POST"])],
+        middleware=_build_with_env(AGENT_CHAT_PUBLIC_READONLY="1"),
+    )
+    c = TestClient(app, base_url="http://127.0.0.1:8765")
+    assert c.post("/api/since", json={}).status_code == 200
+    assert c.post("/api/settings/delivery", json={}).status_code == 403
+
+
 def test_foreign_host_is_refused_on_every_method():
     c = _hosted_stack_client("evil.example:8765")
     assert c.get("/api/settings/delivery").status_code == 400
