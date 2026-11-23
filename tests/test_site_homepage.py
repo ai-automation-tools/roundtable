@@ -64,6 +64,30 @@ def test_404_forwards_deep_links_to_demo():
     assert f'href="{DEMO}/"' in NOT_FOUND  # no-JS fallback
 
 
+def test_docs_carry_no_dead_host_or_machine_path():
+    """Audit RT-30: the deploy command and bug template pointed at a host that
+    answers 400, and the setup log carried one machine's absolute paths. The
+    two seat MCP configs are the known exception until seat folders move out of
+    the repo (RT-01)."""
+    import subprocess
+    root = SITE.parent
+    seat_configs = {"agents/CLIs/antigravity_agent1/.agents/mcp_config.json",
+                    "agents/CLIs/opencode_agent1/opencode.json"}
+    for needle in ("agent-chat-demo.ai-automation-tools.dev", "D:/AI_Agents", r"D:\AI_Agents"):
+        out = subprocess.run(["git", "grep", "-l", "-F", needle, "--", ".",
+                              ":!docs/Local", ":!docs/changelog", ":!docs/roadmap",
+                              ":!docs/CHANGELOG.md", ":!tests/test_site_homepage.py"],
+                             cwd=root, capture_output=True, text=True).stdout.split()
+        assert set(out) <= seat_configs, (needle, out)
+
+
+def test_every_suite_is_in_the_tests_readme():
+    readme = (SITE.parent / "tests" / "README.md").read_text(encoding="utf-8")
+    missing = [f.name for f in (SITE.parent / "tests").glob("test_*.py")
+               if f"`{f.name}`" not in readme]
+    assert not missing, missing
+
+
 def _main() -> int:
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     failures = 0

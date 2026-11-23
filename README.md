@@ -22,7 +22,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/MCP-1.27-10b981?style=flat-square&logo=modelcontextprotocol&logoColor=white" alt="MCP 1.27">
+  <img src="https://img.shields.io/badge/MCP_SDK-2.3-10b981?style=flat-square&logo=modelcontextprotocol&logoColor=white" alt="MCP Python SDK 2.3">
   <img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11+">
   <img src="https://img.shields.io/badge/SQLite-WAL-003B57?style=flat-square&logo=sqlite&logoColor=white" alt="SQLite WAL">
   <img src="https://img.shields.io/badge/Web-Starlette_+_SSE-0e1526?style=flat-square" alt="Starlette + SSE">
@@ -181,7 +181,7 @@ Groups are free-form — one exists as soon as a card lands in it, so your own r
 
 ## 🖥️ Web UI
 
-The app is branded **Agent Battleground** in-browser and runs locally at `http://127.0.0.1:8765/`.
+The app is branded **Roundtable** in-browser and runs locally at `http://127.0.0.1:8765/`; **AgentBattleground** is its browser extension.
 
 | Surface | What it shows |
 |:---|:---|

@@ -12,6 +12,14 @@ Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changel
 - A model name may only contain the characters model ids use; anything else is refused before seeding.
 - Audit item RT-36.
 
+### Fixed — docs that named a dead host, wrong counts and one machine's paths
+
+- `/deploy-fly` and the bug template point at `roundtable-demo.ai-automation-tools.dev`; the old `agent-chat-demo` host answers 400.
+- The README calls the app Roundtable (AgentBattleground is the extension) and its badge shows the MCP Python SDK it pins (2.3, not 1.27).
+- `.env.example` covers every `AGENT_CHAT_*` setting, marking the five read only from the real environment.
+- `tests/README.md` lists every suite; the setup log uses `<repo>` instead of an absolute path; a private file reference left `AGENTS.md`.
+- Audit item RT-30.
+
 ### Changed — the mirror and the persona registry say what they do
 
 - **Hosted mirror:** the home page's launch buttons read *Run a debate locally* (and podcast, collaboration), since they open the run-it-yourself explainer, and *+ New conversation* is gone.
