@@ -645,6 +645,36 @@ def send_test(sink: dict[str, Any], event: str = "complete") -> str:
     return post_webhook(sink, payload, event)
 
 
+def send_alert(text: str) -> str:
+    """Post an app-health alert through the Notifications sink. Never raises.
+
+    For the scheduled scripts (a failed backup, a web UI still down after its
+    restart), which otherwise fail into a log nobody reads. It reuses the sink
+    the operator already armed on Settings → Notifications rather than adding
+    a second notifier: arming that sink is the opt-in, and an alert isn't a
+    conversation event, so the sink's ``events`` list doesn't gate it. The
+    fields ride the usual payload, so an ntfy ``{topic}`` template shows
+    ``text``. Returns what happened; nothing is logged when no sink is armed.
+    """
+    cfg = load_config()
+    sink = next((s for s in cfg.get("sinks") or []
+                 if isinstance(s, dict) and s.get("id") == NOTIFY_SINK_ID), None)
+    if not (cfg.get("enabled") and sink and sink.get("enabled", True)):
+        return "alert: no notifications sink armed"
+    payload = {
+        "event": "alert", "conversation_id": 0, "topic": text, "status": "alert",
+        "end_reason": None, "conv_type": None, "preset": None, "participants": [],
+        "message_count": 0, "result": None, "current_turn": None,
+        "url": "http://127.0.0.1:8765/", "delivered_dir": None,
+    }
+    try:
+        line = post_webhook(sink, payload, "alert")
+    except Exception as exc:  # noqa: BLE001 - reporting must not become a failure
+        line = f"ERROR {type(exc).__name__}: {exc}"
+    _log(f"alert: {text} -> {line}")
+    return line
+
+
 #: Written by ``inspect_conversations deliver --init``. Disabled, with one
 #: example of each sink to edit rather than a blank file to invent. The CLI
 #: lives there and not here: this is a package member, so

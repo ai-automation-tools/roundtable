@@ -4,6 +4,13 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 ## 2026-11-22 (latest)
 
+### Changed — a failed backup or a failed restart now says so
+
+- **`scripts/maintain-app.ps1` fails loudly.** It used to exit 0 whatever happened, so a failed backup looked green in Task Scheduler. Now each copy is checked with `PRAGMA integrity_check`; a backup that errors or fails the check deletes the bad copy, skips the prune, exits **1**, and sends one alert. **The prune keeps hand-made snapshots:** it removes only its own `chat-YYYYMMDD-HHMMSS.db` files, where it used to delete every `chat-*.db` older than 14 days.
+- **`scripts/healthcheck-app.ps1` alerts once per outage** when a restart didn't take (a 14-hour outage on 2026-11-10 went unseen), cleared when healthy again.
+- **New: `inspect_conversations alert "<text>"`** posts through the Settings → Notifications sink (`delivery.send_alert()`), ignoring its events list since an outage isn't a conversation event. Nothing is sent, or logged, when no sink is armed. **Action needed:** arm one on Settings → Notifications if you want these.
+- Docs: `docs/app/running-the-local-app.md`, `scripts/README.md`. Tests: new `tests/test_maintain_app.py` (runs the real script against temp paths: a good night prunes only nightly copies; a corrupt DB exits 1 and prunes nothing), `tests/test_notifications.py` (the alert reaches an armed sink and never raises).
+
 ### Changed — the sync sidecar no longer takes agent instructions from the mirror
 
 - **The pull applies only deletions and stops.** `scripts/db_sync.py` used to `INSERT OR REPLACE` every conversation and persona the mirror reported, so the public mirror (or anyone holding the sync token) could change a topic, a kickoff or a persona body that the next local run handed to an agent, and an older mirror row could roll the live turn pointer back. Now a conversation the mirror reports `complete` closes an `active` local row only when the mirror's `updated_at` is newer; nothing else about a conversation is taken, a row that only exists remotely is never inserted, and persona rows and persona deletions are ignored. Personas flow local → mirror only.

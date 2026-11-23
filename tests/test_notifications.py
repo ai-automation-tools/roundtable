@@ -199,6 +199,32 @@ def test_ntfy_posts_a_text_body_with_templated_headers():
         srv.shutdown()
 
 
+def test_an_app_alert_reaches_the_armed_notify_sink_and_never_raises():
+    """RT-12: the scheduled scripts alert through the sink the operator armed,
+    whatever its events list says, and a dead endpoint is reported, not raised."""
+    srv, base = _serve()
+    _Capture.received.clear()
+    prev_log = delivery.log_path
+    delivery.log_path = lambda: Path(_TMP) / "delivery.log"  # never the repo's log
+    try:
+        _reset_config()
+        assert "no notifications sink" in delivery.send_alert("backup failed")
+        assert _Capture.received == []
+
+        _write_config({"enabled": True, "sinks": [
+            api._build_sink("ntfy", "alerts", base, ["stalled"], True)]})
+        line = delivery.send_alert("Roundtable backup FAILED")
+        assert "-> 200" in line, line
+        assert "Roundtable backup FAILED" in _Capture.received[-1]["body"]
+
+        srv.shutdown()
+        assert delivery.send_alert("still down").startswith("ERROR")
+    finally:
+        delivery.log_path = prev_log
+        _reset_config()
+        srv.shutdown()
+
+
 def test_ntfy_participants_render_joined_not_as_a_python_list():
     srv, base = _serve()
     _Capture.received.clear()

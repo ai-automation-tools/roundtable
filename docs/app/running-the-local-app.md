@@ -155,6 +155,12 @@ code — a quiet conversation is not an app fault, and nothing here restarts an
 agent. `-SkipConversations` turns it off; `-Repair:$false` reports without
 firing a delivery webhook.
 
+**A repair that didn't take sends one alert** (since 2026-11-22) through the
+Settings → Notifications sink, if one is armed — `inspect_conversations alert
+"<text>"`, which ignores the sink's events list because an outage isn't a
+conversation event. A marker file (`db/.health-alerted`) keeps the timer from
+paging on every run; it clears once the app is healthy again.
+
 > [!NOTE]
 > **Reporting is not notifying.** With no delivery sink armed for `stalled`,
 > a quiet run reaches `db/healthcheck.log` and nowhere else — which is no use
@@ -174,9 +180,16 @@ Logs to `db/healthcheck.log`, separate from `startup-app.log` so a timer firing
 .\scripts\maintain-app.ps1 -KeepDays 14 -MaxLogLines 5000
 ```
 
-Nightly it takes a backup into `db/backups/chat-<timestamp>.db`, prunes files
-older than `-KeepDays`, and trims each `db/*.log` to the newest
-`-MaxLogLines` lines.
+Nightly it takes a backup into `db/backups/chat-<timestamp>.db`, checks the
+copy with `PRAGMA integrity_check`, prunes nightly copies older than
+`-KeepDays`, and trims each `db/*.log` to the newest `-MaxLogLines` lines.
+
+**It fails loudly** (since 2026-11-22): a backup that errors, or whose copy fails
+the integrity check, deletes the bad copy, skips the prune (nights of failures
+must not age out every good copy), exits **1** so Task Scheduler shows it, and
+sends one alert through the Settings → Notifications sink if one is armed. The
+prune touches only the task's own `chat-YYYYMMDD-HHMMSS.db` files; a snapshot you
+took by hand under another `chat-*.db` name is kept.
 
 **The backup uses SQLite's `Connection.backup()` API, never a file copy.**
 `chat.db` runs in WAL mode with several concurrent writers — the web UI, the
