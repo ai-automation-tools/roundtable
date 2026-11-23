@@ -1,6 +1,6 @@
 name: CI
 
-# Cheap smoke gate on every push / PR: install pinned deps, confirm the
+# Cheap smoke gate on every PR and every push to main: install pinned deps, confirm the
 # modules import + compile, validate the tracked configs, and run the test
 # suites. Runs on Windows because requirements.txt pins pywin32 (the project
 # is Windows-first; the Linux Fly image strips pywin32 separately in its
@@ -8,8 +8,11 @@ name: CI
 
 # homepage/ is the static Pages site (homepage.yml); a change there alone
 # touches no Python, so it doesn't spend a Windows runner.
+# Push runs only on main: a PR's branch is already covered by pull_request,
+# and running both doubled every PR's CI (audit RT-29).
 on:
   push:
+    branches: [main]
     paths-ignore:
       - 'homepage/**'
       - '.github/workflows/homepage.yml'
@@ -32,14 +35,15 @@ permissions:
 jobs:
   test:
     runs-on: windows-latest
+    timeout-minutes: 20
     defaults:
       run:
         shell: pwsh
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.12"
           cache: pip
@@ -99,6 +103,38 @@ jobs:
             exit 1
           }
 
+  # The mirror runs Python 3.14 on Linux (Dockerfile); `test` runs the
+  # Windows-first stack on 3.12. This leg runs the same suites where production
+  # runs. Suites that need Windows-only tools skip themselves.
+  test-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.14"
+          cache: pip
+      - name: Install pinned dependencies (minus pywin32, as the Dockerfile does)
+        run: grep -v -i '^pywin32' requirements.txt > /tmp/req.txt && python -m pip install -r /tmp/req.txt
+      - name: Run test suites
+        run: |
+          failed=""
+          for f in tests/test_*.py; do
+            echo "=== $f ==="
+            python "$f" || failed="$failed $(basename "$f")"
+          done
+          if [ -n "$failed" ]; then echo "::error::Failing suites:$failed"; exit 1; fi
+
+  # Syntax errors and pyflakes findings (unused imports, undefined names). An
+  # undefined name is how a web_ui.main() that couldn't start reached a PR.
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - run: pipx run ruff==0.12.2 check --select E9,F src scripts tests
+
   # Which paths changed — decides whether the mirror's image needs building
   # (PRs) or deploying (main). Kept in step with AGENTS.md › Deploying to Fly.
   changes:
@@ -107,7 +143,7 @@ jobs:
     outputs:
       web: ${{ steps.diff.outputs.web }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
       - id: diff
@@ -131,7 +167,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Build
         run: docker build -t roundtable-mirror .
       - name: Boot and answer health
@@ -147,7 +183,7 @@ jobs:
 
   # Deploy only after the tests pass, and only when the push touched the mirror.
   deploy:
-    needs: [test, changes]
+    needs: [test, test-linux, lint, changes]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.web == 'true'
     uses: ./.github/workflows/deploy-fly.yml
     secrets: inherit

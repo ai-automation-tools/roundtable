@@ -825,9 +825,12 @@ def test_id_less_posts_keep_their_id_when_replies_land_above_them():
 def test_battleground_tables_are_not_synced_to_the_mirror():
     """Captured third-party page content stays local: the sidecar's column
     lists must not carry it, and /api/since must not ship it."""
-    payload_keys = set(
-        web_db.since_payload("1970-01-01T00:00:00+00:00", []).keys()
-    )
+    # Inside _Env: outside it, DB_PATH is whatever temp file the previous test
+    # set, and on Linux that test's directory is already gone.
+    with _Env():
+        payload_keys = set(
+            web_db.since_payload("1970-01-01T00:00:00+00:00", []).keys()
+        )
     assert not any("arena" in k or "battleground" in k for k in payload_keys)
     import schema
 

@@ -94,7 +94,6 @@ def setup_body(statuses: list[avail.CliStatus], declared: bool) -> str:
     element ids.
     """
     rows = "".join(_status_row(s) for s in statuses)
-    n_avail = sum(1 for s in statuses if s.available)
     max_seats = orch_seats.MAX_SEATS_PER_CLI
 
     intro_state = (

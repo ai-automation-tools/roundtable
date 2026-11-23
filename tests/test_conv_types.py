@@ -498,7 +498,6 @@ def test_one_db_path_rule():
     """Five modules each resolved the DB path, and only the MCP server checked
     what it got (audit RT-20). schema.resolve_db_path() is now the only reader
     of $AGENT_CHAT_DB; web.db and the MCP server only export it."""
-    import os
     import schema
 
     src = Path(__file__).resolve().parent.parent / "src"

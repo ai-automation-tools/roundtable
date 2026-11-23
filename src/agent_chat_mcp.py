@@ -30,8 +30,6 @@ import sqlite3
 import sys
 import time
 from datetime import datetime, timezone
-from enum import Enum
-from pathlib import Path
 from typing import Any, Container, Literal, Optional
 
 from mcp.server.mcpserver import MCPServer
@@ -44,8 +42,7 @@ from presets import BLIND_FIRST, protocol_for
 from schema import (
     SENDER_RE,
     resolve_db_path,
-    DRAFT_APPROVED, DRAFT_PENDING, DRAFT_POSTED, DRAFT_REJECTED,
-    complete_conversation, ensure_schema, write_txn,
+    DRAFT_PENDING, complete_conversation, ensure_schema, write_txn,
 )
 
 

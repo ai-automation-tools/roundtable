@@ -25,7 +25,6 @@ from __future__ import annotations
 
 import argparse
 import os
-from pathlib import Path
 
 import uvicorn
 from starlette.applications import Starlette
@@ -115,10 +114,6 @@ from web.render.orchestrate import (  # noqa: E402
     _render_orchestrate,
     _render_orchestrate_readonly,
 )
-from web.render.notifications import (  # noqa: E402
-    _render_notifications,
-    _render_notifications_readonly,
-)
 from web.render.personas import _render_personas_page  # noqa: E402
 from web.render.persona_explorer import (  # noqa: E402
     find_persona,
@@ -132,8 +127,6 @@ from web.render.notifications import (  # noqa: E402
 )
 from web.render.setup import (  # noqa: E402
     SETUP_TAB_CSS,
-    _render_setup,
-    _render_setup_readonly,
     setup_body as _setup_body,
 )
 
