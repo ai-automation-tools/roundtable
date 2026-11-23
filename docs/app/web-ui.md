@@ -385,16 +385,14 @@ anchor — `body.home a` used to outrank `.cta-solid` and painted the primary
 button's title in the fill's own emerald. Hover-underline is for prose links
 only; card and row links say "link" by moving.
 
-**Typography.** Three families loaded via a single Google-Fonts `<link>` in
-the template `<head>` (not an `@import`): **JetBrains Mono**, **IBM Plex
-Sans**, **IBM Plex Mono**. `body.home` and every heading are **IBM Plex Sans**
-with tight tracking (`-0.025em`, `-0.035em` on the hero); the hero title's
-second line is an emerald gradient (`.gr`). JetBrains Mono survives only on
-the brand wordmark. `.mono` (IBM Plex Mono) is the helper for stat numerals,
-code chips, and the featured-debate meta. Avoids the called-out cliches
-(Inter, Roboto, Arial, Space Grotesk, system mono). The org's other sites use
-Inter; this one keeps Plex deliberately, and the two read as one family at a
-glance.
+**Typography.** The org house pair, **Inter** and **JetBrains Mono**, loaded
+by one Google-Fonts stylesheet (`FONTS_HEAD` in `render/common.py`; no page
+adds an `@import`). `body.home` and every heading are Inter with tight
+tracking (`-0.025em`, `-0.035em` on the hero); the hero title's second line is
+an emerald gradient (`.gr`). `.mono` (JetBrains Mono) is the helper for stat
+numerals, code chips, the brand wordmark and the featured-debate meta. Until
+2026-11-22 the app used IBM Plex Sans/Mono; it moved to the house pair the
+homepage and the org's other sites use (audit RT-44).
 
 **Featured debates panel** (`_render_homepage_featured`, fed by
 `list_featured_debates()`). The hero's right column lists up to four

@@ -864,7 +864,7 @@ def _render_orchestrate(
   .orch-preset-hint {{ grid-area: hint; font-size: 12px; line-height: 1.45;
                        color: var(--muted-2, #71717a); }}
   .orch-preset-meta {{ grid-area: meta; font-size: 11px; margin-top: 2px;
-                       font-family: 'IBM Plex Mono', ui-monospace, monospace;
+                       font-family: 'JetBrains Mono', ui-monospace, monospace;
                        color: var(--muted-2, #71717a); opacity: 0.75; }}
   .orch-preset:hover {{ border-color: var(--border-strong, #52525b); }}
   /* "?" in the bottom-right corner. Inside the <label>, so the JS cancels the
@@ -901,7 +901,7 @@ def _render_orchestrate(
   .orch-preset-help:focus-visible ~ .orch-preset-detail {{ opacity: 1;
                                                            visibility: visible; }}
   .orch-preset-detail strong {{ color: var(--text, #e4e4e7); font-weight: 600; }}
-  .orch-preset-detail code {{ font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  .orch-preset-detail code {{ font-family: 'JetBrains Mono', ui-monospace, monospace;
                               font-size: 11px; }}
   /* Lift the hovered card so its tooltip is never painted under a neighbour. */
   .orch-preset:has(.orch-preset-help:hover),
@@ -921,7 +921,7 @@ def _render_orchestrate(
                       background: rgba(245,158,11,0.07); color: #fcd9a1; }}
   .orch-avail a {{ color: var(--accent, #10b981); }}
   .orch-avail.warn a {{ color: #fbbf24; }}
-  .orch-avail code {{ font-family: 'IBM Plex Mono', ui-monospace, monospace; }}
+  .orch-avail code {{ font-family: 'JetBrains Mono', ui-monospace, monospace; }}
 </style>
 
 <script>
