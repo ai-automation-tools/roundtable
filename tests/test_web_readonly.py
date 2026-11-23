@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import importlib
 import os
+import re
 import sys
 import tempfile
 from pathlib import Path
@@ -733,6 +734,24 @@ def test_nothing_blocks_first_paint_and_html_is_compressed():
         c = TestClient(web_ui.app, base_url=LOCAL)
         r = c.get("/conversations", headers={"Accept-Encoding": "gzip"})
         assert r.headers.get("content-encoding") == "gzip"
+
+
+def test_every_page_loads_one_font_stylesheet_in_the_house_pair():
+    """The persona console @imported a second font sheet, and the app used IBM
+    Plex while the homepage and org sites use Inter + JetBrains Mono (RT-44)."""
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
+        web_ui.set_db_path(str(Path(tmp) / "chat.db"))
+        web_ui.db_init()
+        c = TestClient(web_ui.app, base_url=LOCAL)
+        for path in ("/", "/conversations", "/personas", "/personas/manage", "/orchestrate",
+                     "/settings"):
+            page = c.get(path).text
+            assert "@import" not in page, path
+            assert "IBM Plex" not in page, path
+            sheets = set(re.findall(
+                r'href="(https://fonts\.googleapis\.com/css2[^"]+)"', page))
+            assert len(sheets) == 1, (path, sheets)
+            assert "family=Inter" in next(iter(sheets)), path
 
 def _outline(html_text: str) -> list[int]:
     import re
