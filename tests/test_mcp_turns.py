@@ -503,6 +503,64 @@ def test_two_agents_cannot_both_claim_an_arena() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Session binding (audit RT-08): a seat stays in the conversation it joined.
+# ---------------------------------------------------------------------------
+
+def test_seeding_refuses_a_seat_busy_in_an_active_run() -> None:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
+        db, cid = _seed(Path(td), ["a", "b"], max_turns=2)
+        assert seeding.busy_seats(db, ["a", "c"]) == {"a": cid}
+        try:
+            _seed(Path(td), ["a", "c"], max_turns=2)
+        except seeding.SeedError as exc:
+            assert "seat busy" in str(exc) and f"#{cid}" in str(exc), exc
+        else:
+            raise AssertionError("a busy seat was seeded into a second run")
+        _seed(Path(td), ["c", "d"], max_turns=2)  # disjoint seats are fine
+        _send("a", signal="done")                  # finish the first run...
+        _seed(Path(td), ["a", "e"], max_turns=2)  # ...and the seat is free again
+
+
+def test_a_bound_session_ignores_a_newer_conversation() -> None:
+    """repro_01: a second run containing the seat appears (a pulled row, a hand
+    seed). The agent already in run 1 keeps posting into run 1."""
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
+        db, c1 = _seed(Path(td), ["a", "b"], max_turns=3)
+        _send("a", "opening")
+        _send("b", "reply")
+        conn = sqlite3.connect(db, isolation_level=None)
+        c2 = conn.execute(
+            "INSERT INTO conversations (topic, participants, mode, max_turns, current_turn,"
+            " status, created_at, updated_at) VALUES ('t2', '[\"a\", \"c\"]', 'turns', 3,"
+            " 'a', 'active', '2026-01-01', '2026-01-01')").lastrowid
+        conn.close()
+        assert _turn_state("a")["conversation_id"] == c1
+        _send("a", "rebuttal meant for run 1")
+        landed = sqlite3.connect(db).execute(
+            "SELECT conversation_id FROM messages WHERE content LIKE 'rebuttal%'").fetchone()[0]
+        assert landed == c1
+        assert _row(db, c1)["current_turn"] == "b"
+
+        # get_kickoff is how a session joins a conversation, so it moves.
+        mcp.AGENT_ID = "a"
+        kick = json.loads(asyncio.run(mcp.get_kickoff(mcp.GetKickoffInput())))
+        assert kick["conversation_id"] == c2
+        assert _turn_state("a")["conversation_id"] == c2
+
+
+def test_a_finished_session_is_pointed_at_its_next_conversation() -> None:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
+        db, c1 = _seed(Path(td), ["a", "b"], max_turns=1)
+        _send("a")
+        _send("b")
+        _, c2 = _seed(Path(td), ["a", "c"], max_turns=1)
+        state = _turn_state("a")
+        assert state["status"] == "complete" and state["conversation_id"] == c1
+        assert state["newer_conversation_id"] == c2
+        assert "get_kickoff" in state["message"]
+
+
+# ---------------------------------------------------------------------------
 # Standalone runner (no pytest required)
 # ---------------------------------------------------------------------------
 

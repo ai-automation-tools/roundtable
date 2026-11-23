@@ -4,6 +4,12 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 ## 2026-11-22 (latest)
 
+### Fixed — a second run on a busy seat no longer hijacks the first
+
+- **Each MCP session stays in the conversation it joined.** Every tool used to resolve "the newest conversation that includes my agent id", so seeding a second run that reused a seat moved that seat's agent into it mid-debate: its next message landed in the new run and the old one sat on its turn forever. The server now binds the session on its first call (`get_kickoff()` rebinds, since that is how an agent joins a run). A finished run that has a newer one waiting says so (`newer_conversation_id` + a hint to call `get_kickoff()`).
+- **Seeding refuses a seat that is busy in an active conversation** — `start_conversation.py`, `debate.ps1`, and `/orchestrate`, which now answers `409 seat_busy` before spending preflight on it. The error names the run and how to stop it.
+- Tests: `tests/test_mcp_turns.py` (the audit's hijack, binding, the refusal, the newer-run hint), `tests/test_conv_types.py` (the 409 before preflight). Audit item RT-08.
+
 ### Fixed — a Stop racing a send, polls rewriting finished runs, and two agents claiming one arena
 
 - **A send is one transaction.** `send_message` checked the row, inserted, then moved the turn pointer as separate autocommit statements, so an operator Stop (web UI, `inspect_conversations stop`, or a stop pulled from the mirror) could land in between: the message was appended to a stopped run, the finished row got `current_turn` set again, and `complete` was delivered twice. The whole sequence now runs under `BEGIN IMMEDIATE`, so the Stop waits for it.

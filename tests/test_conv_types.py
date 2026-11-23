@@ -1104,6 +1104,38 @@ def test_a_skeptic_cannot_replace_the_last_collaborator():
                        participant_roles={"a": "facilitator", "b": "skeptic"})
 
 
+def test_orchestrate_refuses_a_busy_seat_before_preflight():
+    """A seat already in an active run is refused with 409 (audit RT-08), and
+    before preflight spends its thirty seconds."""
+    from orchestrator import preflight as orch_preflight
+
+    with tempfile.TemporaryDirectory(**_TMP) as tmp:
+        db_path = str(Path(tmp) / "chat.db")
+        status, first = _orchestrate(db_path, topic="T", conv_type="collaborate",
+                                     preset="plan", participants=["claude-code", "codex"])
+        assert status == 200, first
+        called = []
+        real = orch_preflight.run_preflight
+        orch_preflight.run_preflight = lambda seats: called.append(seats) or real(seats)
+        try:
+            import asyncio
+
+            from web.api import orchestrate as api
+
+            class _Req:
+                async def json(self):
+                    return {"topic": "T2", "conv_type": "collaborate", "preset": "plan",
+                            "participants": ["codex", "antigravity"], "spawn": False}
+
+            resp = asyncio.run(api.api_orchestrate(_Req()))
+        finally:
+            orch_preflight.run_preflight = real
+        data = json.loads(resp.body.decode())
+        assert resp.status_code == 409 and data["kind"] == "seat_busy", data
+        assert data["busy"] == {"codex": first["conversation_id"]}
+        assert not called, "preflight ran for a launch that was always going to fail"
+
+
 def test_orchestrate_seats_a_skeptic_without_adding_a_window():
     with tempfile.TemporaryDirectory(**_TMP) as tmp:
         db_path = str(Path(tmp) / "chat.db")

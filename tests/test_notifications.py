@@ -14,6 +14,7 @@ whether ntfy would accept it.
 from __future__ import annotations
 
 import json
+import sqlite3
 import os
 import sys
 import tempfile
@@ -134,6 +135,12 @@ def test_seeding_fires_the_started_event():
                        "url": f"{base}/hook", "events": ["started"]}],
         })
         from orchestrator import seeding
+        # Seeding refuses a seat that is busy in an active run (RT-08); this file
+        # seeds several runs on one DB, so finish the earlier ones first.
+        _c = sqlite3.connect(os.environ["AGENT_CHAT_DB"], isolation_level=None)
+        __import__("schema").ensure_schema(_c)
+        _c.execute("UPDATE conversations SET status = 'complete' WHERE status = 'active'")
+        _c.close()
         res = seeding.seed_conversation(
             db_path=os.environ["AGENT_CHAT_DB"],
             topic="Notification smoke test",
@@ -163,6 +170,12 @@ def test_a_broken_sink_cannot_fail_a_seed():
     })
     try:
         from orchestrator import seeding
+        # Seeding refuses a seat that is busy in an active run (RT-08); this file
+        # seeds several runs on one DB, so finish the earlier ones first.
+        _c = sqlite3.connect(os.environ["AGENT_CHAT_DB"], isolation_level=None)
+        __import__("schema").ensure_schema(_c)
+        _c.execute("UPDATE conversations SET status = 'complete' WHERE status = 'active'")
+        _c.close()
         res = seeding.seed_conversation(
             db_path=os.environ["AGENT_CHAT_DB"],
             topic="Seed survives a dead webhook",

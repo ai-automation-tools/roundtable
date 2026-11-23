@@ -440,6 +440,12 @@ def _orchestrate(db_path: str, **payload):
     web_db.set_db_path(db_path)
     web_db.db_init()
     payload.setdefault("spawn", False)
+    # Seeding refuses a seat that is busy in an active run (RT-08); this file
+    # seeds several runs on one DB, so finish the earlier ones first.
+    _c = sqlite3.connect(db_path, isolation_level=None)
+    __import__("schema").ensure_schema(_c)
+    _c.execute("UPDATE conversations SET status = 'complete' WHERE status = 'active'")
+    _c.close()
 
     class _Req:
         async def json(self):

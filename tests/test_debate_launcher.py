@@ -139,6 +139,12 @@ def test_debate_is_unchanged_by_default() -> None:
 
 def test_the_printed_podcast_flags_seed_a_podcast() -> None:
     db = Path(_env()["AGENT_CHAT_DB"])
+    # Seeding refuses a seat that is busy in an active run (RT-08); this file
+    # seeds several runs on one DB, so finish the earlier ones first.
+    _c = sqlite3.connect(db, isolation_level=None)
+    __import__("schema").ensure_schema(_c)
+    _c.execute("UPDATE conversations SET status = 'complete' WHERE status = 'active'")
+    _c.close()
     subprocess.run(
         [str(_VENV_PY), str(_ROOT / "src" / "start_conversation.py"), "--db-path", str(db),
          "--preset", "podcast", "--topic", "How do lighthouses work?",

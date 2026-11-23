@@ -24,6 +24,8 @@ One command picks a topic, **casts random personas, seeds the conversation, and 
 .\scripts\debate.ps1 -Topic "Is remote work better than office work?" -SkipPermissions
 ```
 
+**A seat can be in one active conversation at a time.** Seeding refuses a seat that is still in an active run (`seat busy: 'codex' (conversation #12) …`): stop that run first (Stop on its page, or `inspect_conversations.py stop 12`) or pick other seats.
+
 **Workflow:** run with `-DryRun` first, show the operator the cast + launch plan, then re-run the same command without `-DryRun` to actually launch. `-SkipPermissions` lets Claude Code seats call the `roundtable` tools without asking; Codex, Antigravity and OpenCode still ask for every tool, so tell the operator to watch their windows.
 
 ### The operator's request → flags
