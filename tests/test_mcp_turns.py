@@ -23,6 +23,7 @@ Runs under pytest *or* standalone with the project venv (no pytest needed):
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import sqlite3
 import sys
@@ -570,8 +571,9 @@ def test_a_bound_session_ignores_a_newer_conversation() -> None:
         conn.close()
         assert _turn_state("a")["conversation_id"] == c1
         _send("a", "rebuttal meant for run 1")
-        landed = sqlite3.connect(db).execute(
-            "SELECT conversation_id FROM messages WHERE content LIKE 'rebuttal%'").fetchone()[0]
+        with contextlib.closing(sqlite3.connect(db)) as conn:
+            landed = conn.execute(
+                "SELECT conversation_id FROM messages WHERE content LIKE 'rebuttal%'").fetchone()[0]
         assert landed == c1
         assert _row(db, c1)["current_turn"] == "b"
 

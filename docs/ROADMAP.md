@@ -51,7 +51,7 @@ From a full audit of `4f71561` (kept outside the repo). One item per PR, titled 
 - [ ] **RT-34** Move inline CSS/JS into static files; nonce CSP
 - [x] **RT-35** Align `wait_for_turn` default with client tool timeouts — done 2026-11-22: client limits checked against each CLI's source: Codex 300 s default (`tool_timeout_sec`), OpenCode v2 12 h, Claude Code no short limit, so the 180 s default fits all; only a 300 s wait on Codex was tight, so every Codex config snippet now sets `tool_timeout_sec = 330`. The seat docs' tool table said `timeout_seconds=60`; regenerated with 180. Not verified in a live 4-CLI run
 - [ ] **RT-36** Per-seat model choice
-- [ ] **RT-37** Close SQLite connections explicitly; escape quotes in the PS spawn string
+- [x] **RT-37** Close SQLite connections explicitly; escape quotes in the PS spawn string — done 2026-11-22: `schema.ClosingConnection`, a `sqlite3.Connection` whose `with` also closes, is the factory for every connect helper (MCP server, web UI, personas, inspect, sync sidecar); under Python 3.13 with ResourceWarnings on, the full suite went from 881 unclosed-connection warnings (854 from `src/`/`scripts/`) to 0. The seat launch command quotes every path with `''` escaping, so a clone or launch folder with an apostrophe parses (pinned by a PowerShell-parser test)
 - [ ] **RT-42** Mirror and registry polish
 - [x] **RT-44** House style: Inter body font — done 2026-11-22: the app uses the house pair, Inter and JetBrains Mono (was IBM Plex Sans/Mono), from one stylesheet; the persona console's second `@import` is gone, so a page makes one font request set
 
