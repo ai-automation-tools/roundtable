@@ -434,11 +434,8 @@ function New-AgentLaunchPlan {
         # First thing the window does: record its PID and start time, so the web
         # UI's "close windows" can end exactly this process tree (audit RT-21).
         $pidFile = Join-Path $LaunchDir ("conv{0}-{1}.pid" -f $ConvId, $a.Cli)
-        $record  = "Set-Content -LiteralPath '$pidFile' -Value " + '("$PID " + (Get-Process -Id $PID).StartTime.ToFileTimeUtc()); '
-        $cmd     = $record + "Set-Location -LiteralPath '$dir'; $scrub$($spec.EnvPrefix)$($spec.Pre)$($spec.Exe)$modelArg $argPart$deny$allow"
-
         $record  = "Set-Content -LiteralPath $(ConvertTo-PsLiteral $pidFile) -Value " + '("$PID " + (Get-Process -Id $PID).StartTime.ToFileTimeUtc()); '
-        $cmd     = $record + "Set-Location -LiteralPath $(ConvertTo-PsLiteral $dir); $scrub$($spec.EnvPrefix)$($spec.Pre)$($spec.Exe) $argPart$deny$allow"
+        $cmd     = $record + "Set-Location -LiteralPath $(ConvertTo-PsLiteral $dir); $scrub$($spec.EnvPrefix)$($spec.Pre)$($spec.Exe)$modelArg $argPart$deny$allow"
 
         [pscustomobject]@{ Cli = $a.Cli; PromptFile = $promptFile; LaunchDir = $dir; Command = $cmd }
     }
