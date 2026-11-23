@@ -4,6 +4,12 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 ## 2026-11-22 (latest)
 
+### Fixed — one rule for which database a process opens; the MCP server's persona tools follow `--db-path`
+
+- **`schema.resolve_db_path()` replaces five copies** (MCP server, web UI, `inspect_conversations`, seeding, personas, delivery): `--db-path` > `$AGENT_CHAT_DB` > `<repo>/db/chat.db`, always absolute. Only the MCP server's copy used to check the environment value; now every process refuses a relative `AGENT_CHAT_DB` or one pointing into a missing folder.
+- **The MCP server's `list_personas` / `get_persona` read the server's own database.** With `--db-path X` they followed `$AGENT_CHAT_DB` instead, so they served personas from a different file than the conversation. The server also exports the path it settled on, and refuses a relative `--db-path` (a CLI starts it from its seat folder, where that names an empty database).
+- Tests: `tests/test_conv_types.py`. Audit item RT-20.
+
 ### Changed — notification URLs are parsed, not prefix-matched
 
 - **Settings → Notifications parses every URL it takes.** The ntfy/Gotify server and the Discord, Slack and raw webhook URLs must be `http(s)://` with a host (Discord and Slack `https://`). The server fields weren't checked at all, and Python's `urllib` will open `file://`. `post_webhook()` now refuses any non-http(s) URL, so a hand-edited config can't do it either.

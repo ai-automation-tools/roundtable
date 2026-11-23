@@ -40,6 +40,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import schema
+
 from . import export
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -557,12 +559,7 @@ _SINKS = {
 def resolve_db_path(db_path: str | None = None) -> str:
     """``db_path`` > ``$AGENT_CHAT_DB`` > ``<repo>/db/chat.db`` — the same
     precedence the MCP server uses."""
-    if db_path:
-        return db_path
-    env = os.environ.get("AGENT_CHAT_DB")
-    if env:
-        return env
-    return str(_REPO_ROOT / "db" / "chat.db")
+    return db_path or schema.resolve_db_path()
 
 
 def deliver(cid: int, event: str, db_path: str | None = None,

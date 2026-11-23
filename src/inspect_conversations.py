@@ -41,7 +41,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from orchestrator import delivery, watchdog  # noqa: E402
-from schema import complete_conversation  # noqa: E402
+from schema import complete_conversation, resolve_db_path  # noqa: E402
 
 
 def _default_db_path() -> str:
@@ -50,10 +50,10 @@ def _default_db_path() -> str:
     The computed default sits one level above this script (src/), so a fresh
     clone Just Works without any flag or env var: `<repo>/db/chat.db`.
     """
-    env_db = os.environ.get("AGENT_CHAT_DB")
-    if env_db:
-        return env_db
-    return str((Path(__file__).resolve().parent.parent / "db" / "chat.db"))
+    try:
+        return resolve_db_path()
+    except ValueError as e:
+        raise SystemExit(str(e)) from None
 
 
 def connect(db_path: str) -> sqlite3.Connection:
@@ -327,8 +327,10 @@ def main() -> int:
         line = delivery.send_alert(args.text)
         print(line)
         return 1 if line.startswith("ERROR") else 0
-    if not args.db_path:
-        args.db_path = _default_db_path()
+    try:
+        args.db_path = resolve_db_path(args.db_path)
+    except ValueError as e:
+        raise SystemExit(str(e)) from None
 
     # `deliver --init` / `deliver --show` are config-only: they must work on a
     # clone that has never seeded a conversation, so they run before the

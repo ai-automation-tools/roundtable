@@ -45,6 +45,7 @@ from orchestrator.conv_types import (  # noqa: E402
     get_conv_type,
 )
 from presets import PRESET_NAMES, get_preset  # noqa: E402
+from schema import resolve_db_path  # noqa: E402
 
 
 def main() -> int:
@@ -112,7 +113,10 @@ def main() -> int:
                         "Written by scripts/debate.ps1; optional.")
     args = p.parse_args()
 
-    db_path = args.db_path or seeding.default_db_path()
+    try:
+        db_path = resolve_db_path(args.db_path)
+    except ValueError as e:
+        raise SystemExit(str(e)) from None
 
     participant_personas = None
     if args.participant_personas_file:
