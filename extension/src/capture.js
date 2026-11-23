@@ -83,10 +83,17 @@
     return h.toString(36);
   };
 
+  // The page chooses its own links: only http(s) ever leaves the tab, or a
+  // `javascript:` permalink would run on the console's origin when clicked.
+  const httpOnly = (u) => (typeof u === 'string' && /^https?:\/\//i.test(u) ? u : undefined);
+
   const post = (id, author, body, extra = {}) => {
     const t = clean(body);
     if (!t) return null;
-    return { id: String(id || `p-${hash(t.slice(0, 120))}`), author: clean(author) || 'unknown', text: t, ...extra };
+    return {
+      id: String(id || `p-${hash(t.slice(0, 120))}`), author: clean(author) || 'unknown', text: t,
+      ...extra, permalink: httpOnly(extra.permalink),
+    };
   };
 
   /**

@@ -358,15 +358,22 @@ bearer token or an n8n auth header goes.
 
 ## 🔧 The command sink
 
-Runs an argv against the folder the folder sink just wrote. `{dir}`, `{cid}`,
-`{topic}` and `{event}` are substituted into each token; the working directory
-is the repo root.
+Runs an argv against the folder the folder sink just wrote. `{dir}`, `{cid}`
+and `{event}` are substituted into each token; the working directory is the
+repo root. The topic is text an agent or the mirror supplied, so it never
+reaches the command line: read `ROUNDTABLE_TOPIC` (and `ROUNDTABLE_CID`,
+`ROUNDTABLE_STATUS`, `ROUNDTABLE_EVENT`, `ROUNDTABLE_DIR`) from the
+environment. An argv still containing `{topic}` is refused.
 
 ```jsonc
 { "type": "command", "enabled": true,
-  "argv": ["pwsh", "-NoProfile", "-Command",
-           "Copy-Item -Recurse -Force {dir} 'D:/Obsidian/Vault/Agent-Chat/'"] }
+  "argv": ["pwsh", "-NoProfile", "-File", "scripts/copy-to-vault.ps1", "{dir}"] }
 ```
+
+**A shell evaluating a string is refused** (`pwsh`/`powershell`/`cmd`/`bash`/`sh`
+with `-Command`, `-c`, `/c`, `-EncodedCommand`): call a script file instead. If
+you really want one, add `"allow_shell": true` to the sink by hand; the
+Settings form never sets it and keeps it when it's there.
 
 This is the escape hatch that means a fourth sink never needs writing — git
 commit, `gh gist create`, a copy into a notes vault, mail. **It requires the
