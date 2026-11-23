@@ -6,6 +6,12 @@ Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changel
 
 ## 2026-11-22 (latest)
 
+### Fixed — database handles are closed; a path with an apostrophe launches
+
+- **`with connect() as conn:` now closes the connection.** sqlite3's own `with` only commits, so every request, tool call and sync pass left a handle for the garbage collector. Python 3.13+ warns about each one; the suite produced 881 warnings and now produces none.
+- **Seat windows launch from a folder named like `Mike's Projects`.** The launch command wrapped paths in `'…'` without escaping the apostrophe, so the command line broke.
+- Audit item RT-37.
+
 ### Changed — the docs every agent loads are a quarter of the size
 
 - **`AGENTS.md` is 13 KB, down from 58 KB.** Every agent session, and every Claude Code seat, loads it. The per-area rules (database and MCP server, web UI, AgentBattleground, delivery, conversation types and personas, testing, docs/git/deploy) moved verbatim to [`docs/maintainers/`](maintainers/README.md), one file per area; `AGENTS.md` keeps the rule most often broken in each area and a link.

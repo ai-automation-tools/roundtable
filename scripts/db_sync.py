@@ -61,7 +61,9 @@ from typing import Any
 # The synced column lists live in src/schema.py (stdlib only), shared with
 # /api/ingest so the two ends can't drift.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from schema import CONV_COLUMNS, MSG_COLUMNS, PERSONA_COLS_SQL, PERSONA_COLUMNS  # noqa: E402,F401
+from schema import (  # noqa: E402,F401
+    CONV_COLUMNS, MSG_COLUMNS, PERSONA_COLS_SQL, PERSONA_COLUMNS, ClosingConnection,
+)
 
 
 
@@ -312,7 +314,7 @@ def rewind_push_watermarks(state: State) -> State:
 # ---------------------------------------------------------------------------
 
 def _connect(db_path: Path) -> sqlite3.Connection:
-    conn = sqlite3.connect(str(db_path), timeout=10.0)
+    conn = sqlite3.connect(str(db_path), timeout=10.0, factory=ClosingConnection)
     conn.row_factory = sqlite3.Row
     # Read-only enough for our purposes; WAL is set by the writer process.
     return conn
@@ -572,7 +574,7 @@ def apply_pull(
         if c.get("status") == "complete" and c.get("updated_at") and c.get("id") is not None
     ]
     if deleted_ids or stops:
-        with sqlite3.connect(str(db_path), timeout=10.0) as conn:
+        with _connect(db_path) as conn:
             try:
                 conn.execute("BEGIN")
                 if deleted_ids:

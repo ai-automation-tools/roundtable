@@ -51,7 +51,7 @@ From a full audit of `4f71561` (kept outside the repo). One item per PR, titled 
 - [ ] **RT-34** Move inline CSS/JS into static files; nonce CSP
 - [ ] **RT-35** Align `wait_for_turn` default with client tool timeouts
 - [ ] **RT-36** Per-seat model choice
-- [ ] **RT-37** Close SQLite connections explicitly; escape quotes in the PS spawn string
+- [x] **RT-37** Close SQLite connections explicitly; escape quotes in the PS spawn string — done 2026-11-22: `schema.ClosingConnection`, a `sqlite3.Connection` whose `with` also closes, is the factory for every connect helper (MCP server, web UI, personas, inspect, sync sidecar); under Python 3.13 with ResourceWarnings on, the full suite went from 881 unclosed-connection warnings (854 from `src/`/`scripts/`) to 0. The seat launch command quotes every path with `''` escaping, so a clone or launch folder with an apostrophe parses (pinned by a PowerShell-parser test)
 - [ ] **RT-42** Mirror and registry polish
 - [ ] **RT-44** House style: Inter body font
 
