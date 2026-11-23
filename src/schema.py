@@ -90,7 +90,8 @@ CREATE TABLE IF NOT EXISTS conversations (
     kickoff_template  TEXT,                  -- rendered template body returned by get_kickoff()
     participant_personas TEXT,               -- JSON: {agent_id: {persona_slug, persona_name, persona_body}} (debate-mode casts)
     conv_type         TEXT NOT NULL DEFAULT 'debate',  -- structure: see orchestrator/conv_types.py
-    participant_roles TEXT                   -- JSON: {agent_id: <role>} — roles per type, see orchestrator/conv_types.py
+    participant_roles TEXT,                  -- JSON: {agent_id: <role>} — roles per type, see orchestrator/conv_types.py
+    max_minutes       INTEGER                -- wall-clock cap from created_at; NULL = none (audit RT-21)
 );
 
 CREATE TABLE IF NOT EXISTS messages (
@@ -171,6 +172,8 @@ MIGRATIONS = (
      "ALTER TABLE conversations ADD COLUMN conv_type TEXT NOT NULL DEFAULT 'debate'"),
     ("conversations", "participant_roles",
      "ALTER TABLE conversations ADD COLUMN participant_roles TEXT"),
+    ("conversations", "max_minutes",
+     "ALTER TABLE conversations ADD COLUMN max_minutes INTEGER"),
     ("battleground_arenas", "reply_to", "ALTER TABLE battleground_arenas ADD COLUMN reply_to TEXT"),
     ("personas", "avatar_mime", "ALTER TABLE personas ADD COLUMN avatar_mime TEXT"),
     ("personas", "avatar_data", "ALTER TABLE personas ADD COLUMN avatar_data TEXT"),
@@ -183,7 +186,7 @@ CONV_COLUMNS = (
     "id", "topic", "participants", "mode", "max_turns",
     "current_turn", "status", "end_reason", "created_at", "updated_at",
     "preset", "kickoff_template", "participant_personas",
-    "conv_type", "participant_roles",
+    "conv_type", "participant_roles", "max_minutes",
 )
 MSG_COLUMNS = (
     "id", "conversation_id", "sender", "content", "signal", "created_at",

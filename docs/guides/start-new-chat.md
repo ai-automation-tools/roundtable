@@ -268,6 +268,25 @@ Conversations end on:
 - Either agent hitting `--max-turns` (the natural cap).
 - An operator running `inspect_conversations.py stop <id>` or clicking
   **Stop conversation** in the hosted UI.
+- A time limit: `--max-minutes N` (or *Time limit* on `/orchestrate`) ends the
+  run with `end_reason` `time limit (N min)` on the first agent call after N
+  minutes.
+
+Stopping reaches an agent at its next MCP call, so one in the middle of a long
+tool call keeps working until it returns. For windows `/orchestrate` or
+`debate.ps1` opened, the page's **Stop** then offers to **close them**: each
+window recorded its PID when it started, and only a process with that PID *and*
+that start time is ended.
+
+**Kill switch:** while `config/NO_SPAWN` exists, nothing spawns. `/orchestrate`
+refuses a launch with auto-spawn before seeding (409 `spawn_disabled`), and
+`debate.ps1` / `orchestrate-debate.ps1` refuse before opening a window. Delete
+the file to switch spawning back on:
+
+```powershell
+New-Item config\NO_SPAWN -ItemType File   # off
+Remove-Item config\NO_SPAWN               # on again
+```
 
 The conversation row flips to `status='complete'`, the live view shows
 "complete" instead of the live indicator, and `wait_for_turn` returns

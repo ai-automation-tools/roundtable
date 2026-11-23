@@ -634,6 +634,24 @@ def test_exhausted_seats_are_one_query() -> None:
         assert not any("AND sender = ?" in q for q in sql), sql
 
 
+def test_a_run_past_its_time_limit_ends_on_the_next_call() -> None:
+    """Audit RT-21: a wall-clock cap, checked by the stop rule (the watchdog
+    must stay read-only)."""
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
+        db = Path(td) / "chat.db"
+        cid = seeding.seed_conversation(
+            db_path=str(db), topic="clock", participants=["a", "b"], mode="turns",
+            max_turns=10, max_minutes=5).conversation_id
+        mcp.DB_PATH = str(db)
+        assert _turn_state("a")["status"] == "your_turn"
+        c = sqlite3.connect(db, isolation_level=None)
+        c.execute("UPDATE conversations SET created_at = '2020-01-01T00:00:00+00:00' WHERE id = ?", (cid,))
+        c.close()
+        state = _turn_state("a")
+        assert state["status"] == "complete", state["status"]
+        assert _row(str(db), cid)["end_reason"] == "time limit (5 min)"
+
+
 def test_a_late_turn_returns_only_new_messages() -> None:
     """The audit's case: 28 messages in, a turn call returns what arrived since
     this session last looked, not the 28."""

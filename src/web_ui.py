@@ -46,6 +46,7 @@ from web.api.conversations import (  # noqa: E402
     api_conversation_prompt,
     api_conversations,
     api_delete,
+    api_close_windows,
     api_stop,
     api_stream,
 )
@@ -369,6 +370,7 @@ routes = [
     Route("/api/conversations/{cid:int}/export.zip", api_conversation_export_zip),
     Route("/api/conversations/{cid:int}/prompts/{kind}.md", api_conversation_prompt),
     Route("/api/conversations/{cid:int}/stop", api_stop, methods=["POST"]),
+    Route("/api/conversations/{cid:int}/close-windows", api_close_windows, methods=["POST"]),
     Route("/api/conversations/{cid:int}/delete", api_delete, methods=["POST"]),
     Route("/api/conversations/{cid:int}/stream", api_stream),
     Route("/api/ingest", api_ingest, methods=["POST"]),

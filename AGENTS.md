@@ -37,7 +37,8 @@ src/
                              #   seats.py (agent-id grammar) · preflight.py · personas.py ·
                              #   model_personas.py · media_prompts.py · export.py (bundle contract) ·
                              #   delivery.py (push a finished conversation out — off by default) ·
-                             #   watchdog.py (notice a stalled run — reuses delivery's sinks)
+                             #   watchdog.py (notice a stalled run — reuses delivery's sinks) ·
+                             #   killswitch.py (config/NO_SPAWN + close a run's seat windows)
 
 agents/         # CLIs/<cli>_agent1|2 = one folder per SEAT (role doc + MCP config; make new
                 #   seats with scripts/setup/add_agent_seat.py). The four role docs are

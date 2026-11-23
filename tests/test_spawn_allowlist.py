@@ -21,11 +21,13 @@ and skip without it. They need no venv and no DB.
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent.parent
@@ -122,6 +124,64 @@ def test_the_opencode_seat_denies_everything_but_roundtable() -> None:
     assert perm["read"] == "allow" and perm["roundtable_*"] == "allow", perm
     assert perm["external_directory"]["*"] == "deny", perm
     assert list(cfg["mcp"]) == ["roundtable"], cfg["mcp"]
+
+
+# ---------------------------------------------------------------------------
+# Audit RT-21: the hard stop
+# ---------------------------------------------------------------------------
+
+def test_every_window_records_its_pid_first() -> None:
+    if not _PWSH:
+        return
+    for seat, cmd in _plan(False).items():
+        assert cmd.startswith("Set-Content -LiteralPath '"), (seat, cmd)
+        assert f"conv7-{seat}.pid'" in cmd, (seat, cmd)
+        assert "StartTime.ToFileTimeUtc()" in cmd, (seat, cmd)
+        assert cmd.index(".pid'") < cmd.index("Set-Location"), (seat, cmd)
+
+
+def test_no_spawn_refuses_a_launch() -> None:
+    if not _PWSH:
+        return
+    flag = Path(tempfile.mkdtemp(prefix="agentchat-nospawn-")) / "NO_SPAWN"
+    lib = _ROOT / "scripts" / "lib" / "spawn-agents.ps1"
+    script = (f". '{lib}'; try {{ Invoke-AgentLaunch -LaunchPlan @() ; 'launched' }} "
+              "catch { 'refused: ' + $_ }")
+    env = {**os.environ, "AGENT_CHAT_NO_SPAWN_FILE": str(flag)}
+    run = lambda: subprocess.run([_PWSH, "-NoProfile", "-NonInteractive", "-Command", script],
+                                 capture_output=True, text=True, env=env, timeout=60).stdout
+    assert "launched" in run()
+    flag.write_text("", encoding="utf-8")
+    assert "refused: spawning is switched off" in run()
+
+
+def test_close_windows_ends_the_recorded_process_and_nothing_else() -> None:
+    """Stop only reaches an agent at its next MCP call; "close windows" ends
+    the seat's process tree. A PID file whose start time doesn't match the live
+    process (a reused PID) is never acted on."""
+    if not _PWSH or sys.platform != "win32":
+        return
+    sys.path.insert(0, str(_ROOT / "src"))
+    from orchestrator import killswitch
+    launch = Path(tempfile.mkdtemp(prefix="agentchat-pids-"))
+    pid_file = launch / "conv9-codex.pid"
+    record = (f"Set-Content -LiteralPath '{pid_file}' -Value "
+              '("$PID " + (Get-Process -Id $PID).StartTime.ToFileTimeUtc()); ')
+    seat = subprocess.Popen([_PWSH, "-NoProfile", "-Command", record + "Start-Sleep 120"])
+    try:
+        for _ in range(100):
+            if pid_file.exists() and pid_file.read_text(encoding="utf-8-sig").strip():
+                break
+            time.sleep(0.1)
+        # A stale file pointing at a live process with another start time.
+        (launch / "conv9-claude-code.pid").write_text(f"{os.getpid()} 123", encoding="utf-8")
+        got = killswitch.close_seat_windows(9, launch)
+        assert got == {"codex": "closed", "claude-code": "gone"}, got
+        seat.wait(timeout=20)
+        assert killswitch.pid_files(9, launch) == []
+    finally:
+        if seat.poll() is None:
+            seat.kill()
 
 
 def _main() -> int:

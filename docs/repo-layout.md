@@ -40,6 +40,7 @@ roundtable/
 │       ├── availability.py       #   which CLIs THIS machine has (detect + declare) + seat planner
 │       ├── personas.py           #   DB-backed persona registry + groups + JSON CLI
 │       ├── delivery.py           #   push a finished conversation out — folder/webhook/command sinks
+│       ├── killswitch.py         #   config/NO_SPAWN + close a run's seat windows
 │       ├── watchdog.py           #   notice a run that went quiet; fires delivery's 'stalled' event
 │       ├── model_personas.py     #   built-in AI-Models cards (one per CLI) — Cast fallback
 │       └── export.py             #   export-bundle renderers — single source of truth

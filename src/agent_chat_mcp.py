@@ -29,7 +29,7 @@ import os
 import sqlite3
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Container, Literal, Optional
 
 from mcp.server.mcpserver import MCPServer
@@ -384,6 +384,15 @@ def next_turn_agent(participants: list[str], current: str,
 def evaluate_stop(conn: sqlite3.Connection, conv: sqlite3.Row) -> Optional[str]:
     """Return an end_reason string if the conversation should stop, else None."""
     participants = json.loads(conv["participants"])
+
+    # Wall-clock cap (audit RT-21). Checked here, on every poll and send, not by
+    # the watchdog, which must stay read-only. A run nobody polls stays open
+    # until someone does; the watchdog flags that stall.
+    limit = conv["max_minutes"] if "max_minutes" in conv.keys() else None
+    if limit:
+        started = datetime.fromisoformat(str(conv["created_at"]).replace("Z", "+00:00"))
+        if datetime.now(timezone.utc) - started >= timedelta(minutes=int(limit)):
+            return f"time limit ({int(limit)} min)"
 
     # Per-agent message cap. **Every** agent must be spent, not just one.
     #
