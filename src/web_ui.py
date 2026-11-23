@@ -146,6 +146,7 @@ from web.db import (  # noqa: E402,F401
     list_stats,
     set_db_path,
 )
+from schema import resolve_db_path  # noqa: E402
 from web.security import (  # noqa: E402,F401
     BasicAuthMiddleware,
     CrossSiteWriteGuard,

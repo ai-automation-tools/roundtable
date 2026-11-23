@@ -556,6 +556,33 @@ def test_mcp_server_db_path_reaches_the_persona_tools():
             os.environ["AGENT_CHAT_DB"] = env
 
 
+def test_web_ui_main_starts_on_a_given_db_path():
+    """main() resolves --db-path and reaches uvicorn.run. Nothing else runs it
+    that far, which let a missing import ship to the image build (RT-20)."""
+    import os
+    import sys as _sys
+    import tempfile
+
+    import web_ui
+
+    started = {}
+    real_run, argv, env = web_ui.uvicorn.run, _sys.argv, os.environ.get("AGENT_CHAT_DB")
+    web_ui.uvicorn.run = lambda app, **kw: started.update(kw)
+    try:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
+            db = str(Path(tmp) / "chat.db")
+            _sys.argv = ["web_ui.py", "--db-path", db, "--port", "8799"]
+            web_ui.main()
+            assert started.get("port") == 8799, started
+            assert os.environ["AGENT_CHAT_DB"] == db
+    finally:
+        web_ui.uvicorn.run, _sys.argv = real_run, argv
+        if env is None:
+            os.environ.pop("AGENT_CHAT_DB", None)
+        else:
+            os.environ["AGENT_CHAT_DB"] = env
+
+
 def test_mcp_server_refuses_a_relative_db_path():
     import subprocess
     import sys as _sys
