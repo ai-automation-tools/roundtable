@@ -6,6 +6,14 @@ Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changel
 
 ## 2026-11-22 (latest)
 
+### Changed — the mirror and the persona registry say what they do
+
+- **Hosted mirror:** the home page's launch buttons read *Run a debate locally* (and podcast, collaboration), since they open the run-it-yourself explainer, and *+ New conversation* is gone.
+- **Persona explorer:** after a search the page title reads *N of M — Browse* and focus moves to the result count, so a screen reader announces it; on a phone the three filters stack instead of truncating.
+- **Registry:** the rail's *Persona registry* entry has its own icon (it shared *Personas*'), and the registry's header link is *← Roundtable*, same tab, back to the demo.
+- **Homepage:** 76 seed personas, not 62 — the number a fresh clone imports, now checked by a test.
+- Audit item RT-42.
+
 ### Fixed — the hosted mirror stops describing its own container
 
 - **Reads about the local machine are `404` on the mirror:** `/api/setup` (it listed container paths and `/root/.claude.json`), `/api/settings/*` and `/api/notifications`. Writes there are still the read-only `403`.

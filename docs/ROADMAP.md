@@ -52,7 +52,7 @@ From a full audit of `4f71561` (kept outside the repo). One item per PR, titled 
 - [ ] **RT-35** Align `wait_for_turn` default with client tool timeouts
 - [ ] **RT-36** Per-seat model choice
 - [ ] **RT-37** Close SQLite connections explicitly; escape quotes in the PS spawn string
-- [ ] **RT-42** Mirror and registry polish
+- [x] **RT-42** Mirror and registry polish — done 2026-11-22: on the mirror the home CTAs read *Run a debate/podcast/collaboration locally* and *+ New conversation* is gone; an explorer search puts "N of M" in the title and moves focus to the count; the three selects stack below 420 px; the rail's *Persona registry* has its own icon and the registry's header links back same-tab (the demo on the mirror, `/` locally); the homepage says 76 seed personas, pinned to what a fresh clone imports
 - [x] **RT-44** House style: Inter body font — done 2026-11-22: the app uses the house pair, Inter and JetBrains Mono (was IBM Plex Sans/Mono), from one stylesheet; the persona console's second `@import` is gone, so a page makes one font request set
 
 ### 🔴 High

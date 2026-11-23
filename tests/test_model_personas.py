@@ -163,6 +163,18 @@ def test_a_group_readme_is_documentation_not_a_persona() -> None:
     assert slugs == ["full-stack-developer"], slugs
 
 
+def test_the_homepage_counts_the_seed_cards_it_ships() -> None:
+    """The product homepage said 62 seed personas while the repo shipped 76
+    (audit RT-42). The number on the page must be what a fresh clone imports."""
+    import re as _re
+    _fresh_db()
+    from orchestrator import personas
+    n = personas.import_personas_from_files()["imported"]
+    page = (Path(__file__).resolve().parent.parent / "homepage" / "index.html").read_text(encoding="utf-8")
+    said = _re.search(r"<b>(\d+) seed personas</b>", page)
+    assert said and int(said.group(1)) == n, (said and said.group(1), n)
+
+
 def test_the_importer_reads_every_depth_of_the_card_tree() -> None:
     """Cards sit one, two and three folders down; reading one level found 11
     of 76 (audit RT-23). A dated card folder is not the card's group."""
