@@ -168,7 +168,7 @@ From a full audit of `4f71561` (kept outside the repo). One item per PR, titled 
 - [x] **RT-17** SSE: drain final messages before `complete`; 400 on a bad `since`; cap streams — done 2026-11-22: the stream reads the turn state before the messages, so `complete` never beats the final message; a non-integer `since` is a 400; 100 streams per process and 10 per client (`Fly-Client-IP` on the mirror), else 429; `fly.toml` sets a 200-connection hard limit
 - [x] **RT-18** Harden transcript rendering and ingest validation — 🔒 Needs owner — done 2026-11-22: sender/signal escaped where they become class names (server and live-append JS); `schema.SENDER_RE` / `SIGNALS` checked at MCP startup and at ingest; ingest type-checks rows and caps the body at 32 MB (413)
 - [x] **RT-19** Harden notification URL handling — 🔒 Needs owner — done 2026-11-22: form URLs parsed with `urlsplit` (http/https + host; Discord/Slack https), service inferred from the host, `post_webhook` refuses other schemes, *Send test* reports the status without the upstream body. Dismissing CodeQL #2 (test-only) is the owner's click
-- [ ] **RT-20** One DB-path resolver
+- [x] **RT-20** One DB-path resolver — done 2026-11-22: `schema.resolve_db_path()` replaces five resolvers and is the only reader of `$AGENT_CHAT_DB`; the MCP server refuses a relative `--db-path`, exports what it resolved, and points the persona tools at its own DB (repro_09 gone). `paths.py` / shared `now_iso` / `atomic_write_json` skipped
 - [ ] **RT-21** Hard stop: seat PIDs, close windows, wall-clock cap, `NO_SPAWN`
 - [ ] **RT-22** Real-person personas: disclosure and import review (owner decision) — 🔒 Needs owner
 - [ ] **RT-23** Remove persona zips and cover PNGs from the repo (owner decision) — 🔒 Needs owner

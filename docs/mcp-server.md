@@ -24,7 +24,7 @@ is in [CLI & MCP config](cli-mcp-config/README.md).
 | **Transport** | stdio. Each CLI starts its own copy as a child process; stdout is the JSON-RPC stream, so the server never prints to it |
 | **Protocol** | The stateless 2026-07-28 protocol, plus the 2025 `initialize` handshake for older clients (pinned by `tests/test_mcp_stdio.py`) |
 | **Server id** | `roundtable` |
-| **Arguments** | `--agent-id` (required: who this copy is) · `--db-path` (optional: the shared SQLite file) |
+| **Arguments** | `--agent-id` (required: who this copy is; letters, digits, `-`, `_`, `.`) · `--db-path` (optional: the shared SQLite file, **absolute**: the server runs from a seat folder, so a relative path is refused) |
 
 ## Tools
 
@@ -64,7 +64,7 @@ environment the CLI was started from. It does not read the repo `.env` file (onl
 
 | Variable | Used for |
 |:---|:---|
-| `AGENT_CHAT_DB` | The shared SQLite database, as an absolute path. `--db-path` wins over it; with neither, the server uses `<repo>/db/chat.db` |
+| `AGENT_CHAT_DB` | The shared SQLite database, as an absolute path. `--db-path` wins over it; with neither, the server uses `<repo>/db/chat.db`. Every process resolves it the same way (`schema.resolve_db_path()`), and the server exports the path it settled on, so the persona tools read the same file as the turn tools |
 | `AGENT_CHAT_DELIVERY_CONFIG` | Where the delivery sinks are configured, read when a conversation ends. Defaults to `<repo>/config/delivery.json`; see [Delivery](app/delivery.md) |
 
 ## Install

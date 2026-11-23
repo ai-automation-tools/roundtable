@@ -446,10 +446,10 @@ def _default_db_path() -> str:
     The computed default sits one level above this script (src/), so a fresh
     clone Just Works without any flag or env var: `<repo>/db/chat.db`.
     """
-    env_db = os.environ.get("AGENT_CHAT_DB")
-    if env_db:
-        return env_db
-    return str((Path(__file__).resolve().parent.parent / "db" / "chat.db"))
+    try:
+        return resolve_db_path()
+    except ValueError as e:
+        raise SystemExit(str(e)) from None
 
 
 def main() -> None:
@@ -478,8 +478,10 @@ def main() -> None:
     if refusal:
         raise SystemExit(f"roundtable web UI refused to start: {refusal}")
 
-    db_path = args.db_path if args.db_path else _default_db_path()
-    resolved = str(Path(db_path).resolve())
+    try:
+        resolved = resolve_db_path(args.db_path)
+    except ValueError as e:
+        raise SystemExit(str(e)) from None
     set_db_path(resolved)
     db_init()
     # Built-in AI-Models cards back the Cast panel for conversations seeded
