@@ -226,4 +226,24 @@ if (-not $SkipConversations) {
     }
 }
 
+# --- Alert -----------------------------------------------------------------
+# A repair that didn't take used to fail into healthcheck.log, which nobody
+# reads at 3am (a 14-hour outage on 2026-11-10 went unseen). One alert per
+# outage through the Notifications sink, if one is armed: the marker file
+# stops a ten-minute timer from paging every run, and clears once healthy.
+$Marker = Join-Path $LogDir '.health-alerted'
+if ($problems -gt 0 -and $Repair) {
+    if (-not (Test-Path $Marker)) {
+        $inspect = Join-Path $ProjectRoot 'src\inspect_conversations.py'
+        try {
+            $sent = & $Python $inspect alert "Roundtable on $env:COMPUTERNAME is still down after a restart ($problems problem(s)) -- see $HealthLog" 2>&1
+            Write-HealthLog "alert: $sent" 'WARN'
+            New-Item -ItemType File -Path $Marker -Force | Out-Null
+        } catch { Write-HealthLog "alert: could not send -- $($_.Exception.Message)" 'WARN' }
+    }
+} elseif ($problems -le 0 -and (Test-Path $Marker)) {
+    Remove-Item $Marker -Force -ErrorAction SilentlyContinue
+    Write-HealthLog 'alert: cleared (healthy again)'
+}
+
 exit ([Math]::Max(0, $problems))
