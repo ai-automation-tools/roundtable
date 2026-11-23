@@ -365,7 +365,10 @@ def test_powershell_and_python_agree_on_the_seat_root():
               f"{{ (Resolve-AgentSeat -AgentId $s -RepoRoot '{_ROOT}').Dir }}")
     real = os.environ.pop(seats.SEATS_DIR_ENV, None)
     try:
-        for override in (None, tempfile.mkdtemp(prefix="agentchat-seatroot-")):
+        # resolve(): a CI runner's temp dir is an 8.3 short name (RUNNER~1),
+        # which .NET expands and Python's abspath keeps — same folder, two spellings.
+        tmp = str(Path(tempfile.mkdtemp(prefix="agentchat-seatroot-")).resolve())
+        for override in (None, tmp):
             env = {k: v for k, v in os.environ.items() if k != seats.SEATS_DIR_ENV}
             if override:
                 env[seats.SEATS_DIR_ENV] = override
