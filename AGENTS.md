@@ -59,7 +59,7 @@ tests/          # pytest-compatible AND standalone-runnable
 .claude/        # Claude Code config. agents/ + commands/ + skills/ are TRACKED; the rest is local.
 ```
 
-When you add a new top-level concern, update this map (here in `AGENTS.md`), `docs/repo-layout.md`, and the README's layout tree. When moving files under `docs/` or `agents/`, also update the README doc index, the `mikesailab` project memory (`project_mikesailab_design_system.md`), and relative `../` paths inside the moved files.
+When you add a new top-level concern, update this map (here in `AGENTS.md`), `docs/repo-layout.md`, and the README's layout tree. When moving files under `docs/` or `agents/`, also update the README doc index and relative `../` paths inside the moved files.
 
 ---
 

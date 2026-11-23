@@ -6,6 +6,14 @@ Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changel
 
 ## 2026-11-22 (latest)
 
+### Fixed — docs that named a dead host, wrong counts and one machine's paths
+
+- `/deploy-fly` and the bug template point at `roundtable-demo.ai-automation-tools.dev`; the old `agent-chat-demo` host answers 400.
+- The README calls the app Roundtable (AgentBattleground is the extension) and its badge shows the MCP Python SDK it pins (2.3, not 1.27).
+- `.env.example` covers every `AGENT_CHAT_*` setting, marking the five read only from the real environment.
+- `tests/README.md` lists every suite; the setup log uses `<repo>` instead of an absolute path; a private file reference left `AGENTS.md`.
+- Audit item RT-30.
+
 ### Fixed — the hosted mirror stops describing its own container
 
 - **Reads about the local machine are `404` on the mirror:** `/api/setup` (it listed container paths and `/root/.claude.json`), `/api/settings/*` and `/api/notifications`. Writes there are still the read-only `403`.
