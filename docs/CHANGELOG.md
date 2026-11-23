@@ -6,6 +6,12 @@ Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changel
 
 ## 2026-11-22 (latest)
 
+### Added — choose the model for each seat
+
+- **`/orchestrate`** has a *model* box under each chair; **`debate.ps1`** takes `-Model claude-code=sonnet,codex=gpt-5.4-mini` (a bare CLI name covers its seats, `claude-code-2=…` one seat). The seat launches with `--model <name>`. Blank keeps the CLI's default.
+- A model name may only contain the characters model ids use; anything else is refused before seeding.
+- Audit item RT-36.
+
 ### Changed — one copy of the process-flow diagram
 
 - The generated diagram is committed once, in `docs/diagrams/`. The *Homepage* workflow copies it into the published site at deploy time and now also runs when the diagram changes. `build_diagram.py` no longer writes `homepage/diagram/`, and `--check` no longer compares a second copy (which, lacking `-text`, read as drift on a CRLF checkout).

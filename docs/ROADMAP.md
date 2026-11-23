@@ -50,7 +50,7 @@ From a full audit of `4f71561` (kept outside the repo). One item per PR, titled 
 - [x] **RT-33** One copy of the generated diagram; EOL rule — done 2026-11-22: the diagram is committed once, in `docs/diagrams/`; the Pages workflow copies the HTML and PNG into the published `homepage/diagram/` (backup of the removed copies: `_maintenance/backups/2026-11-22-roundtable-homepage-diagram-copies`). The CRLF-checkout drift came from the second copy lacking `-text`; with one copy under `docs/diagrams/process-flow.* -text` it can't recur
 - [ ] **RT-34** Move inline CSS/JS into static files; nonce CSP
 - [ ] **RT-35** Align `wait_for_turn` default with client tool timeouts
-- [ ] **RT-36** Per-seat model choice
+- [x] **RT-36** Per-seat model choice — done 2026-11-22: each seat can run a chosen model: a *model* box under every chair on `/orchestrate` (`models: {seat: name}`), `-Model claude-code=sonnet,codex=…` on `debate.ps1`, and a `Model` field on a launch assignment, which becomes `--model '<name>'` (all four CLIs take it). Names are checked against one pattern in the API and again in the launcher. No mid-tier default was set: a seat left blank keeps its CLI's default model, which is the owner's cost call
 - [ ] **RT-37** Close SQLite connections explicitly; escape quotes in the PS spawn string
 - [ ] **RT-42** Mirror and registry polish
 - [x] **RT-44** House style: Inter body font — done 2026-11-22: the app uses the house pair, Inter and JetBrains Mono (was IBM Plex Sans/Mono), from one stylesheet; the persona console's second `@import` is gone, so a page makes one font request set

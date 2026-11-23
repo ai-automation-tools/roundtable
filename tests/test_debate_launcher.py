@@ -137,6 +137,18 @@ def test_debate_is_unchanged_by_default() -> None:
     assert "[host]" not in r.stdout and "[guest]" not in r.stdout, r.stdout
 
 
+def test_model_pairs_reach_the_right_seats() -> None:
+    """Audit RT-36: -Model cli=model sets one CLI's seats; the others keep
+    their default."""
+    r = _run("-Topic", "Is a hot dog a sandwich?", "-Agents", "2",
+             "-Model", "claude-code=sonnet")
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "claude --model 'sonnet' " in r.stdout, r.stdout
+    assert r.stdout.count("--model") == 1, r.stdout
+    bad = _run("-Topic", "x", "-Agents", "2", "-Model", "sonnet")
+    assert bad.returncode != 0 and "agent-id=model" in (bad.stdout + bad.stderr)
+
+
 def test_the_printed_podcast_flags_seed_a_podcast() -> None:
     db = Path(_env()["AGENT_CHAT_DB"])
     # Seeding refuses a seat that is busy in an active run (RT-08); this file

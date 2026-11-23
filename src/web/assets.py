@@ -1998,6 +1998,7 @@ ORCHESTRATE_CSS = """
   background: rgba(24, 24, 27, 0.4);
 }
 .orch-seat:hover { border-color: var(--border-strong); }
+.orch-seat .seat-model { grid-column: 2 / -2; font: 12px 'JetBrains Mono', ui-monospace, monospace; }
 .orch-seat .seat-n {
   font-size: 12px; color: var(--muted); letter-spacing: 0.01em; white-space: nowrap;
 }
@@ -2027,6 +2028,7 @@ ORCHESTRATE_CSS = """
   .orch-seat { grid-template-columns: 1fr auto; }
   .orch-seat .seat-n { grid-column: 1 / -1; }
   .orch-seat .seat-id { grid-column: 1 / -1; }
+  .orch-seat .seat-model { grid-column: 1 / -1; }
 }
 @media (max-width: 600px) {
   /* Hidden or not, the tooltip counted toward scroll width: hung off the "?"

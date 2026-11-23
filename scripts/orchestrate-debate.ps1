@@ -89,12 +89,14 @@ $spawnAssignments = foreach ($a in $agents) {
         PersonaName = [string]$a.persona_name
         PersonaBody = [string]$a.persona_body
         Role        = $role
+        Model       = if ($a.PSObject.Properties['model']) { [string]$a.model } else { '' }
     }
 }
 foreach ($a in $spawnAssignments) {
     $label = if ($a.PersonaName) { $a.PersonaName } else { '(no persona)' }
     $tag   = if ($a.Role -and $a.Role -ne 'debater') { " [$($a.Role)]" } else { '' }
-    Write-Pick ("{0,-12} <- {1}{2}" -f $a.Cli, $label, $tag)
+    $mtag  = if ($a.Model) { " ($($a.Model))" } else { '' }
+    Write-Pick ("{0,-12} <- {1}{2}{3}" -f $a.Cli, $label, $tag, $mtag)
 }
 Write-Pick "first speaker: $($spawnAssignments[0].Cli)"
 

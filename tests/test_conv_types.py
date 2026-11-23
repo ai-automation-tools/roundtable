@@ -820,6 +820,35 @@ def test_seeding_rejects_a_whitespace_only_topic() -> None:
             raise AssertionError("expected SeedError")
 
 
+def test_a_seat_model_reaches_the_launcher_and_a_bad_one_is_refused():
+    """Audit RT-36: each seat can run a chosen model. The name ends up on a
+    command line, so anything that isn't model-id characters is a 400, and
+    nothing is seeded."""
+    from web.api import orchestrate as api
+    seen: dict = {}
+
+    def fake_spawn(**kw):
+        seen.update(kw)
+        return {"status": "skipped"}
+
+    with tempfile.TemporaryDirectory(**_TMP) as tmp:
+        db_path = str(Path(tmp) / "chat.db")
+        status, data = _orchestrate(
+            db_path, topic="T", participants=["claude-code", "codex"],
+            models={"claude-code": "sonnet; Remove-Item x"})
+        assert status == 400 and "model name" in data["error"], data
+        real = api._maybe_spawn
+        api._maybe_spawn = fake_spawn
+        try:
+            status, data = _orchestrate(
+                db_path, topic="T", participants=["claude-code", "codex"], spawn=True,
+                models={"claude-code": " claude-sonnet-4-5 ", "codex": ""})
+        finally:
+            api._maybe_spawn = real
+        assert status == 200, data
+        assert seen["seat_models"] == {"claude-code": "claude-sonnet-4-5"}, seen
+
+
 def _orchestrate(db_path: str, **payload):
     """POST /api/orchestrate in-process; returns (status, body dict).
 
