@@ -377,8 +377,9 @@ routes = [
     Route("/api/since", api_since, methods=["GET", "POST"]),
     Route("/orchestrate", orchestrate),
     Route("/api/orchestrate", api_orchestrate, methods=["POST"]),
-    # Which CLI tools this machine has. GET re-probes (safe anywhere); the two
-    # POSTs are per-machine setup and 403 on the hosted mirror by method.
+    # Which CLI tools this machine has. GET re-probes; the two POSTs are
+    # per-machine setup. On the hosted mirror the GET is 404 and the POSTs 403
+    # (security._LOCAL_ONLY_PREFIXES).
     Route("/api/setup", api_setup, methods=["GET"]),
     Route("/api/setup", api_setup_save, methods=["POST"]),
     Route("/api/setup/seats", api_setup_seats, methods=["POST"]),
@@ -493,6 +494,7 @@ def main() -> None:
     print(f"roundtable web UI — DB: {resolved}")
     print(f"  bind: http://{args.host}:{args.port}/")
     print(f"  basic auth: {'on' if basic_auth_password() else 'off'}")
+    print(f"  public read-only: {'on' if _is_public_readonly() else 'off'}")
     print(f"  /api/ingest: {'on' if ingest_on else 'off'}")
     print(f"  AI-Models cards: {models['created']} created, {models['skipped']} present")
     if seeded:
