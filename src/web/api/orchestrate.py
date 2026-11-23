@@ -310,6 +310,15 @@ async def api_orchestrate(request: Request) -> Response:
         merged.update(extra_roles_pick)
         participant_roles = merged
 
+    # ---- a seat can be in one active run at a time ---------------------------
+    # seed_conversation() refuses this too (under the write lock); asking here
+    # first saves the operator a thirty-second preflight on a doomed launch.
+    busy = orch_seeding.busy_seats(db.DB_PATH, seed_participants)
+    if busy:
+        return JSONResponse({"ok": False, "kind": "seat_busy",
+                             "error": orch_seeding.busy_message(busy),
+                             "busy": busy}, status_code=409)
+
     # ---- materialise any seat that doesn't exist yet -------------------------
     # The form picks tools and derives seat ids ('codex', then 'codex-2'), so a
     # one-CLI operator can host and fill every guest chair on that one tool. The

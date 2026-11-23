@@ -15,6 +15,7 @@ import importlib
 import os
 import sys
 import tempfile
+import sqlite3
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
@@ -61,6 +62,12 @@ def _seed(db: str, **kw):
     """Seed one conversation and return its full ``get_conversation`` payload."""
     preset = kw.pop("preset", "debate")
     personas = kw.pop("personas", None)
+    # Seeding refuses a seat that is busy in an active run (RT-08); this file
+    # seeds several runs on one DB, so finish the earlier ones first.
+    _c = sqlite3.connect(db, isolation_level=None)
+    __import__("schema").ensure_schema(_c)
+    _c.execute("UPDATE conversations SET status = 'complete' WHERE status = 'active'")
+    _c.close()
     r = seed_conversation(
         db_path=db, mode="turns", max_turns=6,
         preset=preset, tone=get_preset(preset)["tone"],

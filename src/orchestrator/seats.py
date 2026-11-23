@@ -14,7 +14,7 @@ existing conversation, config, and avatar keeps working untouched:
 
 Identity still comes from config, not from the protocol: each seat folder holds
 its own MCP config passing its own ``--agent-id``, and the CLI is launched from
-that folder. The bus itself needs no change — ``get_latest_conversation`` matches
+that folder. The bus itself needs no change — conversation lookup matches
 an exact string against the ``participants`` list, so `claude-code-2` is simply a
 different participant from `claude-code`.
 
