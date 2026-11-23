@@ -6,8 +6,10 @@ name: CI
 # is Windows-first; the Linux Fly image strips pywin32 separately in its
 # Dockerfile, so a Linux CI runner can't `pip install -r requirements.txt`).
 
-# homepage/ is the static Pages site (homepage.yml); a change there alone
-# touches no Python, so it doesn't spend a Windows runner.
+# homepage/ is the static Pages site (homepage.yml); a push to main touching only it
+# doesn't spend a Windows runner. PRs run CI whatever they touch: the repo ruleset
+# requires test, test-linux and lint, and a filtered-out PR would wait on them forever
+# (audit RT-11).
 # Push runs only on main: a PR's branch is already covered by pull_request,
 # and running both doubled every PR's CI (audit RT-29).
 on:
@@ -18,9 +20,6 @@ on:
       - '.github/workflows/homepage.yml'
   pull_request:
     branches: [main]
-    paths-ignore:
-      - 'homepage/**'
-      - '.github/workflows/homepage.yml'
   # dependabot-pydantic-core.yml re-runs CI this way after fixing a pin.
   workflow_dispatch:
 

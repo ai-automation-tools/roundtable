@@ -4,7 +4,16 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changelog/2026-09.md) · [August 2026](changelog/2026-08.md) · [July 2026](changelog/2026-07.md) · [June 2026](changelog/2026-06.md) · [May 2026](changelog/2026-05.md) — the [archive](changelog/README.md) holds one file per month.
 
-## 2026-11-22 (latest)
+## 2026-11-23 (latest)
+
+### Changed — CI must pass before a merge into `main`
+
+- A repo ruleset (**Require CI**) makes `test`, `test-linux` and `lint` required checks on `main`; a PR with failing CI can't be merged.
+- `ci.yml` runs on every PR again, including `homepage/`-only ones, so the required checks always report. Pushes to `main` still skip a `homepage/`-only change.
+- GitHub now deletes a PR's branch when it merges.
+- Audit items RT-11 and RT-32 (branch cleanup).
+
+## 2026-11-22
 
 ### Added — choose the model for each seat
 
