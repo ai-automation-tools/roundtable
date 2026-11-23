@@ -45,15 +45,15 @@ From a full audit of `4f71561` (kept outside the repo). One item per PR, titled 
 - [ ] **RT-24** Fix skill and upstream drift **(2026-11-22)** Repo side done: the three installed skills re-installed from agent-skills main (no drift), add-cli documents `Allow`/`Deny` instead of `SkipPerm`, the schema skill lists `SENDER_RE` / `resolve_db_path`, UPSTREAMS lists no bypass flags. Open: agent-skills still says "four SCHEMA copies", puts the schema in `agent_chat_mcp.py` and predates `deliver_later` — fix there, republish, reinstall
 - [x] **RT-26** Cut agent-loaded docs: `AGENTS.md` ≤ 15 KB, archive done phases, split the changelog — done 2026-11-22: `AGENTS.md` 58,131 → 13,106 bytes (the per-area sections moved verbatim to [`docs/maintainers/`](maintainers/README.md), one file per area, with a one-line rule and a link left behind); this roadmap 279 KB → 73 KB, holding open items only (the finished phases, *Shipped since public release* and every ticked item moved verbatim to [`docs/roadmap/`](roadmap/README.md)); the changelog 450 KB → 51 KB, the current month only, with one file per earlier month in [`docs/changelog/`](changelog/README.md). Every item and dated section was checked present after the move, and the link check finds nothing new broken
 - [ ] **RT-30** Docs accuracy sweep
-- [ ] **RT-31** Hosted mirror: refuse local-only routes; truthful startup log — 🔒 Needs owner
+- [x] **RT-31** Hosted mirror: refuse local-only routes; truthful startup log — 🔒 Needs owner — done 2026-11-22: on the mirror, a GET to `/api/setup`, `/api/settings/*`, or `/api/notifications` is `404` (it showed the container's paths); writes still `403`. The startup log already printed the real basic-auth state and now prints read-only mode too
 - [ ] **RT-32** Repo housekeeping: merged branches, release tags (owner settings) — 🔒 Needs owner
-- [ ] **RT-33** One copy of the generated diagram; EOL rule
+- [x] **RT-33** One copy of the generated diagram; EOL rule — done 2026-11-22: the diagram is committed once, in `docs/diagrams/`; the Pages workflow copies the HTML and PNG into the published `homepage/diagram/` (backup of the removed copies: `_maintenance/backups/2026-11-22-roundtable-homepage-diagram-copies`). The CRLF-checkout drift came from the second copy lacking `-text`; with one copy under `docs/diagrams/process-flow.* -text` it can't recur
 - [ ] **RT-34** Move inline CSS/JS into static files; nonce CSP
-- [ ] **RT-35** Align `wait_for_turn` default with client tool timeouts
+- [x] **RT-35** Align `wait_for_turn` default with client tool timeouts — done 2026-11-22: client limits checked against each CLI's source: Codex 300 s default (`tool_timeout_sec`), OpenCode v2 12 h, Claude Code no short limit, so the 180 s default fits all; only a 300 s wait on Codex was tight, so every Codex config snippet now sets `tool_timeout_sec = 330`. The seat docs' tool table said `timeout_seconds=60`; regenerated with 180. Not verified in a live 4-CLI run
 - [ ] **RT-36** Per-seat model choice
 - [x] **RT-37** Close SQLite connections explicitly; escape quotes in the PS spawn string — done 2026-11-22: `schema.ClosingConnection`, a `sqlite3.Connection` whose `with` also closes, is the factory for every connect helper (MCP server, web UI, personas, inspect, sync sidecar); under Python 3.13 with ResourceWarnings on, the full suite went from 881 unclosed-connection warnings (854 from `src/`/`scripts/`) to 0. The seat launch command quotes every path with `''` escaping, so a clone or launch folder with an apostrophe parses (pinned by a PowerShell-parser test)
 - [ ] **RT-42** Mirror and registry polish
-- [ ] **RT-44** House style: Inter body font
+- [x] **RT-44** House style: Inter body font — done 2026-11-22: the app uses the house pair, Inter and JetBrains Mono (was IBM Plex Sans/Mono), from one stylesheet; the persona console's second `@import` is gone, so a page makes one font request set
 
 ### 🔴 High
 

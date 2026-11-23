@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import importlib
 import os
+import re
 import sys
 import tempfile
 from pathlib import Path
@@ -538,6 +539,16 @@ def test_real_routes_readonly_end_to_end():
                 resp = client.request(method, path)
                 assert resp.status_code == 403, f"{method} {path} -> {resp.status_code}"
                 assert resp.json()["error"] == "read-only deployment", path
+
+            # Reads about this machine 404 on the mirror: /api/setup showed the
+            # container's paths and /root/.claude.json (audit RT-31).
+            for path in ("/api/setup", "/api/notifications", "/api/settings/delivery"):
+                resp = client.get(path)
+                assert resp.status_code == 404, f"GET {path} -> {resp.status_code}"
+            # ...while a public page that shares a prefix still works, and so
+            # does healthz: fly.toml and CI's image job health-check it.
+            assert client.get("/settings").status_code == 200
+            assert client.get("/api/battleground/healthz").status_code == 200
         finally:
             os.environ.pop("AGENT_CHAT_PUBLIC_READONLY", None)
             if saved is not None:
@@ -733,6 +744,24 @@ def test_nothing_blocks_first_paint_and_html_is_compressed():
         c = TestClient(web_ui.app, base_url=LOCAL)
         r = c.get("/conversations", headers={"Accept-Encoding": "gzip"})
         assert r.headers.get("content-encoding") == "gzip"
+
+
+def test_every_page_loads_one_font_stylesheet_in_the_house_pair():
+    """The persona console @imported a second font sheet, and the app used IBM
+    Plex while the homepage and org sites use Inter + JetBrains Mono (RT-44)."""
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
+        web_ui.set_db_path(str(Path(tmp) / "chat.db"))
+        web_ui.db_init()
+        c = TestClient(web_ui.app, base_url=LOCAL)
+        for path in ("/", "/conversations", "/personas", "/personas/manage", "/orchestrate",
+                     "/settings"):
+            page = c.get(path).text
+            assert "@import" not in page, path
+            assert "IBM Plex" not in page, path
+            sheets = set(re.findall(
+                r'href="(https://fonts\.googleapis\.com/css2[^"]+)"', page))
+            assert len(sheets) == 1, (path, sheets)
+            assert "family=Inter" in next(iter(sheets)), path
 
 def _outline(html_text: str) -> list[int]:
     import re

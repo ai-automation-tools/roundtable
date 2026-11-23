@@ -122,9 +122,8 @@ GITHUB_URL = "https://github.com/ai-automation-tools/roundtable"
 # Shared web fonts + preconnects. Identical on the _layout() shell and the
 # homepage; kept here so the two <head>s can't drift apart.
 _FONTS_CSS = (
-    "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700"
-    "&family=IBM+Plex+Mono:wght@400;500&family=JetBrains+Mono:wght@400;500;700;800"
-    "&display=swap"
+    "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700"
+    "&family=JetBrains+Mono:wght@400;500;700;800&display=swap"
 )
 # The font stylesheet no longer blocks first paint (audit RT-41): it is
 # preloaded and applied when it lands, and the system fallback in every
