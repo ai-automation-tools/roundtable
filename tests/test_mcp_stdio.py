@@ -84,6 +84,31 @@ def test_legacy_handshake_still_served() -> None:
     assert state["status"] == "no_conversation"
 
 
+def test_tool_text_is_short_and_annotations_are_true() -> None:
+    """Every seat reads all tool descriptions at session start: they were
+    ~13.8k characters (audit RT-25). And a poll can close a finished run, so
+    it isn't read-only."""
+    db = Path(tempfile.mkdtemp()) / "chat.db"
+
+    async def go():
+        async with Client(_params("codex", db)) as client:
+            tools = (await client.list_tools()).tools
+            return tools, await _call(client, "list_persona_groups")
+
+    tools, groups = anyio.run(go)
+    by_name = {t.name: t for t in tools}
+    for t in tools:
+        assert len(t.description or "") <= 400, (t.name, len(t.description or ""))
+    assert sum(len(t.description or "") for t in tools) < 6000
+    for name in ("get_my_turn", "wait_for_turn", "send_message", "get_arena", "submit_draft"):
+        assert by_name[name].annotations.read_only_hint is False, name
+    for name in ("list_personas", "list_persona_groups", "get_persona", "get_kickoff"):
+        assert by_name[name].annotations.read_only_hint is True, name
+    assert "Unique-Personas" not in str(by_name["list_personas"].input_schema)
+    assert set(groups) == {"count", "groups"}
+    assert all(set(g) == {"group", "count"} for g in groups["groups"])
+
+
 def test_two_servers_finish_a_seeded_conversation() -> None:
     db = Path(tempfile.mkdtemp()) / "chat.db"
     seeding.seed_conversation(

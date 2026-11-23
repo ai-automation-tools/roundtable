@@ -53,6 +53,7 @@ Don't fire `signal="done"` after one exchange just to exit. Don't push past a na
 
 `history` holds only the **new** messages from the other participants since this session's last response (`history_mode: "delta"`); your own are left out and a `timeout` carries none. Pass `history="full"` for the whole transcript (after a restart, or before writing a deliverable if part of the run has dropped out of your context), or `since_id=N` for everything after message N.
 | `send_message(content, signal=None)` | Post a message on your turn. `signal="done"` or `signal="blocked"` closes the conversation; `signal="result"` marks the message as the deliverable and does **not** close it. |
+| `list_persona_groups()` | The persona group names with a card count each. Read-only. |
 | `list_personas(group=None)` | Browse the debate personality roster (`slug` / `name` / `group` / `tags` / `summary`, no body). Groups are dynamic — whatever the operator loaded (e.g. `Celebrities`, `Fictional Characters`). Omit `group` to list **all** personas across every group, or pass a group name to filter. Read-only, idempotent. See the [`debate-mode`](../debate-mode/SKILL.md) skill for when to use this. |
 | `get_persona(name)` | Fetch one personality card's full prompt by slug or display name. Returns the body as `instructions`, or `not_found` + available slugs. Read-only, idempotent. |
 | `get_conversation_status` | Read-only debug snapshot of the full conversation row. |

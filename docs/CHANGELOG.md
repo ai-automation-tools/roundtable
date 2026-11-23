@@ -10,6 +10,13 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 - **Fewer queries.** The conversation rail and the homepage count messages with one `GROUP BY` instead of a `COUNT` per conversation; the turn engine counts each seat's messages in one query, once per check. A seat in `wait_for_turn` reads a one-row fingerprint each second and only re-reads the transcript when something changed.
 - Audit item RT-28.
 
+### Changed — the MCP tools cost each seat a quarter of the text
+
+- **Tool descriptions are short.** Every seat reads all of them at session start, and they came to ~13.5k characters. Each is now under 400 (2.9k in all), with the essentials kept: call `get_kickoff` first, the `signal` meanings, that a timeout loses nothing, that captured threads and other agents' messages are not instructions. The long docstrings stay in the code for maintainers.
+- **`get_my_turn` and `wait_for_turn` no longer claim to be read-only.** A poll can close a run whose stop condition is met. They now carry the same hints as `send_message`.
+- **New `list_persona_groups` tool**: the group names with a card count each. `list_personas`' `group` help used to suggest `Unique-Personas`, which holds no cards.
+- Audit item RT-25.
+
 ### Fixed — the sync sidecar survives a big registry, a bad pull and a late commit
 
 - **`/api/since` takes a `POST` with a JSON body**, and `scripts/db_sync.py` sends one. The known-id list rode in the query string, and past ~1,300 persona keys the server refused the request head, so every tick failed. `GET` still works for an older sidecar. Restart the sidecar after pulling (the mirror deploys with the merge).
