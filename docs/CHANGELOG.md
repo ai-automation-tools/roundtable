@@ -4,6 +4,13 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 ## 2026-11-22 (latest)
 
+### Fixed — transcripts paint in half the time on a phone
+
+- **Nothing blocks first paint.** highlight.js and its theme load only when a transcript has a code block, after the page renders, with integrity hashes; the web-font stylesheet is preloaded and applied when it arrives. On a throttled phone profile a transcript's largest paint went from 3.3 s to 1.3 s.
+- **HTML is compressed.** The hosted mirror's edge already did this; a local or tailnet instance sent ~270 KB per transcript raw. Live streams are not compressed.
+- **The 30-second poll is ~2% of its old size.** The chrome asks `/api/conversations` for just the four fields it shows, and an unchanged answer comes back as a `304`.
+- Audit item RT-41.
+
 ### Fixed — page structure a screen reader can navigate
 
 - **One `h1` per page and no skipped heading levels.** The persona explorer, persona manager, orchestrate, settings, battleground and extension pages and both 404s had no `h1`; a conversation had one per cast card; the home page jumped from `h2` to `h4`.
