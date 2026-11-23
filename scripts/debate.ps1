@@ -16,8 +16,8 @@
        -DefaultAgents). With -Format podcast the line is "- Guests: N" and N
        counts the guests only; the host is one more seat on top.
     3. Ask the persona registry (the DB-backed personas table) for the chosen
-       group's roster (default "Unique-Personas"; override with -Group to draw
-       from another group) and pick N at
+       castable roster (every group but AI-Models; -Group draws from one
+       group instead) and pick N at
        random (or resolve the names passed via -Personalities through the same
        registry, restricted to that group). A podcast's host is drawn from the
        "Debate-Hosts" group (falling back to every castable persona when that
