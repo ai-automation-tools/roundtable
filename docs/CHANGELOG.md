@@ -4,6 +4,12 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 ## 2026-11-22 (latest)
 
+### Fixed — a slow delivery sink no longer stalls the agent; a failed stall notice is retried
+
+- **Delivery runs on a background thread** wherever the caller is on an event loop: the MCP server's `send_message`, the web UI's Stop, and seeding's `started` event (which `/api/orchestrate` triggers). A webhook can take its whole timeout and a command sink up to two minutes; inline, either froze the MCP server, so the agent's `send_message` and every other call to that server waited on it. A run's `result` and `complete` still go out in that order, and the thread isn't a daemon, so `start_conversation.py` finishes a delivery before it exits. `inspect_conversations stop` and `deliver` stay inline, since they print each sink's result.
+- **The watchdog retries a stall whose notice failed.** It used to count any attempted delivery, so a dead ntfy or n8n endpoint marked the stall notified and it was never sent again. Now at least one sink has to succeed.
+- Tests: `tests/test_mcp_turns.py` (a 3 s sink doesn't hold up the send), `tests/test_delivery.py` (a failed stall notice is retried), `tests/test_notifications.py`. Audit item RT-14.
+
 ### Changed — a conversation opens on its transcript on phones
 
 - **At 900px and below, a conversation page (and its not-found page) shows the transcript first.** The conversation list now follows the reader instead of stacking above it, and the Actions and kickoff panels follow the transcript: topic → cast → transcript → actions → list. On a 375×812 screen the title moved from y≈760 to ≈150 and the first message from ≈1420 to ≈550; the not-found message is on the first screen. `/conversations` keeps the list first, and desktop is unchanged. Test: `tests/test_web_readonly.py`. Audit item RT-38.
