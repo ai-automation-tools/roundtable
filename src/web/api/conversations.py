@@ -6,6 +6,7 @@ import asyncio
 import json
 
 from sse_starlette.sse import EventSourceResponse
+from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
@@ -50,11 +51,11 @@ def _stream_client(request: Request) -> str:
     return headers.get("fly-client-ip") or (client.host if client else "?")
 
 
-async def api_conversations(request: Request) -> Response:
+def api_conversations(request: Request) -> Response:
     return JSONResponse(list_conversations())
 
 
-async def api_conversation(request: Request) -> Response:
+def api_conversation(request: Request) -> Response:
     cid = int(request.path_params["cid"])
     data = get_conversation(cid)
     if not data:
@@ -62,7 +63,7 @@ async def api_conversation(request: Request) -> Response:
     return JSONResponse(data)
 
 
-async def api_conversation_export(request: Request) -> Response:
+def api_conversation_export(request: Request) -> Response:
     """Serve a conversation as a downloadable Markdown document.
 
     Content-Disposition forces a download in browsers; the URL ends in
@@ -86,7 +87,7 @@ async def api_conversation_export(request: Request) -> Response:
     )
 
 
-async def api_conversation_prompt(request: Request) -> Response:
+def api_conversation_prompt(request: Request) -> Response:
     """Serve a media-production prompt for one conversation.
 
     ``GET /api/conversations/{cid}/prompts/{kind}.md`` where kind is ``images``
@@ -120,7 +121,7 @@ async def api_conversation_prompt(request: Request) -> Response:
     return Response(text, media_type="text/markdown; charset=utf-8", headers=headers)
 
 
-async def api_conversation_export_zip(request: Request) -> Response:
+def api_conversation_export_zip(request: Request) -> Response:
     """Serve a conversation as a downloadable .zip of Markdown documents.
 
     Bundle: ``topic.md`` (topic + overview), ``personas/<agent>.md`` (one per
@@ -144,7 +145,7 @@ async def api_conversation_export_zip(request: Request) -> Response:
     )
 
 
-async def api_stop(request: Request) -> Response:
+def api_stop(request: Request) -> Response:
     cid = int(request.path_params["cid"])
     result = stop_conversation(cid)
     if result is None:
@@ -152,7 +153,7 @@ async def api_stop(request: Request) -> Response:
     return JSONResponse(result)
 
 
-async def api_delete(request: Request) -> Response:
+def api_delete(request: Request) -> Response:
     """Permanently delete a conversation. Hosted-UI affordance.
 
     Cascades messages. The local sidecar picks this up on the next pull
@@ -164,6 +165,10 @@ async def api_delete(request: Request) -> Response:
     if result is None:
         return JSONResponse({"error": "not found"}, status_code=404)
     return JSONResponse(result)
+
+def _tick(cid: int, last_id: int) -> tuple[tuple[str | None, str | None], list]:
+    return conversation_turn_state(cid), messages_since(cid, last_id)
+
 
 async def api_stream(request: Request) -> Response:
     """SSE stream for a conversation: ``message`` per new row, ``turn`` when
@@ -188,8 +193,9 @@ async def api_stream(request: Request) -> Response:
             # in one transaction (RT-09), so once 'complete' is read every
             # message is visible to the read below. The other order could see
             # 'complete' and stop without the final message (audit RT-17).
-            status, current_turn = conversation_turn_state(cid)
-            new = messages_since(cid, last_id)
+            # In the threadpool: a reader that waits on a lock must not hold
+            # up the loop that serves every other viewer (audit RT-28).
+            (status, current_turn), new = await run_in_threadpool(_tick, cid, last_id)
             for m in new:
                 payload = {**m, "content_html": render_markdown(m["content"])}
                 yield {"event": "message", "data": json.dumps(payload)}

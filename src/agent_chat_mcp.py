@@ -349,11 +349,16 @@ def conversation_cast(conv: sqlite3.Row) -> dict[str, str]:
 
 
 def exhausted_agents(conn: sqlite3.Connection, conv: sqlite3.Row) -> set[str]:
-    """Participants that have already used all `max_turns` of their turns."""
+    """Participants that have already used all `max_turns` of their turns.
+    One GROUP BY, not a COUNT per seat (audit RT-28)."""
+    sent = dict(conn.execute(
+        "SELECT sender, COUNT(*) FROM messages WHERE conversation_id = ? GROUP BY sender",
+        (conv["id"],),
+    ).fetchall())
     return {
         agent
         for agent in json.loads(conv["participants"])
-        if count_messages_by_sender(conn, conv["id"], agent) >= conv["max_turns"]
+        if sent.get(agent, 0) >= conv["max_turns"]
     }
 
 
@@ -391,7 +396,7 @@ def evaluate_stop(conn: sqlite3.Connection, conv: sqlite3.Row) -> Optional[str]:
     #
     # Paired with next_turn_agent() skipping spent seats, so the rotation keeps
     # moving among whoever is left instead of stalling on the first one out.
-    if all(agent in exhausted_agents(conn, conv) for agent in participants):
+    if set(participants) <= exhausted_agents(conn, conv):
         return f"max_turns reached ({conv['max_turns']} per agent)"
 
     # signal_done from the most recent message
@@ -1010,10 +1015,19 @@ async def wait_for_turn(params: WaitForTurnInput) -> str:
             trips are not.
     """
     deadline = time.monotonic() + params.timeout_seconds
+    state: Optional[dict[str, Any]] = None
+    seen: Optional[tuple] = None
     while True:
-        state = _compute_turn_state(params.history, params.since_id)
-        if state["status"] != "wait":
-            return _reply(state)
+        # The full read (every message, the stop rules) runs only when the
+        # row or its newest message changed since the last one: each waiting
+        # seat polls every second (audit RT-28). The fingerprint is read
+        # BEFORE the full read, so a change landing during it shows next tick.
+        fp = _turn_fingerprint(state.get("conversation_id")) if state else None
+        if state is None or fp is None or fp != seen:
+            seen = fp
+            state = _compute_turn_state(params.history, params.since_id)
+            if state["status"] != "wait":
+                return _reply(state)
         if time.monotonic() >= deadline:
             # Nothing changed for you: no history, and nothing marked as seen,
             # so whatever arrived meanwhile is in the next real response.
@@ -1021,6 +1035,20 @@ async def wait_for_turn(params: WaitForTurnInput) -> str:
             return json.dumps({**state, "status": "timeout", "history_mode": "none",
                                "history": []}, indent=2)
         await asyncio.sleep(POLL_INTERVAL_SECONDS)
+
+
+def _turn_fingerprint(cid: Optional[int]) -> Optional[tuple]:
+    """What wait_for_turn compares between polls: the row's status, turn and
+    updated_at plus its newest message id. None when there's nothing to watch."""
+    if cid is None:
+        return None
+    with db_connect() as conn:
+        r = conn.execute(
+            "SELECT status, current_turn, updated_at, "
+            "(SELECT MAX(id) FROM messages WHERE conversation_id = c.id) "
+            "FROM conversations c WHERE id = ?", (cid,),
+        ).fetchone()
+    return tuple(r) if r else None
 
 
 @mcp.tool(

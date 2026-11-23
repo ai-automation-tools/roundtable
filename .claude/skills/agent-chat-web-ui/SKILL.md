@@ -22,7 +22,18 @@ route table, app assembly, `main()`. Implementation lives in the package.
 | Topic→logo classification | `web/topics.py` |
 | Persona avatar resolution (`avatar_url`/`avatar_response`, `GET /avatars/{slug}`, uploaded row → file art → default silhouette, `invalidate_index()`) | `web/avatars.py` |
 
-Two rules that break things quietly:
+Three rules that break things quietly:
+
+- **Handlers are plain `def`, not `async def`** (since 2026-11-22, audit RT-28).
+  Starlette runs a sync endpoint in its threadpool, so SQLite's 10 s busy
+  timeout, a file write or a webhook test holds one worker instead of the event
+  loop every other request (SSE included) runs on. Read a body with
+  `web.api.request_json(request)`, not `await request.json()`. Only the SSE
+  stream and the streamed `/api/ingest` stay async, and they hand their DB work
+  to `run_in_threadpool`. A read-merge-write of a `config/` file takes
+  `delivery.config_locked`, since two saves can now run at once. A test that
+  calls a handler directly runs it with
+  `anyio.run(anyio.to_thread.run_sync, handler, request)`.
 
 - **Route paths are defined only in `web_ui.py`.** Handlers live in the package;
   the table stays in the entrypoint.

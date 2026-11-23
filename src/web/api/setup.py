@@ -22,6 +22,7 @@ from starlette.responses import JSONResponse, Response
 from orchestrator import availability as avail
 from orchestrator import preflight as orch_preflight
 from orchestrator import seats as orch_seats
+from web.api import request_json
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
@@ -43,7 +44,7 @@ def _add_seat_module():
     return add_agent_seat
 
 
-async def api_setup(request: Request) -> Response:
+def api_setup(request: Request) -> Response:
     """GET /api/setup — a fresh probe of every supported CLI.
 
     ``{"declared": bool, "config_path": str, "available": [cli],
@@ -73,7 +74,7 @@ async def api_setup(request: Request) -> Response:
     })
 
 
-async def api_setup_save(request: Request) -> Response:
+def api_setup_save(request: Request) -> Response:
     """POST /api/setup — record the operator's CLI list.
 
     Body: ``{"available": ["claude-code", ...]}``. An empty list is a valid
@@ -81,7 +82,7 @@ async def api_setup_save(request: Request) -> Response:
     same as never having answered, which is the file being absent.
     """
     try:
-        payload = await request.json()
+        payload = request_json(request)
     except (json.JSONDecodeError, ValueError):
         return JSONResponse({"ok": False, "error": "request body must be JSON"},
                             status_code=400)
@@ -110,7 +111,7 @@ async def api_setup_save(request: Request) -> Response:
     })
 
 
-async def api_setup_seats(request: Request) -> Response:
+def api_setup_seats(request: Request) -> Response:
     """POST /api/setup/seats — create extra seat config folders.
 
     Body: ``{"seats": ["claude-code-2", ...]}``. Each is a copy of that tool's
@@ -120,7 +121,7 @@ async def api_setup_seats(request: Request) -> Response:
     an operator asking for a seat is not asking to lose the one they have.
     """
     try:
-        payload = await request.json()
+        payload = request_json(request)
     except (json.JSONDecodeError, ValueError):
         return JSONResponse({"ok": False, "error": "request body must be JSON"},
                             status_code=400)

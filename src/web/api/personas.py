@@ -20,6 +20,7 @@ from starlette.responses import JSONResponse, Response
 from orchestrator import personas as personas_registry
 from web.avatars import invalidate_index, raster_avatar
 from web.render.persona_explorer import find_persona
+from web.api import request_json
 
 
 def _parse_tags(value: Any) -> list[str]:
@@ -46,7 +47,7 @@ def _parse_avatar(payload: dict[str, Any]) -> str | None:
         return avatar
     return None
 
-async def api_persona_list(request: Request) -> Response:
+def api_persona_list(request: Request) -> Response:
     """GET /api/personas — every persona as ``{slug, name, group}``.
 
     Index for the topbar command palette (see assets.SHELL_JS), which fetches
@@ -68,12 +69,12 @@ async def api_persona_list(request: Request) -> Response:
     )
 
 
-async def api_persona_create(request: Request) -> Response:
+def api_persona_create(request: Request) -> Response:
     """POST /api/personas — create a new persona."""
     if not personas_registry.root_exists():
         return JSONResponse({"ok": False, "error": "persona storage unavailable (database unreachable)"}, status_code=404)
     try:
-        payload = await request.json()
+        payload = request_json(request)
     except (json.JSONDecodeError, ValueError):
         return JSONResponse({"ok": False, "error": "request body must be JSON"}, status_code=400)
     try:
@@ -93,13 +94,13 @@ async def api_persona_create(request: Request) -> Response:
     })
 
 
-async def api_persona_update(request: Request) -> Response:
+def api_persona_update(request: Request) -> Response:
     """POST /api/personas/{slug} — update an existing persona."""
     if not personas_registry.root_exists():
         return JSONResponse({"ok": False, "error": "persona storage unavailable (database unreachable)"}, status_code=404)
     slug = request.path_params["slug"]
     try:
-        payload = await request.json()
+        payload = request_json(request)
     except (json.JSONDecodeError, ValueError):
         return JSONResponse({"ok": False, "error": "request body must be JSON"}, status_code=400)
     try:
@@ -255,7 +256,7 @@ def _entries_from_zip(
     return cards, images, errors
 
 
-async def api_persona_import(request: Request) -> Response:
+def api_persona_import(request: Request) -> Response:
     """POST /api/personas/import — bulk-create personas from uploaded Markdown.
 
     Body: ``{"group": str, "overwrite": bool, "files": [{"filename", "text"}],
@@ -277,7 +278,7 @@ async def api_persona_import(request: Request) -> Response:
     if not personas_registry.root_exists():
         return JSONResponse({"ok": False, "error": "persona storage unavailable (database unreachable)"}, status_code=404)
     try:
-        payload = await request.json()
+        payload = request_json(request)
     except (json.JSONDecodeError, ValueError):
         return JSONResponse({"ok": False, "error": "request body must be JSON"}, status_code=400)
     files = payload.get("files")
@@ -372,7 +373,7 @@ async def api_persona_import(request: Request) -> Response:
     })
 
 
-async def api_persona_bulk_delete(request: Request) -> Response:
+def api_persona_bulk_delete(request: Request) -> Response:
     """POST /api/personas/bulk-delete — delete many personas at once.
 
     Body: ``{"items": [{"group": str, "slug": str}, ...]}``. Each item is
@@ -383,7 +384,7 @@ async def api_persona_bulk_delete(request: Request) -> Response:
     if not personas_registry.root_exists():
         return JSONResponse({"ok": False, "error": "persona storage unavailable (database unreachable)"}, status_code=404)
     try:
-        payload = await request.json()
+        payload = request_json(request)
     except (json.JSONDecodeError, ValueError):
         return JSONResponse({"ok": False, "error": "request body must be JSON"}, status_code=400)
     items = payload.get("items")
@@ -423,7 +424,7 @@ def _not_found() -> Response:
     return Response("persona not found\n", status_code=404, media_type="text/plain")
 
 
-async def persona_card_download(request: Request) -> Response:
+def persona_card_download(request: Request) -> Response:
     """GET /personas/{slug}/card.md — the card as a seed-format .md, the same
     shape /api/personas/import reads back."""
     p = _explorer_persona(request)
@@ -449,7 +450,7 @@ def bundle_zip(p: personas_registry.Persona) -> bytes:
     return buf.getvalue()
 
 
-async def persona_bundle_download(request: Request) -> Response:
+def persona_bundle_download(request: Request) -> Response:
     """GET /personas/{slug}/bundle.zip — card + avatar, ready for Import."""
     p = _explorer_persona(request)
     if p is None:
@@ -460,7 +461,7 @@ async def persona_bundle_download(request: Request) -> Response:
     )
 
 
-async def api_persona_delete(request: Request) -> Response:
+def api_persona_delete(request: Request) -> Response:
     """POST /api/personas/{slug}/delete — delete a persona."""
     if not personas_registry.root_exists():
         return JSONResponse({"ok": False, "error": "persona storage unavailable (database unreachable)"}, status_code=404)

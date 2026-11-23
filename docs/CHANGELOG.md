@@ -4,6 +4,12 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 ## 2026-11-22 (latest)
 
+### Fixed — a locked database no longer freezes the web UI
+
+- **Route handlers run in Starlette's threadpool.** They were `async def` around blocking SQLite, so a Stop waiting out the 10 s busy timeout on a locked DB froze every other request and every live transcript; measured, an unrelated page load waited 10.7 s. 50 of 52 handlers are now plain `def`; the SSE stream and `/api/ingest` stay async and hand their DB work to the threadpool. Two settings saves can now run at once, so the delivery-config writers share a lock.
+- **Fewer queries.** The conversation rail and the homepage count messages with one `GROUP BY` instead of a `COUNT` per conversation; the turn engine counts each seat's messages in one query, once per check. A seat in `wait_for_turn` reads a one-row fingerprint each second and only re-reads the transcript when something changed.
+- Audit item RT-28.
+
 ### Fixed — the sync sidecar survives a big registry, a bad pull and a late commit
 
 - **`/api/since` takes a `POST` with a JSON body**, and `scripts/db_sync.py` sends one. The known-id list rode in the query string, and past ~1,300 persona keys the server refused the request head, so every tick failed. `GET` still works for an older sidecar. Restart the sidecar after pulling (the mirror deploys with the merge).

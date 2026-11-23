@@ -27,6 +27,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 from orchestrator import delivery
+from web.api import request_json
 
 #: The two sink types this page manages. The webhook sink is deliberately
 #: absent — it belongs to `/api/notifications`, and two pages writing one sink
@@ -93,7 +94,7 @@ def _state(cfg: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-async def api_delivery_settings(request: Request) -> Response:
+def api_delivery_settings(request: Request) -> Response:
     """GET /api/settings/delivery — the two sinks as the form sees them."""
     return JSONResponse(_state(delivery.load_config()))
 
@@ -170,7 +171,8 @@ def _build(payload: dict[str, Any]) -> tuple[dict[str, Any] | None, dict[str, An
     return folder, command
 
 
-async def api_delivery_settings_save(request: Request) -> Response:
+@delivery.config_locked
+def api_delivery_settings_save(request: Request) -> Response:
     """POST /api/settings/delivery — write the two sinks back.
 
     Replaces the first sink of each managed type **in place**, so its position
@@ -178,7 +180,7 @@ async def api_delivery_settings_save(request: Request) -> Response:
     preserved. Any sink this page doesn't manage is untouched.
     """
     try:
-        payload = await request.json()
+        payload = request_json(request)
     except (json.JSONDecodeError, ValueError):
         return JSONResponse({"ok": False, "error": "request body must be JSON"},
                             status_code=400)
