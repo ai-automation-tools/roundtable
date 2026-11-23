@@ -133,7 +133,9 @@ Create two files. **The MCP config path must exactly match what `check_<id>()` r
 [mcp_servers.roundtable]
 command = "pwsh"
 args = ["-NoProfile", "-File", "<repo>/scripts/run-mcp-server.ps1", "<id>"]
+tool_timeout_sec = 330
 ```
+- **Tool-call timeout.** `wait_for_turn` blocks up to 300 s (default 180). A new CLI whose MCP client gives up sooner needs its per-server timeout raised above 300 s, or seats will see tool errors instead of `status: timeout`. Known defaults: Codex 300 s (`tool_timeout_sec`), OpenCode v2 12 h (`mcp.timeout.execution`), Claude Code no short limit (`MCP_TOOL_TIMEOUT`).
 
 Notes:
 - `run-mcp-server.ps1` resolves the venv + server + DB relative to itself, so the **only** hardcoded absolute path is the launcher path string — match the convention in the sibling configs (forward slashes, full `D:/…` path).
