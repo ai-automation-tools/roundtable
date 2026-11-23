@@ -1,0 +1,577 @@
+/* ---- topbar: starts right of the rail, actions hard-right ----
+   The wordmark used to live in this corner; it sits at the top of the rail
+   now (see .rail-brand), where it shares a row with the collapse toggle. The
+   rail therefore runs the FULL height of the window and this bar begins
+   beside it — `margin-left`, matching <main>, so the two move together when
+   the rail collapses. */
+.topbar {
+  position: sticky; top: var(--srcbar-h); z-index: 40;
+  margin-left: var(--rail-w);
+  height: var(--topbar-h);
+  transition: margin-left 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  background: rgba(6, 6, 6, 0.82);
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  border-bottom: 1px solid #18181b;
+}
+.topbar-inner {
+  height: 100%;
+  display: flex; align-items: center; gap: 14px;
+  padding: 0 var(--gutter);
+  /* No max-width and no auto margins: the crumb sits in the literal left
+     corner (inset only by --gutter) and .topbar-right in the right one. */
+}
+.topbar .crumb {
+  color: var(--muted-2);
+  font-size: 13px;
+  min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.topbar .crumb a { color: var(--muted); text-decoration: none; }
+.topbar .crumb a:hover { color: var(--text); }
+.topbar .crumb strong { color: var(--text); font-weight: 500; }
+
+/* The right cluster is pushed to the far edge by margin-left:auto. */
+.topbar-right {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 8px;
+  flex: none;
+}
+
+/* ---- universal icon sidebar -------------------------------------------
+   Navigation lives here, not in the header. `position:fixed` rather than a
+   grid column: /conversations and /personas already own their own scrolling
+   rails and full-height panes, and a fixed rail insets them with one
+   `margin-left` instead of rewriting their layout. */
+.siderail {
+  position: fixed;
+  top: var(--srcbar-h); left: 0; bottom: 0;
+  width: var(--rail-w);
+  z-index: 41;
+  display: flex; flex-direction: column; align-items: stretch;
+  gap: 2px;
+  padding: 0 8px 10px;
+  background: #08080a;
+  border-right: 1px solid #18181b;
+  overflow: hidden;
+  transition: width 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+main { transition: margin-left 0.18s cubic-bezier(0.16, 1, 0.3, 1); }
+/* ---- brand row: mark + wordmark, collapse toggle on its right ----------
+   The identity sits at the top of the navigation it labels rather than in the
+   topbar, and the toggle rides beside it: collapsing the rail is chrome for
+   the rail, not a destination, so it doesn't belong in the list of them. */
+.siderail .rail-brand {
+  flex: none;
+  display: flex; align-items: center; gap: 8px;
+  height: var(--topbar-h);
+  /* Negative inline margins so the rule below runs the rail's full width and
+     meets the topbar's own bottom border — one continuous line across the top
+     of the page, rather than a rail separator floating 8px under it. */
+  margin: 0 -8px 8px;
+  padding: 0 8px;
+  border-bottom: 1px solid #18181b;
+}
+.siderail .rail-mark {
+  flex: 1; min-width: 0;
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 7px; border-radius: 9px;
+  text-decoration: none; color: var(--text);
+  font: inherit; font-size: 14px; font-weight: 600; letter-spacing: -0.005em;
+  transition: background 0.15s ease;
+}
+.siderail .rail-mark:hover {
+  text-decoration: none;
+  background: rgba(16, 185, 129, 0.10);
+}
+/* The mark is the favicon artwork itself (assets.MARK_SVG), not a letterform:
+   the rail and the browser tab show the same thing. It carries its own plate,
+   its own emerald ring and its own rounding, so this box only sizes it. */
+.siderail .rail-mark .glyph {
+  width: 26px; height: 26px;
+  display: block; flex: none; border-radius: 7px;
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s ease;
+}
+.siderail .rail-mark .glyph svg { display: block; width: 100%; height: 100%; }
+.siderail .rail-mark:hover .glyph {
+  transform: rotate(-6deg) scale(1.06);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.16);
+}
+.siderail .rail-mark .rail-lbl { white-space: nowrap; }
+/* Collapsed, 64px has no room for a row: the two stack, mark over toggle.
+   The mark stays — losing the brand entirely was the cost of putting the
+   toggle where the wordmark used to be. */
+html.rail-collapsed .rail-brand {
+  flex-direction: column; gap: 6px;
+  height: auto; padding: 8px 4px;
+}
+html.rail-collapsed .rail-mark { justify-content: center; padding: 6px 0; }
+
+.siderail .rail-sep {
+  height: 1px; flex: none;
+  background: var(--border-strong); opacity: 0.55;
+  margin: 8px 4px;
+}
+/* Section heading for the rail's second group (reference + third-party links).
+   Collapsed there's no room for it and the separator alone does the grouping. */
+.siderail .rail-glabel {
+  flex: none;
+  padding: 2px 11px 6px;
+  font-size: 10px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.14em;
+  color: var(--muted-2);
+  white-space: nowrap; overflow: hidden;
+}
+html.rail-collapsed .rail-glabel { display: none; }
+
+/* ---- source bar -------------------------------------------------------
+   The shared "back to the repo" strip every ai-automation-tools site carries
+   in the same place: full width across the very top, note on the left, repo
+   link in the right corner.
+
+   Above the rail rather than beside it — the rail is `position:fixed` and
+   starts below the bar, so this is the one surface that runs the whole width
+   of the window. Fixed, not sticky, because the rail it sits over is fixed
+   too; <body> pays for the height in padding so nothing hides underneath. */
+body { padding-top: var(--srcbar-h); }
+.src-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 70;
+  height: var(--srcbar-h);
+  display: flex; align-items: center; gap: 16px;
+  padding: 0 var(--gutter);
+  background: #0a0a0b;
+  border-bottom: 1px solid #18181b;
+  font-size: 12px;
+}
+.src-bar .src-note {
+  min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  color: var(--muted-2);
+}
+.src-bar .src-note strong { color: var(--warn); font-weight: 600; }
+.src-link {
+  margin-left: auto; flex: none;
+  display: inline-flex; align-items: center; gap: 6px;
+  color: var(--muted); font-weight: 500; text-decoration: none;
+  transition: color 0.15s ease;
+}
+.src-link:hover { color: var(--text); }
+.src-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+.src-link svg { width: 14px; height: 14px; flex: none; }
+
+/* Labels are ONE colour — white, on every row, at rest and lit alike — and the
+   colour lives in the ICON. Each destination owns a hue as HSL parts
+   (--nav-h / --nav-s / --nav-l, set by the .btn-* classes at the end of this
+   block); the glyph spends it in full, and hover and the current row tint
+   their background and the edge marker with it. Text that changed colour per
+   row read as decoration; a coloured glyph beside white text reads as an
+   identity for the destination. */
+.rail-btn {
+  position: relative;
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; height: 40px; flex: none;
+  padding: 0 11px;
+  border: 0; border-radius: 9px;
+  text-decoration: none;
+  color: var(--text);
+  background: transparent;
+  font: inherit; font-size: 13px; font-weight: 500;
+  text-align: left; cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.rail-btn:hover { text-decoration: none; }
+/* The icon carries the hue on its own — `currentColor` on the stroke resolves
+   to the svg's colour, so this tints the glyph and never the label. */
+.rail-btn svg {
+  width: 18px; height: 18px; flex: none; stroke-width: 2;
+  color: hsl(var(--nav-h) var(--nav-s) var(--nav-l));
+}
+.rail-lbl {
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rail-ext { opacity: 0.5; font-size: 11px; }
+
+/* Collapsed: icons only, titles move to the tooltip. */
+html.rail-collapsed .rail-btn { justify-content: center; padding: 0; }
+html.rail-collapsed .rail-lbl { display: none; }
+/* The toggle keeps ONE icon in both states — a panel glyph, not a chevron
+   that has to point the right way. */
+.rail-toggle {
+  flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; padding: 0;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: transparent; color: var(--muted-2);
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+.rail-toggle svg { width: 17px; height: 17px; }
+.rail-toggle:hover {
+  color: var(--text);
+  background: rgba(16, 185, 129, 0.10);
+  border-color: rgba(16, 185, 129, 0.35);
+}
+.rail-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.rail-btn:hover { background: hsl(var(--nav-h) var(--nav-s) var(--nav-l) / 0.12); }
+.rail-btn.is-active { background: hsl(var(--nav-h) var(--nav-s) var(--nav-l) / 0.16); }
+/* Active marker on the rail's outer edge — a second, non-colour signal, so
+   "you are here" survives forced-colors and colour-blindness. -8px lands it on
+   the rail's own edge in BOTH states (the rail's padding-inline is 8px). */
+.rail-btn.is-active::before {
+  content: ''; position: absolute; left: -8px; top: 50%;
+  transform: translateY(-50%);
+  width: 3px; height: 20px; border-radius: 0 3px 3px 0;
+  background: hsl(var(--nav-h) var(--nav-s) var(--nav-l));
+}
+.rail-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* One hue per destination — spent on the glyph, the hover/current wash and the
+   edge marker. Labels stay white throughout. */
+.btn-home { --nav-h: 152; --nav-s: 60%; --nav-l: 50%; }   /* emerald-500 */
+.btn-conv { --nav-h: 217; --nav-s: 91%; --nav-l: 60%; }   /* blue-500   */
+.btn-orch { --nav-h: 258; --nav-s: 90%; --nav-l: 66%; }   /* violet-500 */
+.btn-pers { --nav-h: 173; --nav-s: 80%; --nav-l: 45%; }   /* teal-500   */
+.btn-reg  { --nav-h: 292; --nav-s: 84%; --nav-l: 61%; }   /* fuchsia-500*/
+.btn-preg { --nav-h: 173; --nav-s: 80%; --nav-l: 45%; }   /* teal-500   */
+.btn-res  { --nav-h: 340; --nav-s: 82%; --nav-l: 62%; }   /* rose-500   */
+.btn-extn { --nav-h: 24;  --nav-s: 90%; --nav-l: 58%; }   /* orange-500 */
+.btn-setup{ --nav-h: 199; --nav-s: 89%; --nav-l: 55%; }   /* sky-500    */
+.btn-arena{ --nav-h: 0;   --nav-s: 84%; --nav-l: 60%; }   /* red-500    */
+
+/* Tooltip — the title, for when the rail is collapsed and can't show it.
+   Expanded, the label is right there, so this would be pure noise: hence the
+   `html.rail-collapsed` gate. The same string is always on aria-label, so
+   nothing depends on hover to identify a destination. */
+.rail-btn::after {
+  content: attr(data-tip);
+  position: absolute; left: calc(100% + 14px); top: 50%;
+  transform: translateY(-50%) translateX(-4px);
+  padding: 5px 9px; border-radius: 6px;
+  background: #17171b; color: var(--text);
+  border: 1px solid var(--border-strong);
+  font-size: 12px; font-weight: 500; line-height: 1;
+  white-space: nowrap; pointer-events: none;
+  opacity: 0; visibility: hidden;
+  transition: opacity 0.13s ease, transform 0.13s ease, visibility 0.13s;
+  box-shadow: 0 6px 18px -4px rgba(0, 0, 0, 0.7);
+  z-index: 2;
+}
+html.rail-collapsed .rail-btn:hover::after,
+html.rail-collapsed .rail-btn:focus-visible::after {
+  opacity: 1; visibility: visible; transform: translateY(-50%) translateX(0);
+}
+/* The rail clips its own overflow to keep labels from spilling mid-collapse,
+   which would also clip the tooltip — so let it escape when collapsed. */
+html.rail-collapsed .siderail { overflow: visible; }
+
+/* Every page's <main> clears the fixed rail. The two app surfaces zero their
+   padding but must keep this inset — hence `margin-left`, not padding. */
+main { margin-left: var(--rail-w); }
+
+/* ---- GitHub, hard right, behind a hairline divider ---- */
+/* ---- live pill — polled by the shared topbar script ---- */
+.live-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.12em; color: var(--good);
+  font-weight: 500; flex: none;
+  text-decoration: none;
+  white-space: nowrap;
+}
+a.live-pill:hover { text-decoration: none; color: #6ee7b7; }
+.live-pill .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--good); box-shadow: 0 0 6px var(--good);
+  animation: pulse-live 1.6s ease-in-out infinite;
+}
+.live-pill.idle { color: var(--muted-2); }
+.live-pill.idle .dot { background: var(--muted-2); box-shadow: none; animation: none; }
+@keyframes pulse-live { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+/* ---- palette trigger — the ⌘K affordance ---- */
+.cmdk-trigger {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 30px; padding: 0 9px;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--muted-2);
+  font: inherit; font-size: 12.5px;
+  cursor: pointer; flex: none;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+.cmdk-trigger:hover {
+  border-color: var(--muted-2); color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+}
+.cmdk-trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.cmdk-trigger svg { width: 14px; height: 14px; flex: none; }
+.cmdk-trigger .cmdk-trigger-txt { padding-right: 22px; }
+kbd, .kbd {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10px; line-height: 1;
+  padding: 3px 5px;
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: #131316;
+  color: var(--muted);
+}
+
+/* ---- command palette ---------------------------------------------------
+   Fuzzy-jump to any conversation, persona, or page. The index is fetched
+   lazily on first open (see PALETTE_JS) so no page pays for it up front. */
+.cmdk[hidden] { display: none; }
+.cmdk {
+  position: fixed; inset: 0; z-index: 90;
+  display: grid; place-items: start center;
+  padding: clamp(48px, 12vh, 140px) 16px 16px;
+}
+.cmdk-scrim {
+  position: fixed; inset: 0;
+  background: rgba(3, 3, 4, 0.66);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  animation: cmdk-fade 0.14s ease-out;
+}
+.cmdk-panel {
+  position: relative;
+  width: 100%; max-width: 620px;
+  background: #0c0c0f;
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  box-shadow: 0 24px 70px -12px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+  animation: cmdk-in 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes cmdk-fade { from { opacity: 0; } }
+@keyframes cmdk-in {
+  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+}
+.cmdk-field {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--border);
+}
+.cmdk-field > svg { width: 16px; height: 16px; color: var(--muted-2); flex: none; }
+.cmdk-field input {
+  flex: 1; min-width: 0;
+  background: transparent; border: 0; outline: none;
+  color: var(--text);
+  font: inherit; font-size: 15px;
+  padding: 15px 0;
+}
+.cmdk-field input::placeholder { color: var(--muted-2); }
+.cmdk-list {
+  list-style: none; margin: 0; padding: 6px;
+  max-height: min(52vh, 420px); overflow-y: auto; overflow-x: hidden;
+  scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent;
+}
+.cmdk-group {
+  padding: 9px 10px 5px;
+  font-size: 10px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.14em;
+  color: var(--muted-2);
+}
+.cmdk-item {
+  display: flex; align-items: center; gap: 11px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--muted);
+  scroll-margin: 8px;
+  min-width: 0;   /* let the long-topic children actually ellipsize */
+}
+.cmdk-item[aria-selected="true"] { background: rgba(16, 185, 129, 0.12); color: var(--text); }
+.cmdk-item[aria-selected="true"] .cmdk-go { opacity: 1; }
+.cmdk-ico {
+  display: inline-grid; place-items: center;
+  width: 26px; height: 26px; flex: none;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font: 700 10px/1 'JetBrains Mono', ui-monospace, monospace;
+}
+.cmdk-item[aria-selected="true"] .cmdk-ico {
+  background: rgba(16, 185, 129, 0.16);
+  border-color: rgba(16, 185, 129, 0.34);
+  color: var(--accent);
+}
+.cmdk-ico svg { width: 13px; height: 13px; }
+/* Column, not inline: title and sub are <span>s, and as inline boxes they ran
+   together on one line ("Gordon RamsayCelebrities") and ignored text-overflow. */
+.cmdk-body { min-width: 0; flex: 1; display: flex; flex-direction: column; }
+.cmdk-title {
+  display: block;
+  font-size: 13.5px; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cmdk-title mark { background: transparent; color: var(--accent); font-weight: 600; }
+.cmdk-sub {
+  display: block;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10.5px; color: var(--muted-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin-top: 2px;
+}
+.cmdk-go { margin-left: auto; flex: none; opacity: 0; color: var(--accent); font-size: 12px; }
+.cmdk-empty {
+  padding: 34px 16px; text-align: center;
+  color: var(--muted-2); font-size: 13px;
+}
+.cmdk-foot {
+  display: flex; align-items: center; gap: 16px;
+  padding: 9px 14px;
+  border-top: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.015);
+  font-size: 11px; color: var(--muted-2);
+}
+.cmdk-foot span { display: inline-flex; align-items: center; gap: 5px; }
+.cmdk-foot .cmdk-count { margin-left: auto; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+/* ---- responsive: shed the bar's non-essentials before it can wrap ----
+   The bar carries far less than it used to (nav moved to the rail), so it
+   only needs the two steps. The rail itself never collapses — it IS the
+   navigation, and 56px of a phone screen is a fair price for always-there
+   nav that doesn't need a hamburger. */
+@media (max-width: 760px) {
+  .cmdk-trigger .cmdk-trigger-txt { display: none; }
+  .cmdk-trigger { padding: 0 8px; }
+  .topbar .crumb { display: none; }
+}
+/* A 240px rail would eat half a phone, so below this it is always
+   collapsed regardless of the stored preference — moving BOTH endpoints
+   rather than --rail-w itself, so html.rail-collapsed resolves here too and
+   there's no specificity fight. The toggle goes with it: nothing to toggle. */
+@media (max-width: 720px) {
+  :root { --rail-open: 56px; --rail-shut: 56px; }
+  .rail-lbl { display: none; }
+  /* Same reason as html.rail-collapsed: 56px clipped it to "RESC". */
+  .siderail .rail-glabel { display: none; }
+  .rail-toggle { display: none; }
+  .rail-mark { justify-content: center; padding: 6px 0; }
+  .rail-btn { justify-content: center; padding: 0; }
+  .rail-btn:hover::after, .rail-btn:focus-visible::after {
+    opacity: 1; visibility: visible; transform: translateY(-50%) translateX(0);
+  }
+  .siderail { overflow: visible; }
+}
+@media (max-width: 560px) {
+  .topbar .live-pill { display: none; }
+  /* A keyboard hint on a device with no keyboard is just noise. */
+  .cmdk-trigger kbd { display: none; }
+}
+/* Coarse pointers get no hover, so the tooltip would only ever fire on tap
+   and then stick. Suppress it — aria-label still carries the name. */
+@media (hover: none) {
+  .rail-btn::after { display: none; }
+}
+/* Phones: tap targets and no focus-zoom. Phone-only so desktop computes
+   identically; min-* so these win over the page sheets loaded after this. */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+@media (max-width: 600px) {
+  /* iOS zooms the page when a field under 16px takes focus. !important
+     because page sheets size fields by id (#cv-search) and load later. */
+  input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),
+  select, textarea { font-size: 16px !important; }
+  .cmdk-trigger { min-width: 36px; min-height: 36px; }
+  .theme-btn { min-width: 36px; min-height: 32px; }
+  .src-link { align-self: stretch; }
+}
+
+/* ---- ground + spotlight: the shared surface layer (2026-10-05) ----------
+   What the 2026-10-05 redesign of the org's sites shares, on every page of
+   this app too. Lives in css/topbar.css because that is the one sheet BOTH
+   shells link (before css/base.css for the shell, css/home.css for the homepage) —
+   a copy in each is how the nav rules drifted before 2026-07-15.
+
+   The ground: a 24px dot grid at 3.5% white over the #060606 canvas, with
+   one radial bloom of the brand emerald behind the top of the page. Paint,
+   not layout — it is on <body>, under everything, and changes no box. */
+body {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(ellipse 60% 42% at 62% -6%, rgba(16, 185, 129, 0.11), transparent 70%),
+    radial-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 100% 100%, 24px 24px;
+  background-repeat: no-repeat, repeat;
+  background-attachment: fixed;
+}
+/* A spotlight surface. The element sets --mx / --my from the pointer (one
+   delegated listener in js/shell.js, so a page of 60 cards costs one handler);
+   the ring is a 1px radial gradient masked to the border box, the wash the
+   same gradient wider and fainter inside it. Both are opacity 0 at rest, so
+   a card nobody is pointing at is exactly what it was. The accent is --c,
+   emerald unless the card sets its own (the hero's format buttons do). */
+.spot {
+  position: relative;
+  --mx: 50%; --my: 50%;
+  --c: 16, 185, 129;
+}
+.spot::before, .spot::after {
+  content: ""; position: absolute; inset: 0;
+  border-radius: inherit; pointer-events: none;
+  opacity: 0; transition: opacity 0.35s var(--ease);
+}
+.spot::before {
+  padding: 1px;
+  background: radial-gradient(260px circle at var(--mx) var(--my), rgba(var(--c), 0.75), transparent 65%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+.spot::after {
+  background: radial-gradient(380px circle at var(--mx) var(--my), rgba(var(--c), 0.09), transparent 65%);
+}
+.spot:hover::before, .spot:hover::after,
+.spot:focus-within::before, .spot:focus-within::after { opacity: 1; }
+/* A spotlight card that is itself a link lifts a little too. */
+a.spot { transition: transform 0.3s var(--ease), border-color 0.3s var(--ease), background 0.3s var(--ease); }
+a.spot:hover { transform: translateY(-2px); }
+/* Scrollbars are chrome: thin and in the border token, everywhere. */
+* { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+
+/* ---- theme switch (2026-10-05) -----------------------------------------
+   Two-button segmented pill at the right end of the topbar: Sun (light),
+   Moon (dark). Which half is lit is read off the class js/boot.js put on
+   <html> before first paint, so the pill is right on the first frame and the
+   script only has to keep aria-pressed in step. Dark is the default — see
+   js/boot.js. The light palette itself is css/light.css, linked last. */
+:root { color-scheme: dark; }
+html.light { color-scheme: light; }
+.theme-toggle {
+  display: inline-flex; align-items: center; gap: 2px; flex: none;
+  padding: 2px; border-radius: 12px;
+  background: rgba(39, 39, 42, 0.6);             /* zinc-800 / 60 */
+}
+.theme-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 24px; padding: 0;
+  border: 0; border-radius: 10px;
+  background: transparent; color: var(--muted);
+  cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+.theme-btn svg { width: 13px; height: 13px; flex: none; }
+.theme-btn:hover { color: var(--text); }
+html:not(.light) .theme-btn[data-theme-set="dark"],
+html.light .theme-btn[data-theme-set="light"] {
+  background: var(--bg); color: var(--text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+.theme-btn:focus-visible { outline: 2px solid rgba(16, 185, 129, 0.6); outline-offset: 0; border-radius: 10px; }
+
+/* ---- motion: one global opt-out ---------------------------------------
+   Everything above (and the page-load reveals, pulses, and palette spring)
+   collapses to instant here. Honour the OS switch rather than animating at
+   people who asked us not to. */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

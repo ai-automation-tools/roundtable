@@ -16,7 +16,8 @@ route table, app assembly, `main()`. Implementation lives in the package.
 |:---|:---|
 | SQL, `SCHEMA`/`_MIGRATIONS`, `set_db_path()` | `web/db.py` |
 | BasicAuth / ReadOnly middleware, `_build_middleware()` | `web/security.py` |
-| CSS / JS / SVG constants (`BASE_CSS`, `HOME_CSS`, `_CONV_CSS`, `_PERSONAS_CSS`, favicon) | `web/assets.py` |
+| Stylesheets and scripts (never inline — the pages carry a nonce CSP) | `web/static/css/`, `web/static/js/`; tags via `web/assets.py` (`stylesheets()`, `script()`, `json_script()`) |
+| Favicon / mark SVG | `web/assets.py` |
 | Per-page HTML | `web/render/` — `common` (shell/markdown/icons), `home`, `conversations`, `orchestrate`, `personas` (the `/personas/manage` console), `persona_explorer` (the read-only `/personas` grid + detail — must stay GET-only), `setup`, `extension`, `battleground` (the arena console) |
 | `/api/*` handlers | `web/api/` — `conversations` (+ SSE), `sync`, `orchestrate`, `personas`, `setup`, `battleground` (the extension bridge) |
 | Topic→logo classification | `web/topics.py` |

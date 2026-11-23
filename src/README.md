@@ -35,7 +35,8 @@ working — the tests import them.
 |:---|:---|
 | [**`db.py`**](web/db.py) | Connection handling, `db_init()` (via `schema.ensure_schema`), every SQL helper, and `set_db_path()` (which also exports `$AGENT_CHAT_DB`). |
 | [**`security.py`**](web/security.py) | `BasicAuthMiddleware`, `ReadOnlyMiddleware`, the always-on Host allowlist (`allowed_hosts()`, `AGENT_CHAT_ALLOWED_HOSTS`), `CrossSiteWriteGuard` and the AgentBattleground extension allowlist (`AGENT_CHAT_EXTENSION_IDS`), and `_build_middleware()` — what makes the hosted mirror refuse browser mutations. |
-| [**`assets.py`**](web/assets.py) | CSS / JS / SVG constants (`BASE_CSS`, `HOME_CSS`, `_CONV_CSS`, `_PERSONAS_CSS`, favicon). |
+| [**`assets.py`**](web/assets.py) | The tags that load `static/`: `stylesheets()`, `script()` (with the request's CSP nonce), `json_script()` (escaped per-page data), `static_url()` (`?v=<content hash>`), `CachedStaticFiles` (immutable cache headers); plus the favicon / mark SVG. |
+| [**`static/`**](web/static/) | Every stylesheet (`css/`) and script (`js/`) the pages use, served at `/static` — no CSS or JS lives in a Python string (audit RT-34). |
 | [**`avatars.py`**](web/avatars.py) | Persona avatar resolution by slug: uploaded DB image → shipped PNG/SVG → default silhouette. Serves `GET /avatars/{slug}`. |
 | [**`topics.py`**](web/topics.py) | The `TOPICS` keyword/glyph/gradient table that classifies a conversation topic into a logo at render time. No schema, no backfill. |
 | [**`render/`**](web/render/) | Per-page HTML — `common` (shell, markdown, icons, the hosted demo strip), `home`, `conversations` (two-pane inbox), `orchestrate`, `personas` (the `/personas/manage` console), `persona_explorer` (the read-only `/personas` cast grid + detail pages), `setup` (which CLIs you have), `extension` (the AgentBattleground explainer), `battleground` (the arena console — list, thread, drafts, verdicts; renders only, its buttons call the existing bridge routes). |

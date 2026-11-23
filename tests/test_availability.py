@@ -525,24 +525,24 @@ def test_content_shells_resolve_from_the_width_tokens():
     # One width system, not six hardcoded px values: every inner shell is
     # .orch-shell plus a class that only re-points max-width. A literal px here
     # is a shell that stopped scaling with the rest of the app.
-    from web.assets import (
-        BATTLEGROUND_CSS, DESIGN_TOKENS, NOTIFICATIONS_CSS,
-        ORCHESTRATE_CSS, SETTINGS_CSS, SETUP_CSS,
-    )
+    from web.assets import static_text
+    tokens = static_text("css/tokens.css")
     for token in ("--w-form:", "--w-panel:", "--w-list:"):
-        assert token in DESIGN_TOKENS, token
-    for name, sheet, sel in (
-        ("orch", ORCHESTRATE_CSS, ".orch-shell {"),
-        ("setup", SETUP_CSS, ".su-shell {"),
-        ("notify", NOTIFICATIONS_CSS, ".nt-shell {"),
-        ("settings", SETTINGS_CSS, ".set-shell {"),
-        ("battleground", BATTLEGROUND_CSS, ".bgc {"),
+        assert token in tokens, token
+    for name, sel in (
+        ("orchestrate", ".orch-shell {"),
+        ("setup", ".su-shell {"),
+        ("notifications", ".nt-shell {"),
+        ("settings", ".set-shell {"),
+        ("battleground", ".bgc {"),
     ):
+        sheet = static_text(f"css/{name}.css")
         rule = sheet[sheet.index(sel):sheet.index(sel) + 140].split("}")[0]
         assert "var(--w-" in rule, (name, rule)
     # The tab strip is a SIBLING above .orch-shell, so it has to repeat the
     # shell's box or it renders hard-left while its own tabs sit centred.
-    strip = SETTINGS_CSS[SETTINGS_CSS.index(".set-tabs {"):]
+    settings_css = static_text("css/settings.css")
+    strip = settings_css[settings_css.index(".set-tabs {"):]
     strip = strip[:strip.index("}")]
     assert "var(--w-form)" in strip and "auto" in strip
 

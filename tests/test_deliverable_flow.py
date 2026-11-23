@@ -230,9 +230,12 @@ def _reader(status: str, msgs: list[dict], conv_type: str = "debate") -> str:
 
 def test_sse_path_demotes_earlier_results_too() -> None:
     """A live run must end up looking like a reload of the same run."""
+    from web.assets import static_text
     html = _reader("active", _msgs(1))
-    assert "demoteEarlierResults" in html
-    assert "signal-superseded" in html
+    js = static_text("js/conversation.js")
+    assert "/static/js/conversation.js" in html
+    assert "demoteEarlierResults" in js
+    assert "signal-superseded" in js
 
 
 # ---------------------------------------------------------------------------
@@ -326,7 +329,8 @@ def test_quiet_badge_renders_only_for_an_active_run() -> None:
     live = _reader("active", msgs)
     assert 'id="quiet-badge"' in live
     assert 'data-bar="240"' in live
-    assert "tickQuiet" in live
+    from web.assets import static_text
+    assert "tickQuiet" in static_text("js/conversation.js")
     assert 'id="quiet-badge"' not in _reader("complete", msgs)
 
 

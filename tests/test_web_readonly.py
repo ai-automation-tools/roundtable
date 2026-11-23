@@ -571,7 +571,7 @@ def test_orchestrate_is_local_only_when_readonly():
             page = client.get("/orchestrate")
             assert page.status_code == 200
             assert "Debates run on your machine, not here" in page.text
-            assert "Run preflight + start conversation" not in page.text
+            assert 'id="orch-form"' not in page.text
             assert client.post("/api/orchestrate").status_code == 403
 
             # Local / writable: form returns, explainer does not.
@@ -581,7 +581,7 @@ def test_orchestrate_is_local_only_when_readonly():
             web_ui.db_init()
             local = TestClient(web_ui.app, base_url=LOCAL).get("/orchestrate")
             assert local.status_code == 200
-            assert "Run preflight + start conversation" in local.text
+            assert 'id="orch-form"' in local.text
             assert "Debates run on your machine, not here" not in local.text
         finally:
             os.environ.pop("AGENT_CHAT_PUBLIC_READONLY", None)
@@ -630,10 +630,10 @@ def test_an_explorer_search_says_how_many_it_found():
         c = TestClient(web_ui.app, base_url=LOCAL)
         plain = c.get("/personas").text
         assert "<title>Browse — Agent Personas</title>" in plain
-        assert "getElementById('px-count')" not in plain
+        assert "data-focus-on-load" not in plain
         hit = c.get("/personas?q=zzzz-nothing").text
         assert re.search(r"<title>0 of \d+ — Browse — Agent Personas</title>", hit), hit[:400]
-        assert 'id="px-count"' in hit and "getElementById('px-count')" in hit
+        assert 'id="px-count" data-focus-on-load' in hit
 
 
 def test_phones_get_the_transcript_before_the_list():
@@ -642,7 +642,7 @@ def test_phones_get_the_transcript_before_the_list():
     detail and 404 pages opt in with ``cv-reading``; the index keeps the list
     first, since there the list is the page."""
     from orchestrator import seeding
-    from web.assets import _CONV_CSS
+    from web.assets import static_text
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
         db = Path(tmp) / "chat.db"
         cid = seeding.seed_conversation(
@@ -655,7 +655,8 @@ def test_phones_get_the_transcript_before_the_list():
         missing = client.get("/conversations/99999")
         assert missing.status_code == 404 and 'class="cv2 cv-reading"' in missing.text
         assert 'class="cv2 cv-reading"' not in client.get("/conversations").text
-    mobile = _CONV_CSS[_CONV_CSS.index("@media (max-width:900px)"):]
+    conv_css = static_text("css/conversations.css")
+    mobile = conv_css[conv_css.index("@media (max-width:900px)"):]
     mobile = mobile[:mobile.index("\n}")]
     assert ".cv2.cv-reading .cv-rail { order:2;" in mobile
     assert ".cv-convo-box" in mobile and ".cv2.cv-reading .cv-read > * { order:2; }" in mobile
@@ -771,19 +772,21 @@ def test_the_polled_index_is_slim_and_revalidates():
         etag = slim.headers["etag"]
         again = c.get(url, headers={"If-None-Match": etag})
         assert again.status_code == 304 and again.content == b""
-        from web.assets import SHELL_JS
-        assert "/api/conversations?fields=id,topic,status,participants" in SHELL_JS
+        from web.assets import static_text
+        assert ("/api/conversations?fields=id,topic,status,participants"
+                in static_text("js/shell.js"))
 
 
 def test_nothing_blocks_first_paint_and_html_is_compressed():
     """A phone waited ~1.2 s on the font CSS and highlight.js in <head>, and
     a local or tailnet instance sent 270 KB of HTML uncompressed (RT-41)."""
-    from web.assets import HIGHLIGHT_JS_HEAD
+    from web.assets import static_text
     from web.render.common import FONTS_HEAD
     assert 'rel="stylesheet"' not in FONTS_HEAD.split("<noscript>")[0]
     assert 'rel="preload" as="style"' in FONTS_HEAD
-    assert "<script src=" not in HIGHLIGHT_JS_HEAD and "<link" not in HIGHLIGHT_JS_HEAD
-    assert HIGHLIGHT_JS_HEAD.count("integrity: 'sha512-") == 2
+    # highlight.js is fetched on demand by js/highlight.js, never linked up front.
+    loader = static_text("js/highlight.js")
+    assert "cdnjs" in loader and loader.count("integrity: 'sha512-") == 2
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
         web_ui.set_db_path(str(Path(tmp) / "chat.db"))
         web_ui.db_init()
@@ -984,9 +987,8 @@ def test_a_hostile_sender_renders_inert():
     assert "<img src=x" not in out and "<b>x</b>" not in out, out
     assert 'class="msg sender-codex&quot;&gt;&lt;img' in out, out
     # The live-append path builds the same markup in JS: escaped there too.
-    from web.render import conversations as conv
-    import inspect
-    src = inspect.getsource(conv)
+    from web.assets import static_text
+    src = static_text("js/conversation.js")
     assert "'sender-' + esc(m.sender" in src and "'signal-' + esc(m.signal)" in src
 
 
@@ -1107,14 +1109,16 @@ def test_accessibility_quick_fixes_hold():
     the search button's name contains its visible label, the palette input is
     named, the focused skip link clears the fixed source bar, and the dark
     muted token clears 4.5:1."""
-    from web.assets import BASE_CSS
+    from web.assets import static_text
     from web.render.common import _layout
+    base_css = static_text("css/base.css")
+    tokens_css = static_text("css/tokens.css")
     page = _layout("T", "", "<p>x</p>")
     assert '<meta name="description" content="' in page
     assert 'aria-label="Search Ctrl K"' in page and "<kbd>Ctrl K</kbd>" in page
     assert '<input id="cmdk-input"' in page and 'aria-label="Search Roundtable"' in page
-    assert ".skip-link:focus { top: var(--srcbar-h);" in BASE_CSS
-    assert "--muted-2: #909099;" in BASE_CSS
+    assert ".skip-link:focus { top: var(--srcbar-h);" in base_css
+    assert "--muted-2: #909099;" in tokens_css
 
 
 # ---------------------------------------------------------------------------

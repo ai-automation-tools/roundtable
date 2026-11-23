@@ -308,8 +308,9 @@ def test_retired_agent_id_still_renders() -> None:
 
 
 def test_a_persona_name_cannot_close_the_page_script() -> None:
-    """Persona names land in an inline <script>; one holding "</script>" (say,
-    from an imported card) must not end it early and run its own markup."""
+    """Persona names land in the page's JSON data block; one holding
+    "</script>" (say, from an imported card) must not end it early and run its
+    own markup."""
     _fresh_db()
     from web.render.conversations import _render_conversation_main
 
@@ -318,7 +319,7 @@ def test_a_persona_name_cannot_close_the_page_script() -> None:
     conv["status"] = "completed"
     html = _render_conversation_main({"conversation": conv, "messages": []}, [], False)
     assert evil not in html
-    assert r"\u003c/script>\u003cscript>alert(1)" in html
+    assert r"\u003c/script\u003e\u003cscript\u003ealert(1)" in html
 
 
 def test_cast_panel_degrades_when_no_cards_exist() -> None:

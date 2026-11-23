@@ -5,7 +5,7 @@ main()). The implementation lives here:
 
     web.db        — connection, schema, conversation/persona SQL helpers
     web.security  — auth middleware + env-flag stack assembly
-    web.assets    — CSS / JS / SVG constants
+    web.assets    — static-file tags (CSS / JS under web/static), the SVG mark
     web.render    — per-page HTML rendering
     web.api       — /api/* route handlers
 """

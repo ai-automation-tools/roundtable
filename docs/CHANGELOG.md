@@ -6,6 +6,15 @@ Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changel
 
 ## 2026-11-23 (latest)
 
+### Changed — no inline CSS or JS; every page sends a nonce CSP
+
+- **Every stylesheet and script moved out of Python strings into `src/web/static/`** (`css/`, `js/`), served at `/static` with a content-hash query (`?v=…`) and a year-long immutable cache, so a deploy that changes a file busts caches on its own. About 6,300 lines left `web/assets.py` and `web/render/*`; the HTML renderers stay in Python.
+- **Every HTML page, local and on the hosted mirror, sends a Content-Security-Policy with a per-request script nonce**: `script-src 'self' 'nonce-…'`, no `'unsafe-inline'` for scripts, plus `object-src 'none'`, `base-uri 'self'`, `form-action 'self'` and `frame-ancestors 'none'`. An injected `<script>` or `on*=` attribute no longer runs. Styles still allow `'unsafe-inline'` for computed `style=` attributes.
+- Server values a script needs arrive as an escaped JSON block or a `data-*` attribute. The notification settings' saved state used to be interpolated into a script unescaped; it now goes through the same escaping as the rest.
+- Inline handlers are gone: image fallbacks are `data-fallback` / `data-on-error`, the explorer's filters auto-submit through `data-autosubmit`, and the web-font stylesheet is inserted by `js/boot.js` instead of an `onload=` attribute.
+- CI's lint job now runs `node --check` over every script. New suite: `tests/test_static_csp.py`.
+- Audit item RT-34.
+
 ### Fixed — the three installed agent-skills copies match upstream again
 
 - `agent-chat-delivery`, `agent-chat-conv-types` and `agent-chat-run-triage` were reinstalled from agent-skills `main` (#134). They name `src/schema.py` as the one `SCHEMA` and describe `deliver_later()`. Each carries an `.installed-from-agent-skills` marker naming the commit it came from.
