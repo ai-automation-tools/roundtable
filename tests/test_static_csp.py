@@ -86,7 +86,7 @@ def _check_page(client: TestClient, path: str) -> list[str]:
     assert "frame-ancestors 'none'" in csp and "object-src 'none'" in csp, csp
     nonce = m.group(1)
     page = r.text
-    tags = re.findall(r"<script\b([^>]*)>(.*?)</script\s*>", page, re.S | re.I)
+    tags = re.findall(r"<script\b([^>]*)>(.*?)</script[^>]*>", page, re.S | re.I)
     assert tags, path
     for attrs, body in tags:
         assert f'nonce="{nonce}"' in attrs, (path, attrs)
