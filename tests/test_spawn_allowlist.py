@@ -90,6 +90,40 @@ def test_no_seat_ever_gets_a_blanket_bypass() -> None:
                 assert "--allowedTools" not in cmd, cmd
 
 
+def test_every_seat_is_contained_ticked_or_not() -> None:
+    """Audit 2026-11-22 (RT-01): a seat reads text anyone could have written,
+    so containment doesn't depend on the approvals box. Claude Code gets a
+    built-in tool ALLOWLIST (--tools Read: a Bash deny-list was tried, and the
+    seat used the PowerShell tool) plus a roundtable-only MCP config; Codex a
+    read-only sandbox with its config.toml servers switched off; every window
+    drops the sync/bridge secrets before the CLI starts."""
+    if not _PWSH:
+        return
+    for skip in (True, False):
+        cmds = _plan(skip)
+        for seat in ("claude-code", "claude-code-2"):
+            cmd = cmds[seat]
+            assert "--tools Read --strict-mcp-config --mcp-config '" in cmd, cmd
+            assert f"conv7-{seat}.mcp.json'" in cmd, cmd
+            assert cmd.index("Read the file") < cmd.index("--tools"), cmd
+        codex = cmds["codex"]
+        assert "--sandbox read-only --ask-for-approval on-request @off" in codex, codex
+        assert codex.index("$off = @(") < codex.index("codex \""), codex
+        for seat, cmd in cmds.items():
+            assert "Remove-Item Env:AGENT_CHAT_INGEST_TOKEN," in cmd, (seat, cmd)
+            assert cmd.index("Remove-Item Env:") < cmd.index("Read the file"), (seat, cmd)
+
+
+def test_the_opencode_seat_denies_everything_but_roundtable() -> None:
+    cfg = json.loads((_ROOT / "agents" / "CLIs" / "opencode_agent1" / "opencode.json")
+                     .read_text(encoding="utf-8"))
+    perm = cfg["permission"]
+    assert perm["*"] == "deny", perm
+    assert perm["read"] == "allow" and perm["roundtable_*"] == "allow", perm
+    assert perm["external_directory"]["*"] == "deny", perm
+    assert list(cfg["mcp"]) == ["roundtable"], cfg["mcp"]
+
+
 def _main() -> int:
     if not _PWSH:
         print("NOTE  pwsh not on PATH: the launch-plan cases pass vacuously")

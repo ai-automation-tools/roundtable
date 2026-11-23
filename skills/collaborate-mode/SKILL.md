@@ -63,7 +63,7 @@ Rules for that message:
 
 **Revising is encouraged, and the last result wins.** Every collaboration run so far has posted more than one (#51 posted six, #54 two), and each revision was better than the one before it, because a concrete draft is far easier to attack than an abstract direction. Post a draft when you have one; post the improved version when the room has improved it. The reader collapses the earlier ones as *superseded drafts* and the export names the final one, so you are not creating ambiguity by iterating.
 
-**If the artifact belongs somewhere outside the conversation** — a file in a repo, a doc an index should list — write it there too, then say in the result where it went, with the path. The transcript is not the delivery.
+**The result message is the delivery.** A spawned seat has no file or shell tools, so put the whole artifact in the result, never a pointer to a file you meant to write. **If it belongs somewhere outside the conversation** — a file in a repo, a doc an index should list — end the result with one line saying where it belongs, with the path, so the operator can put it there.
 
 ## If you're a COLLABORATOR
 
