@@ -6,6 +6,12 @@ Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changel
 
 ## 2026-11-22 (latest)
 
+### Fixed — the hosted mirror stops describing its own container
+
+- **Reads about the local machine are `404` on the mirror:** `/api/setup` (it listed container paths and `/root/.claude.json`), `/api/settings/*` and `/api/notifications`. Writes there are still the read-only `403`.
+- The web UI's startup log prints `public read-only: on|off` next to `basic auth`.
+- Audit item RT-31.
+
 ### Changed — the app's fonts match the homepage and the org's other sites
 
 - **Inter for text, JetBrains Mono for code and numerals**, instead of IBM Plex Sans and IBM Plex Mono. One font stylesheet per page: the persona console no longer `@import`s a second one.
