@@ -16,7 +16,8 @@ from typing import Any
 from orchestrator import delivery
 from schema import (  # noqa: F401 — the ARENA_/DRAFT_ names are re-exported to web_ui and web.api/render
     ARENA_CLOSED, ARENA_OPEN, CONV_COLUMNS, DRAFT_APPROVED, DRAFT_PENDING, DRAFT_POSTED,
-    DRAFT_REJECTED, DRAFT_VERDICTS, MSG_COLUMNS, PERSONA_COLS_SQL, PERSONA_COLUMNS, ensure_schema,
+    DRAFT_REJECTED, DRAFT_VERDICTS, MSG_COLUMNS, PERSONA_COLS_SQL, PERSONA_COLUMNS,
+    complete_conversation, ensure_schema, write_txn,
 )
 
 DB_PATH: str = ""
@@ -241,31 +242,24 @@ def conversation_turn_state(cid: int) -> tuple[str | None, str | None]:
 def stop_conversation(cid: int) -> dict[str, Any] | None:
     """Force a conversation complete with end_reason='stopped by operator'.
 
-    Mirrors the SQL in inspect_conversations.cmd_stop so the CLI and Web UI
-    end up with identical row state. Returns None if the conversation
-    doesn't exist; otherwise returns {'already_complete': bool, 'status':
-    'complete', 'end_reason': str}.
+    Goes through ``schema.complete_conversation`` like the CLI's ``stop`` and
+    the MCP send path, so the row only leaves 'active' once and only the caller
+    that moved it fires the ``complete`` delivery. Returns None if the
+    conversation doesn't exist; otherwise returns {'already_complete': bool,
+    'status': 'complete', 'end_reason': str}.
     """
-    now = datetime.now(timezone.utc).isoformat()
     with _connect() as conn:
-        # Default deferred isolation; the `with` block commits on clean exit.
-        row = conn.execute(
-            "SELECT status, end_reason FROM conversations WHERE id = ?", (cid,)
-        ).fetchone()
-        if row is None:
-            return None
-        if row["status"] == "complete":
+        if not complete_conversation(conn, cid, "stopped by operator"):
+            row = conn.execute(
+                "SELECT end_reason FROM conversations WHERE id = ?", (cid,)
+            ).fetchone()
+            if row is None:
+                return None
             return {
                 "already_complete": True,
                 "status": "complete",
                 "end_reason": row["end_reason"],
             }
-        conn.execute(
-            "UPDATE conversations SET status='complete', "
-            "end_reason='stopped by operator', current_turn=NULL, "
-            "updated_at=? WHERE id=?",
-            (now, cid),
-        )
 
     # Committed. Fan out to any configured delivery sink — a no-op unless
     # config/delivery.json turns one on. Outside the `with` for the same reason
@@ -617,7 +611,10 @@ def bg_merge_thread(aid: int, posts: list[dict[str, Any]]) -> dict[str, Any] | N
     a page after new replies land without losing the arena or duplicating the
     backlog the agent has already read.
     """
-    with _connect() as conn:
+    # Read-modify-write of one JSON column: under BEGIN IMMEDIATE, two captures
+    # arriving together merge one after the other instead of the second
+    # overwriting the first's new posts (audit RT-09).
+    with _connect() as conn, write_txn(conn):
         row = conn.execute(
             "SELECT thread FROM battleground_arenas WHERE id = ?", (aid,)
         ).fetchone()

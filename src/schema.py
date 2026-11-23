@@ -10,11 +10,18 @@ Adding a column: put it in ``SCHEMA``, add a ``MIGRATIONS`` row so existing
 files upgrade in place, and add it to the matching ``*_COLUMNS`` tuple if it
 should reach the Fly mirror (deploy the web app before restarting the sidecar).
 ``tests/test_conv_types.py`` pins the column lists against the real tables.
+
+It also owns the one state change several processes race on: a conversation
+leaving ``active`` (``complete_conversation``), plus ``write_txn`` for a
+check-then-write that must not interleave with another process.
 """
 
 from __future__ import annotations
 
 import sqlite3
+from contextlib import contextmanager
+from datetime import datetime, timezone
+from typing import Iterator
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS conversations (
@@ -168,3 +175,35 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
         except sqlite3.OperationalError as exc:
             if "duplicate column name" not in str(exc):
                 raise
+
+
+@contextmanager
+def write_txn(conn: sqlite3.Connection) -> Iterator[sqlite3.Connection]:
+    """``BEGIN IMMEDIATE`` … ``COMMIT`` (``ROLLBACK`` on an exception).
+
+    Takes the write lock up front, so everything read inside the block is still
+    true when the block writes: no other process can commit in between. Needs an
+    autocommit connection (``isolation_level=None``), which every caller uses.
+    A ``return`` inside the block commits whatever was written."""
+    conn.execute("BEGIN IMMEDIATE")
+    try:
+        yield conn
+    except BaseException:
+        conn.execute("ROLLBACK")
+        raise
+    conn.execute("COMMIT")
+
+
+def complete_conversation(conn: sqlite3.Connection, cid: int, reason: str) -> bool:
+    """Move a conversation from ``active`` to ``complete``, once.
+
+    True only for the caller whose UPDATE made the change, so the send path, the
+    web UI's Stop and the CLI's ``stop`` can each fire the ``complete`` delivery
+    on True and never deliver twice. A row that is already complete is left
+    byte-identical (``end_reason`` and ``updated_at`` included)."""
+    cur = conn.execute(
+        "UPDATE conversations SET status = 'complete', end_reason = ?, "
+        "current_turn = NULL, updated_at = ? WHERE id = ? AND status = 'active'",
+        (reason, datetime.now(timezone.utc).isoformat(), cid),
+    )
+    return cur.rowcount == 1
