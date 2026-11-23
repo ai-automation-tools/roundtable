@@ -73,7 +73,7 @@ _PERSONAS_ROOT = _REPO_ROOT / "agents" / "Debate-Agents"
 # on sys.path; src/schema.py is stdlib-only, so the import graph stays light.
 if str(_REPO_ROOT / "src") not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT / "src"))
-from schema import ensure_schema, resolve_db_path  # noqa: E402
+from schema import ClosingConnection, ensure_schema, resolve_db_path  # noqa: E402
 
 
 # Set by the process that owns a database (web.db.set_db_path, the MCP
@@ -98,7 +98,8 @@ def _connect() -> sqlite3.Connection:
     autocommit). Creates the parent dir + file on first use."""
     db_path = _db_path()
     os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)
-    conn = sqlite3.connect(db_path, timeout=10.0, isolation_level=None)
+    conn = sqlite3.connect(db_path, timeout=10.0, isolation_level=None,
+                           factory=ClosingConnection)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     return conn

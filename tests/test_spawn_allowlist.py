@@ -140,6 +140,37 @@ def test_every_window_records_its_pid_first() -> None:
         assert cmd.index(".pid'") < cmd.index("Set-Location"), (seat, cmd)
 
 
+def test_a_path_with_an_apostrophe_still_parses() -> None:
+    """A launch folder (or clone) under "Mike's Projects" closed the quoted
+    path early and broke every seat's command line (audit RT-37). Each command
+    must parse, and each -LiteralPath must be the real path."""
+    if not _PWSH:
+        return
+    launch = Path(tempfile.mkdtemp(prefix="agentchat-quote-")) / "Mike's launch"
+    lib = _ROOT / "scripts" / "lib" / "spawn-agents.ps1"
+    q = lambda s: "'" + str(s).replace("'", "''") + "'"
+    seats = ", ".join(f"[pscustomobject]@{{ Cli = '{c}' }}" for c in _SEATS)
+    script = (
+        f". {q(lib)}; "
+        f"$plan = New-AgentLaunchPlan -Assignments @({seats}) -Topic 't' -ConvId 7 "
+        f"-LaunchDir {q(launch)} -RepoRoot {q(_ROOT)} -SkipPermissions -DryRun; "
+        "$rows = foreach ($p in $plan) { $e = $null; $t = $null; "
+        "$ast = [System.Management.Automation.Language.Parser]::ParseInput($p.Command, [ref]$t, [ref]$e); "
+        "$lit = $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.CommandParameterAst] "
+        "-and $n.ParameterName -eq 'LiteralPath' }, $true) | ForEach-Object { "
+        "$c = $_.Parent; $c.CommandElements[$c.CommandElements.IndexOf($_) + 1].Value }; "
+        "[pscustomobject]@{ cli = $p.Cli; errors = @($e).Count; paths = @($lit) } }; "
+        "ConvertTo-Json -InputObject @($rows) -Depth 4")
+    out = subprocess.run([_PWSH, "-NoProfile", "-NonInteractive", "-Command", script],
+                         capture_output=True, text=True, encoding="utf-8", timeout=120)
+    assert out.returncode == 0, out.stdout + out.stderr
+    rows = json.loads(out.stdout)
+    assert {r["cli"] for r in rows} == set(_SEATS), rows
+    for r in rows:
+        assert r["errors"] == 0, r
+        assert str(launch / f"conv7-{r['cli']}.pid") == r["paths"][0], r
+
+
 def test_no_spawn_refuses_a_launch() -> None:
     if not _PWSH:
         return

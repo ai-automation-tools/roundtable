@@ -41,7 +41,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from orchestrator import delivery, watchdog  # noqa: E402
-from schema import complete_conversation, resolve_db_path  # noqa: E402
+from schema import ClosingConnection, complete_conversation, resolve_db_path  # noqa: E402
 
 
 def _default_db_path() -> str:
@@ -57,7 +57,8 @@ def _default_db_path() -> str:
 
 
 def connect(db_path: str) -> sqlite3.Connection:
-    conn = sqlite3.connect(db_path, timeout=10.0, isolation_level=None)
+    conn = sqlite3.connect(db_path, timeout=10.0, isolation_level=None,
+                           factory=ClosingConnection)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     return conn
@@ -342,8 +343,11 @@ def main() -> int:
         print(f"ERROR: db not found at {args.db_path}", file=sys.stderr)
         return 1
 
-    conn = connect(args.db_path)
+    with connect(args.db_path) as conn:
+        return _dispatch(args, conn)
 
+
+def _dispatch(args: argparse.Namespace, conn: sqlite3.Connection) -> int:
     if args.cmd == "list":
         return cmd_list(conn)
     if args.cmd == "show":

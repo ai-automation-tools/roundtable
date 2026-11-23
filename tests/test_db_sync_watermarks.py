@@ -47,6 +47,7 @@ _ROOT = Path(__file__).resolve().parent.parent
 _SRC = _ROOT / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
+from schema import ClosingConnection  # noqa: E402
 
 from orchestrator import seeding  # noqa: E402
 
@@ -147,7 +148,7 @@ def _seeded_db(tmp: Path) -> tuple[Path, int]:
 
 def _set_updated_at(db_path: Path, cid: int, topic: str, updated_at: str) -> None:
     """A local edit, exactly as the web UI's rename does it."""
-    with sqlite3.connect(str(db_path), timeout=10.0) as conn:
+    with sqlite3.connect(str(db_path), timeout=10.0, factory=ClosingConnection) as conn:
         conn.execute(
             "UPDATE conversations SET topic = ?, updated_at = ? WHERE id = ?",
             (topic, updated_at, cid),
@@ -155,7 +156,7 @@ def _set_updated_at(db_path: Path, cid: int, topic: str, updated_at: str) -> Non
 
 
 def _add_message(db_path: Path, cid: int, sender: str, content: str) -> None:
-    with sqlite3.connect(str(db_path), timeout=10.0) as conn:
+    with sqlite3.connect(str(db_path), timeout=10.0, factory=ClosingConnection) as conn:
         conn.execute(
             "INSERT INTO messages (conversation_id, sender, content, created_at) "
             "VALUES (?, ?, ?, datetime('now'))",
@@ -164,7 +165,7 @@ def _add_message(db_path: Path, cid: int, sender: str, content: str) -> None:
 
 
 def _read_updated_at(db_path: Path, cid: int) -> str:
-    with sqlite3.connect(str(db_path), timeout=10.0) as conn:
+    with sqlite3.connect(str(db_path), timeout=10.0, factory=ClosingConnection) as conn:
         return str(
             conn.execute(
                 "SELECT updated_at FROM conversations WHERE id = ?", (cid,)
@@ -250,7 +251,7 @@ def test_the_pull_cursor_still_runs_on_server_time():
 
 
 def _local_row(db_path: Path, cid: int) -> dict:
-    with sqlite3.connect(str(db_path), timeout=10.0) as conn:
+    with sqlite3.connect(str(db_path), timeout=10.0, factory=ClosingConnection) as conn:
         conn.row_factory = sqlite3.Row
         return dict(conn.execute(
             f"SELECT {','.join(db_sync.CONV_COLUMNS)} FROM conversations WHERE id = ?",
@@ -297,7 +298,7 @@ def test_the_mirror_cannot_rewrite_what_agents_are_told():
     agent. A newer remote row with changed content now leaves local alone."""
     with tempfile.TemporaryDirectory(**_TMP) as td:
         db_path, cid = _seeded_db(Path(td))
-        with sqlite3.connect(str(db_path), timeout=10.0) as conn:
+        with sqlite3.connect(str(db_path), timeout=10.0, factory=ClosingConnection) as conn:
             conn.execute(
                 'INSERT INTO personas ("group", slug, name, body, created_at, updated_at) '
                 "VALUES ('G', 'ada', 'Ada', 'original body', '2026-01-01', '2026-01-01')")
@@ -318,7 +319,7 @@ def test_the_mirror_cannot_rewrite_what_agents_are_told():
         _tick(db_path, state, remote)
 
         assert _local_row(db_path, cid) == before
-        with sqlite3.connect(str(db_path), timeout=10.0) as conn:
+        with sqlite3.connect(str(db_path), timeout=10.0, factory=ClosingConnection) as conn:
             assert conn.execute("SELECT COUNT(*) FROM conversations WHERE id = ?",
                                 (cid + 100,)).fetchone()[0] == 0
             assert conn.execute("SELECT body FROM personas WHERE slug = 'ada'"
@@ -390,7 +391,7 @@ def test_a_hosted_delete_still_propagates_and_stops():
         remote.pushes.clear()
 
         state = _tick(db_path, state, remote)
-        with sqlite3.connect(str(db_path), timeout=10.0) as conn:
+        with sqlite3.connect(str(db_path), timeout=10.0, factory=ClosingConnection) as conn:
             assert conn.execute(
                 "SELECT COUNT(*) FROM conversations WHERE id = ?", (cid,)
             ).fetchone()[0] == 0
@@ -470,7 +471,7 @@ def test_an_excluded_conversation_is_deleted_from_the_mirror_then_never_pushed()
         assert remote.pushes[-1]["deleted_conversation_ids"] == [cid]
         assert state.known_conversation_ids == []
         # ...and the local row is untouched. That is the whole point.
-        with sqlite3.connect(str(db_path), timeout=10.0) as conn:
+        with sqlite3.connect(str(db_path), timeout=10.0, factory=ClosingConnection) as conn:
             assert conn.execute(
                 "SELECT COUNT(*) FROM conversations WHERE id = ?", (cid,)
             ).fetchone()[0] == 1
@@ -493,7 +494,7 @@ def test_an_excluded_conversation_survives_a_hosted_delete_report():
         remote.deleted_conversation_ids = [cid]
 
         _tick(db_path, db_sync.State(), remote, {cid})
-        with sqlite3.connect(str(db_path), timeout=10.0) as conn:
+        with sqlite3.connect(str(db_path), timeout=10.0, factory=ClosingConnection) as conn:
             assert conn.execute(
                 "SELECT COUNT(*) FROM conversations WHERE id = ?", (cid,)
             ).fetchone()[0] == 1
@@ -537,7 +538,7 @@ def test_a_re_publish_skips_an_id_that_is_gone_locally():
         db_path, cid = _seeded_db(Path(td))
         remote = FakeRemote()
         state = _tick(db_path, db_sync.State(), remote, {cid})
-        with sqlite3.connect(str(db_path), timeout=10.0) as conn:
+        with sqlite3.connect(str(db_path), timeout=10.0, factory=ClosingConnection) as conn:
             conn.execute("DELETE FROM conversations WHERE id = ?", (cid,))
         remote.pushes.clear()
 

@@ -42,7 +42,7 @@ from presets import BLIND_FIRST, protocol_for
 from schema import (
     SENDER_RE,
     resolve_db_path,
-    DRAFT_PENDING, complete_conversation, ensure_schema, write_txn,
+    ClosingConnection, DRAFT_PENDING, complete_conversation, ensure_schema, write_txn,
 )
 
 
@@ -84,7 +84,8 @@ def now_iso() -> str:
 
 def db_connect() -> sqlite3.Connection:
     """Open a connection with sane defaults for a multi-process bus."""
-    conn = sqlite3.connect(DB_PATH, timeout=10.0, isolation_level=None)
+    conn = sqlite3.connect(DB_PATH, timeout=10.0, isolation_level=None,
+                           factory=ClosingConnection)
     conn.row_factory = sqlite3.Row
     # WAL lets two agents read/write the same file from different processes
     # without stepping on each other.
