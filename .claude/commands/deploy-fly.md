@@ -7,9 +7,10 @@ The Fly app `agent-chat-mikesailab` (→ `agent-chat-demo.ai-automation-tools.de
 the web UI** (`src/web_ui.py` and the `src/web/` package it imports). Most of
 this repo never runs there.
 
-> Since 2026-10-21 `.github/workflows/deploy-fly.yml` deploys on every push to `main` that
-> touches the web paths below, so this command is for a re-run, a deploy from another branch,
-> or a change the path filter misses. Check `gh run list --workflow deploy-fly.yml` first.
+> Since 2026-10-21 every push to `main` that touches the web paths below deploys, and since
+> 2026-11-22 only after CI's `test` job passes (`ci.yml`'s `deploy` job calls `deploy-fly.yml`).
+> So this command is for a re-run, a deploy from another branch, or a change the path filter
+> misses. Check `gh run list --workflow ci.yml --branch main` first.
 
 ## Instructions
 

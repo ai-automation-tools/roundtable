@@ -4,6 +4,13 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 ## 2026-11-22 (latest)
 
+### Changed — the Fly mirror deploys only after CI passes
+
+- **A push to `main` deploys only once the test suites pass.** `deploy-fly.yml` no longer runs on the push itself (three red or cancelled builds had reached production that way); `ci.yml` calls it as a `deploy` job with `needs: test`, still only for pushes touching the web paths. CI on `main` no longer cancels an in-flight run, so a newer push can't kill a deploy half way. `gh workflow run deploy-fly.yml` still works by hand.
+- **A PR touching the image builds and boots it.** New `image` job: `docker build`, run it read-only, and require `/api/battleground/healthz` and `/` to answer.
+- **Health checks.** `fly.toml` gains an http check on `/api/battleground/healthz`, and the deploy job curls the public hostname afterwards and fails if it doesn't answer `ok`.
+- Docs: `AGENTS.md` › Deploying to Fly, `.claude/commands/deploy-fly.md`.
+
 ### Fixed — battleground links are http(s) only
 
 - **The bridge, the extension and the `/battleground` console accept only `http`/`https` links.** A captured post's permalink with any other scheme is dropped at capture and at the bridge; an arena whose URL isn't http(s) is refused with a 400; and the console renders no link for a stored row that predates the check. Tests: `tests/test_battleground.py`.

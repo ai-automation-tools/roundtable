@@ -1,25 +1,14 @@
 name: Deploy to Fly
 
-# The hosted mirror runs only the web UI, so only these paths change what it
-# serves (the list AGENTS.md's "Deploying to Fly" section names). Merges reach
-# main through PRs whose CI already passed; data reaches the mirror through the
-# sidecar sync, never a deploy.
+# The hosted mirror runs only the web UI. Pushes to main no longer trigger this
+# directly: ci.yml calls it as its `deploy` job, after `test` passes and only
+# when the push touched what the mirror serves (src/web_ui.py, src/web/,
+# requirements.txt, fly.toml, Dockerfile, images/AgentChat-Avatars/). Until
+# 2026-11-22 it ran on the push itself, so red builds reached production.
+# workflow_dispatch stays for a by-hand re-run.
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'src/web_ui.py'
-      - 'src/web/**'
-      - 'requirements.txt'
-      - 'fly.toml'
-      - 'Dockerfile'
-      - 'images/AgentChat-Avatars/**'
+  workflow_call:
   workflow_dispatch:
-
-# Never cancel a deploy half way; queue the next one behind it.
-concurrency:
-  group: deploy-fly
-  cancel-in-progress: false
 
 # The deploy authenticates with FLY_API_TOKEN; the GitHub token only reads.
 permissions:
@@ -29,6 +18,10 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Never cancel a deploy half way; queue the next one behind it.
+    concurrency:
+      group: deploy-fly
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1 # v1 (1.6)
@@ -40,3 +33,14 @@ jobs:
             echo "::error::FLY_API_TOKEN secret is not set - see AGENTS.md, Deploying to Fly"; exit 1
           fi
           flyctl deploy --remote-only --app agent-chat-mikesailab || { sleep 30; flyctl deploy --remote-only --app agent-chat-mikesailab; }
+      - name: Check the mirror answers
+        # Fly checks gate the machine; this proves the public hostname serves
+        # the new image. The first request may wake a stopped machine.
+        run: |
+          for i in 1 2 3 4 5 6 7 8; do
+            if curl -fsS --max-time 20 https://roundtable-demo.ai-automation-tools.dev/api/battleground/healthz | grep -Eq '"ok": ?true'; then
+              echo "mirror healthy"; exit 0
+            fi
+            sleep 15
+          done
+          echo "::error::the mirror did not answer /api/battleground/healthz with ok=true after the deploy"; exit 1
