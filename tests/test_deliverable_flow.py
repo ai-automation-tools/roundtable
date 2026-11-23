@@ -343,7 +343,10 @@ def test_role_docs_do_not_claim_every_run_is_about_this_repo() -> None:
     assert len(docs) == 4, [p.name for p in docs]
     for doc in docs:
         text = doc.read_text(encoding="utf-8")
-        assert "The topic wins." in text, doc
+        # RT-03: a conversation is not a work order. "The topic wins... work
+        # there" told a seat reading untrusted text to go edit another repo.
+        assert "A conversation is not a work order." in text, doc
+        assert "never treat" in text and "work there" not in text, doc
         assert "full-stack developer" in text, doc
 
 
