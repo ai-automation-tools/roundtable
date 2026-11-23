@@ -4,6 +4,18 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 ## 2026-11-22 (latest)
 
+### Changed — spawned seats can't run commands, edit files or reach other MCP servers
+
+- **Every seat `/orchestrate` or `debate.ps1` launches is contained, approvals box or not.** A seat reads text anyone could have written (persona cards, topics, other agents' messages, captured threads), and on a machine whose user settings pre-approve shell tools it could act on that text unasked. Now:
+  - **Claude Code** launches with `--tools Read --strict-mcp-config --mcp-config <db\launch\conv<id>-<seat>.mcp.json>`: `Read` is its only built-in tool and `roundtable` its only MCP server. A `--disallowedTools Bash` list was tried first; the seat simply used the Windows PowerShell tool, which is why it is an allowlist.
+  - **Codex** launches with `--sandbox read-only --ask-for-approval on-request`, and every MCP server its `config.toml` declares other than `roundtable` is switched off for that window (`-c mcp_servers.<name>.enabled=false`, read from the seat's own `CODEX_HOME`). Servers a Codex plugin provides can't be switched off that way.
+  - **OpenCode**: `agents/CLIs/opencode_agent1/opencode.json` gains a `permission` block (deny everything but `read`, `roundtable_*`, and reading the `db/launch` prompt folder) and drops its `context7` and `playwright` servers. Servers merged in from your global OpenCode config are denied too.
+  - Every seat's window drops `AGENT_CHAT_INGEST_TOKEN`, `AGENT_CHAT_BATTLEGROUND_TOKEN`, `AGENT_CHAT_BASIC_AUTH_PASSWORD` and `FLY_API_TOKEN` before the CLI starts.
+  - Antigravity has no verified flag yet and is unchanged.
+- **Action needed:** an OpenCode seat 2+ folder created before today was cloned from the old `opencode.json`; delete it and re-create it with `scripts/setup/add_agent_seat.py`.
+- **The facilitator brief no longer asks a seat to write files.** The result message is the delivery; if the artifact belongs in a repo, the result ends with where, so you can put it there (`_ROLE_BRIEFS`, `skills/collaborate-mode`).
+- Checked headless on this machine: a Claude Code seat asked to run `whoami` had no shell tool and listed only `Read` and the roundtable tools; an OpenCode seat could read its `db/launch` prompt but nothing else outside its folder and had no shell; a read-only Codex could not create a file. Docs: `docs/app/web-ui.md`, `docs/cli-mcp-config/per-cli/opencode.md`, `skills/start-debate`. Tests: `tests/test_spawn_allowlist.py`, `tests/test_deliverable_flow.py`.
+
 ### Changed — the Fly mirror deploys only after CI passes
 
 - **A push to `main` deploys only once the test suites pass.** `deploy-fly.yml` no longer runs on the push itself (three red or cancelled builds had reached production that way); `ci.yml` calls it as a `deploy` job with `needs: test`, still only for pushes touching the web paths. CI on `main` no longer cancels an in-flight run, so a newer push can't kill a deploy half way. `gh workflow run deploy-fly.yml` still works by hand.

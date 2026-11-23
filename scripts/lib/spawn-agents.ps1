@@ -37,17 +37,44 @@
 #               passed: persona and topic text is untrusted input to the agent
 #               (owner's security audit 2026-10-30, Roadmap row "Default
 #               orchestrated agents to approvals on").
+#   Deny      : flags EVERY launch gets, approvals box or not (audit 2026-11-22,
+#               RT-01). A seat reads text anyone could have written -- persona
+#               cards, topics, peers' messages, captured threads -- so it gets no
+#               shell, no file writes, no web, and no MCP server but roundtable.
+#               {1} is the seat's roundtable-only MCP config file. Appended after
+#               the prompt, for the same variadic reason as Allow. Empty = this
+#               CLI has no verified flag; its seat config carries the limits
+#               instead (OpenCode: the "permission" block in opencode.json).
 # The opening prompt is intentionally tiny (it just points at a file), so
 # embedding it as a CLI arg is safe regardless of persona length/content.
 # CLI preference order = key order below; the first N are used, first = --first.
 # --------------------------------------------------------------------------
+#   Pre       : a pwsh statement run in the seat's window just before the CLI
+#               (after CODEX_HOME is set for a seat 2+). Not -f formatted.
+# --tools is an ALLOWLIST of built-in tools: a --disallowedTools Bash list was
+# tried first and a seat simply used the Windows PowerShell tool instead.
+$ClaudeDeny = '--tools Read --strict-mcp-config --mcp-config {1}'
+# Codex has no --strict-mcp-config, and -c merges rather than replaces, so each
+# server the seat's config.toml declares (other than roundtable) is switched
+# off by name. Read from THIS seat's CODEX_HOME at launch: switching off a name
+# the config doesn't declare makes Codex refuse to start. Plugin-provided
+# servers (not in config.toml) can't be switched off this way.
+$CodexMcpOff = '$cfg = Join-Path ($env:CODEX_HOME ?? (Join-Path $HOME ''.codex'')) ''config.toml''; ' +
+    '$off = @(if (Test-Path -LiteralPath $cfg) { Select-String -LiteralPath $cfg -Pattern ''^\s*\[mcp_servers\."?([\w-]+)"?\]\s*$'' | ' +
+    'ForEach-Object { $_.Matches[0].Groups[1].Value } | Where-Object { $_ -ne ''roundtable'' } | Sort-Object -Unique | ' +
+    'ForEach-Object { ''-c''; "mcp_servers.$_.enabled=false" } }); '
+# Secrets the web UI or an operator shell may carry. A seat never needs them,
+# and a seat that can read its own environment shouldn't find them there.
+$SeatScrubbedEnv = @('AGENT_CHAT_INGEST_TOKEN', 'AGENT_CHAT_BATTLEGROUND_TOKEN', 'AGENT_CHAT_BASIC_AUTH_PASSWORD', 'FLY_API_TOKEN')
 $Clis = [ordered]@{
     # mcp__roundtable is the server-wide rule add_agent_seat.py writes for seat
     # 2+; --add-dir lets the seat Read its prompt file under db\launch without a
     # prompt (read-only tools are allowed inside working directories).
-    'claude-code' = @{ Dir = 'agents\CLIs\claude-code_agent1'; Exe = 'claude'; PromptArg = '{0}';        Allow = '--allowedTools mcp__roundtable --add-dir {0}' }
-    'antigravity' = @{ Dir = 'agents\CLIs\antigravity_agent1'; Exe = 'agy';    PromptArg = '-i {0}';     Allow = '' }
-    'codex'       = @{ Dir = 'agents\CLIs\codex_agent1';       Exe = 'codex';  PromptArg = '{0}';         Allow = '' }
+    'claude-code' = @{ Dir = 'agents\CLIs\claude-code_agent1'; Exe = 'claude'; PromptArg = '{0}';        Allow = '--allowedTools mcp__roundtable --add-dir {0}'; Deny = $ClaudeDeny }
+    'antigravity' = @{ Dir = 'agents\CLIs\antigravity_agent1'; Exe = 'agy';    PromptArg = '-i {0}';     Allow = ''; Deny = '' }
+    # codex: a read-only sandbox, approvals on request (this Codex accepts only
+    # on-request|never), and every config.toml MCP server but roundtable off.
+    'codex'       = @{ Dir = 'agents\CLIs\codex_agent1';       Exe = 'codex';  PromptArg = '{0}';         Allow = ''; Deny = '--sandbox read-only --ask-for-approval on-request @off'; Pre = $CodexMcpOff }
     # opencode: auto-loads opencode.json from the launch dir (no config flag).
     # `opencode run "<prompt>"` is the headless agent loop (no TUI) — it keeps
     # executing tool calls (wait_for_turn -> send_message -> ...) until the agent
@@ -57,7 +84,7 @@ $Clis = [ordered]@{
     # unchanged; only -Agents 4 uses it. Auth via `opencode auth login`
     # (provider creds, no API-key env var assumed). Wired per the opencode docs,
     # not yet live-validated.
-    'opencode'    = @{ Dir = 'agents\CLIs\opencode_agent1';    Exe = 'opencode run'; PromptArg = '{0}';    Allow = '' }
+    'opencode'    = @{ Dir = 'agents\CLIs\opencode_agent1';    Exe = 'opencode run'; PromptArg = '{0}';    Allow = ''; Deny = '' }
 }
 
 # --------------------------------------------------------------------------
@@ -73,7 +100,7 @@ $Clis = [ordered]@{
 # Splitting on the registered CLI names (longest first) rather than on trailing
 # digits keeps a tool whose own name ends in a digit unambiguous.
 #
-# Returns @{ Cli; Seat; AgentId; Dir; Exe; PromptArg; Allow; EnvPrefix },
+# Returns @{ Cli; Seat; AgentId; Dir; Exe; PromptArg; Allow; Deny; Pre; EnvPrefix },
 # where EnvPrefix is a pwsh statement to run before the CLI (Codex seat 2+ needs
 # CODEX_HOME relocated; everything else is empty). Throws on an id that is
 # neither a registered CLI nor a seat on one.
@@ -118,8 +145,8 @@ function Resolve-AgentSeat {
 
     @{
         Cli = $cli; Seat = $seat; AgentId = $AgentId; Dir = $dir
-        Exe = $spec.Exe; PromptArg = $spec.PromptArg; Allow = $spec.Allow
-        EnvPrefix = $envPrefix
+        Exe = $spec.Exe; PromptArg = $spec.PromptArg; Allow = $spec.Allow; Deny = $spec.Deny
+        Pre = [string]$spec.Pre; EnvPrefix = $envPrefix
     }
 }
 
@@ -362,10 +389,25 @@ function New-AgentLaunchPlan {
         # Tiny static opening prompt -- no persona content, trivial to quote.
         $opening = "Read the file at '$promptFile' in full and follow every instruction in it. Begin immediately; do not wait for further input."
 
+        # The seat's only MCP server: roundtable, as this seat's agent id. A
+        # Claude seat launches with --strict-mcp-config on it, so none of the
+        # operator's user-scope servers (mail, GitHub, a terminal runner...)
+        # reach a room fed untrusted text.
+        $mcpFile = Join-Path $LaunchDir ("conv{0}-{1}.mcp.json" -f $ConvId, $a.Cli)
+        if (-not $DryRun -and $spec.Deny -like '*{1}*') {
+            $launcher = (Join-Path $RepoRoot 'scripts\run-mcp-server.ps1').Replace('\', '/')
+            @{ mcpServers = @{ roundtable = @{
+                type = 'stdio'; command = 'pwsh'; env = @{}
+                args = @('-NoProfile', '-File', $launcher, [string]$a.Cli)
+            } } } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $mcpFile -Encoding UTF8
+        }
+
         $dir     = Join-Path $RepoRoot $spec.Dir
         $argPart = $spec.PromptArg -f ('"' + $opening + '"')
+        $deny    = if ($spec.Deny) { ' ' + ($spec.Deny -f "'$LaunchDir'", "'$mcpFile'") } else { '' }
         $allow   = if ($SkipPermissions -and $spec.Allow) { ' ' + ($spec.Allow -f "'$LaunchDir'") } else { '' }
-        $cmd     = "Set-Location -LiteralPath '$dir'; $($spec.EnvPrefix)$($spec.Exe) $argPart$allow"
+        $scrub   = 'Remove-Item ' + (($SeatScrubbedEnv | ForEach-Object { "Env:$_" }) -join ',') + ' -ErrorAction Ignore; '
+        $cmd     = "Set-Location -LiteralPath '$dir'; $scrub$($spec.EnvPrefix)$($spec.Pre)$($spec.Exe) $argPart$deny$allow"
 
         [pscustomobject]@{ Cli = $a.Cli; PromptFile = $promptFile; LaunchDir = $dir; Command = $cmd }
     }

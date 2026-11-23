@@ -92,7 +92,7 @@ Personas are cast **randomly** unless `-Personalities` forces them. There are en
 | `-Cli a,b[,c…]` | Force the exact seat set **and** order (e.g. `claude-code,opencode`); first = opener. Bypasses the availability check. Accepts numbered seats (`codex-2`). |
 | `-Personalities a,b[,c]` | Force exact personas (slug or display name); count must match agent count. |
 | `-MaxTurns N` | Per-agent message cap. Default: the preset's — 8 for a debate, 10 for a podcast. |
-| `-SkipPermissions` | Allowlist the `roundtable` tools for Claude Code seats (`--allowedTools mcp__roundtable`). Not a bypass: other tools, and every tool on the other CLIs, still ask. |
+| `-SkipPermissions` | Allowlist the `roundtable` tools for Claude Code seats (`--allowedTools mcp__roundtable`). Not a bypass. With or without it, every seat is contained: no shell, edit or web tools and no MCP server but `roundtable` (Claude Code, Codex, OpenCode; Antigravity has no verified flag). |
 
 ## Which CLIs get used
 

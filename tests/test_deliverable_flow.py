@@ -324,11 +324,14 @@ def test_collaborator_brief_matches_the_enforced_rule() -> None:
     assert "blocked" in brief
 
 
-def test_facilitator_brief_asks_where_the_artifact_went() -> None:
-    """#54's artifact was written into another repo and nothing recorded it."""
+def test_facilitator_brief_asks_where_the_artifact_belongs() -> None:
+    """#54's artifact was written into another repo and nothing recorded it.
+    Since RT-01 a seat can't write files at all, so the brief must not ask it
+    to: the result carries the artifact and names where it belongs."""
     brief = mcp._ROLE_BRIEFS["facilitator"]
     assert "with the path" in brief
-    assert "transcript is not the delivery" in brief.lower()
+    assert "the result message itself is the delivery" in brief
+    assert "write it there" not in brief
 
 
 def test_role_docs_do_not_claim_every_run_is_about_this_repo() -> None:

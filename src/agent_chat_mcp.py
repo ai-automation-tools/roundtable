@@ -321,11 +321,13 @@ _ROLE_BRIEFS: dict[str, str] = {
         "wasting a seat. Watch turns_remaining: while it is high, keep opening "
         "ground. On your LAST turn, write the deliverable the kickoff asked "
         "for and send it with signal='result' — the artifact itself, in full, "
-        "not a description of the discussion that produced it. If the "
-        "deliverable also belongs somewhere outside this conversation — a "
-        "file in a repo, a doc that an index should list — write it there "
-        "too, and say in the result where it went, with the path. The "
-        "transcript is not the delivery."
+        "not a description of the discussion that produced it. A seat has no "
+        "file or shell tools, so the result message itself is the delivery: "
+        "put the whole artifact in it, never a pointer to a file you meant to "
+        "write. If it belongs somewhere outside this conversation — a file in "
+        "a repo, a doc that an index should list — end the result with one "
+        "line saying where it belongs, with the path, so the operator can put "
+        "it there."
     ),
     "collaborator": (
         "You are a COLLABORATOR. The room is trying to produce something, not "
