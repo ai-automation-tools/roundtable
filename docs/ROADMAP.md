@@ -149,7 +149,7 @@ Found in the owner's own static audit, inside its rules of engagement. Each item
 
 From a full audit of `4f71561` (kept outside the repo). One item per PR, titled `fix(RT-NN): …`. Security items are worded neutrally and marked 🔒 Needs owner so an unattended run doesn't take them; the rest follow the audit's order (RT-27 → RT-09 → RT-08 → RT-13 before the bug fixes that sit on them).
 
-- [ ] **RT-01** Harden spawned seat permissions and MCP scope — 🔒 Needs owner
+- [ ] **RT-01** Harden spawned seat permissions and MCP scope — 🔒 Needs owner **(2026-11-22)** Part 1 landed: every spawned seat is contained (Claude Code `--tools Read` + roundtable-only MCP, Codex read-only sandbox + config servers off, OpenCode `permission` block, secrets dropped from the seat's env). Still open: seat folders outside the repo tree, so no ancestor `CLAUDE.md`/`AGENTS.md` loads into a seat; Antigravity flags
 - [x] **RT-02** Validate link schemes in the battleground console and bridge — done 2026-11-22: http(s) only at the bridge, in the extension and at render
 - [ ] **RT-03** Harden how captured threads and peer messages reach seats — 🔒 Needs owner
 - [ ] **RT-04** Tighten what the sync sidecar trusts from the mirror — 🔒 Needs owner
