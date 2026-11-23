@@ -305,9 +305,10 @@ def render_export_markdown(data: dict[str, Any]) -> str:
     Served via /api/conversations/{cid}/export.md, and written as
     ``transcript.md`` in the bundle. Opens with the full topic doc and every
     persona doc (``render_export_context``), so the single file stands alone.
-    Each message body is emitted as-is — agents already write Markdown, so we
-    keep their formatting verbatim instead of re-rendering through the HTML
-    pipeline.
+    Each message body keeps the agent's own Markdown, except that its ATX
+    headings are demoted two levels (``#`` → ``###``, fences untouched): a
+    deliverable full of ``## Risks`` sections would otherwise add fake turn
+    boundaries for every consumer that splits on ``## ``.
     """
     c = data["conversation"]
     msgs = data["messages"]
@@ -340,7 +341,7 @@ def render_export_markdown(data: dict[str, Any]) -> str:
             signal = f" — `signal={m['signal']}`" if m.get("signal") else ""
             lines.append(f"## {m['sender']} — {fmt_time(m['created_at'])}{signal}")
             lines.append("")
-            lines.append((m.get("content") or "").rstrip())
+            lines.append(_demote_headings((m.get("content") or "").rstrip(), 2))
             lines.append("")
             lines.append("---")
             lines.append("")

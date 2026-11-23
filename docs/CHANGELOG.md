@@ -4,6 +4,9 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 ## 2026-11-22 (latest)
 
+### Fixed — a deliverable's `##` sections no longer split the exported transcript
+
+- **`transcript.md` demotes a message body's own headings two levels** (`#` → `###`, `##` → `####`; fenced code untouched). The export contract says the `## sender — timestamp` lines are the only `##` lines a parser splits turns on, but bodies were emitted verbatim, so a collaboration result written with `## Risks` sections added a fake turn for every consumer (the delivery folder, the `.zip`, scripts). This changes the transcript bytes of any run whose messages contain headings; `docs/app/export-format.md` records it. Test: `tests/test_deliverable_flow.py`.
 ### Fixed — web UI accessibility quick wins
 
 - **Dark-theme secondary text clears WCAG AA.** `--muted-2` goes from `#71717a` (4.1:1 on the page background, 3.1:1 on raised panels) to `#909099` (6.4:1 and 4.7:1), and the conversation page's hard-coded greys (`#6b7280`, `#52555c`, `#5f6470`, `#71717a`) now use the token, so the time stamps, run details and cast hints that failed Lighthouse pass. Light theme unchanged.

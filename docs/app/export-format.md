@@ -104,7 +104,7 @@ label debaters, and the meta table for mode/timestamps.
 ## <sender> — <YYYY-MM-DD HH:MM:SS>        ← one heading per message; when the
                                              message carried a signal, the
                                              heading ends " — `signal=done`"
-<message body, verbatim — agents already write Markdown>
+<message body — the agent's Markdown, headings demoted two levels>
 
 ---
 
@@ -112,7 +112,12 @@ _Exported from Agent Battleground. Source: Conversation #<id>._
 ```
 
 Messages are separated by `---` rules. The `## sender — timestamp` heading
-shape is what a parser splits turns on — treat it as frozen.
+shape is what a parser splits turns on — treat it as frozen. **Since 2026-11-22
+a message body's own ATX headings are demoted two levels** (`#` → `###`,
+`##` → `####`, capped at `######`; fenced code untouched), so a deliverable
+written with `## Risks` sections no longer adds fake turn boundaries. Before
+that, bodies were emitted verbatim and the "only `##` lines" rule below was
+broken by any agent that used `##`.
 
 > [!NOTE]
 > **The Topic and Personas sections were added 2026-09-28** so the single-file
