@@ -164,7 +164,7 @@ From a full audit of `4f71561` (kept outside the repo). One item per PR, titled 
 - [ ] **RT-13** MCP turn tools return a history delta, not the full transcript
 - [ ] **RT-14** Delivery off the event loop; watchdog retry when no sink succeeded
 - [ ] **RT-15** Sync robustness: POST `/api/since`, push not blocked by pull, watermark overlap
-- [ ] **RT-16** Export: demote headings inside message bodies to keep the `##` contract
+- [x] **RT-16** Export: demote headings inside message bodies to keep the `##` contract — done 2026-11-22: body headings drop two levels; the audit's repro no longer reproduces
 - [ ] **RT-17** SSE: drain final messages before `complete`; 400 on a bad `since`; cap streams
 - [ ] **RT-18** Harden transcript rendering and ingest validation — 🔒 Needs owner
 - [ ] **RT-19** Harden notification URL handling — 🔒 Needs owner
