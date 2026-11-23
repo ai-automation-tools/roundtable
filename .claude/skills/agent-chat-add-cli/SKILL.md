@@ -60,7 +60,7 @@ Do these in order. **Reference every list by its symbol name, not by line number
    - `personas.py` and `web/api/orchestrate.py` consume the canonical tuple — **no change**.
 
 **Scripts:**
-5. `scripts/lib/spawn-agents.ps1` → add a `$Clis` entry (`Dir`/`Exe`/`PromptArg`/`SkipPerm`) — **only if auto-spawnable**. Skip for seedable-only CLIs.
+5. `scripts/lib/spawn-agents.ps1` → add a `$Clis` entry (`Dir`/`Exe`/`PromptArg`/`Allow`/`Deny`, optional `Pre`) — **only if auto-spawnable**, and never with a blanket bypass flag (see reference.md §5). Skip for seedable-only CLIs.
 6. `scripts/debate.ps1` → if you added a spawnable CLI, bump the `[ValidateSet(...)]` cap on `-Agents` and sync the help text.
 7. `scripts/setup/setup-skill-links.ps1` (+ `.sh`) → add the workspace `.<id>/skills` junction target if you want runtime-skills parity.
 8. `skills/start-debate/SKILL.md` → update the CLI-order / agent-count lines if the spawn registry changed. (This is a *runtime* skill read by live agents — keep it in sync.)

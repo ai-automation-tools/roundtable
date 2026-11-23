@@ -20,6 +20,8 @@ and every process boots a file through `schema.ensure_schema(conn)`.
 | `ARENA_*` / `DRAFT_*` / `DRAFT_VERDICTS` | battleground status values |
 | `ensure_schema(conn)` | `executescript(SCHEMA)` + each missing migration; a concurrent "duplicate column name" is ignored |
 | `complete_conversation(conn, cid, reason)` | the only way a row leaves `active`; True only for the caller that moved it (deliver `complete` on True) |
+| `SENDER_RE` / `SIGNALS` | the token grammar for `messages.sender` and the allowed `messages.signal` values; checked at MCP startup, on send and at `/api/ingest` |
+| `resolve_db_path(explicit, relative_ok=)` | which file a process opens: `--db-path` > `$AGENT_CHAT_DB` > `<repo>/db/chat.db`; the only reader of `$AGENT_CHAT_DB` |
 | `write_txn(conn)` | `BEGIN IMMEDIATE` … `COMMIT` for a check-then-write another process could interleave |
 
 Migrations are gated on `PRAGMA table_info({table})` so they stay idempotent:
