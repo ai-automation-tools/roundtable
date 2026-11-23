@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 
 from sse_starlette.sse import EventSourceResponse
@@ -53,7 +54,21 @@ def _stream_client(request: Request) -> str:
 
 
 def api_conversations(request: Request) -> Response:
-    return JSONResponse(list_conversations())
+    """Every conversation row. ``?fields=id,topic,…`` trims each row to those
+    keys: the chrome polls this every 30 s for a live count and the palette,
+    which need four small fields, and a full row carries the kickoff and every
+    persona card (154 KB for 12 rows; audit RT-41). An ``ETag`` lets an
+    unchanged poll come back ``304`` with no body."""
+    rows = list_conversations()
+    fields = [f for f in request.query_params.get("fields", "").split(",") if f]
+    if fields:
+        rows = [{k: r[k] for k in fields if k in r} for r in rows]
+    body = json.dumps(rows, separators=(",", ":")).encode("utf-8")
+    etag = '"' + hashlib.sha256(body).hexdigest()[:32] + '"'
+    headers = {"ETag": etag, "Cache-Control": "no-cache"}
+    if etag in request.headers.get("if-none-match", ""):
+        return Response(status_code=304, headers=headers)
+    return Response(body, media_type="application/json", headers=headers)
 
 
 def api_conversation(request: Request) -> Response:

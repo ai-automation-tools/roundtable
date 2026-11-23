@@ -1282,9 +1282,7 @@ def _render_conversation_main(data: dict[str, Any],
           }}
           // Syntax-highlight code blocks in the server-rendered HTML.
           // Re-run after each SSE message append below.
-          if (typeof hljs !== 'undefined') {{
-            document.querySelectorAll('#transcript pre code').forEach(el => hljs.highlightElement(el));
-          }}
+          if (window.__hl) window.__hl(document.getElementById('transcript'));
 
           // --- scroll progress + jump-to-latest ---------------------------
           // .cv-main is the scroller; the window itself never scrolls on this
@@ -1343,9 +1341,7 @@ def _render_conversation_main(data: dict[str, Any],
             tmp.innerHTML = renderMsg(m);
             const node = tmp.firstElementChild;
             transcript.appendChild(node);
-            if (typeof hljs !== 'undefined') {{
-              node.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
-            }}
+            if (window.__hl) window.__hl(node);
             // First real message — hide the "Next: launch each CLI" panel.
             if (nextSteps && nextSteps.parentNode) {{
               nextSteps.remove();

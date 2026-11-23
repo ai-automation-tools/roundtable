@@ -25,6 +25,7 @@ from pathlib import Path
 
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
+from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.responses import JSONResponse
 from starlette.routing import Route
@@ -142,6 +143,7 @@ def test_build_middleware_default_is_cors_only():
     # it only ever acts on /api/battleground/* with a chrome-extension origin.
     assert [m.cls for m in _build_with_env()] == [
         TrustedHostMiddleware,
+        GZipMiddleware,
         web_ui.SecurityHeadersMiddleware,
         web_ui.RegistryHostMiddleware,
         web_ui.ExtensionCorsMiddleware,
@@ -154,6 +156,7 @@ def test_build_middleware_readonly_only():
     stack = _build_with_env(AGENT_CHAT_PUBLIC_READONLY="1")
     assert [m.cls for m in stack] == [
         TrustedHostMiddleware,
+        GZipMiddleware,
         web_ui.SecurityHeadersMiddleware,
         web_ui.RegistryHostMiddleware,
         web_ui.ExtensionCorsMiddleware,
@@ -166,6 +169,7 @@ def test_build_middleware_basic_auth_only():
     stack = _build_with_env(AGENT_CHAT_BASIC_AUTH_PASSWORD="secret")
     assert [m.cls for m in stack] == [
         TrustedHostMiddleware,
+        GZipMiddleware,
         web_ui.SecurityHeadersMiddleware,
         web_ui.RegistryHostMiddleware,
         web_ui.ExtensionCorsMiddleware,
@@ -185,6 +189,7 @@ def test_build_middleware_both_auth_outermost():
     # browser preflight (no Authorization header, by spec) isn't challenged.
     assert [m.cls for m in stack] == [
         TrustedHostMiddleware,
+        GZipMiddleware,
         web_ui.SecurityHeadersMiddleware,
         web_ui.RegistryHostMiddleware,
         web_ui.ExtensionCorsMiddleware,
@@ -686,6 +691,48 @@ def test_the_transcript_page_counts_messages_once():
         assert per_row == [], per_row
         assert sum("GROUP BY conversation_id" in q for q in sql) == 1, sql
 
+
+def test_the_polled_index_is_slim_and_revalidates():
+    """The chrome polls /api/conversations every 30 s for four fields; full
+    rows carry the kickoff and every persona card (audit RT-41)."""
+    from orchestrator import seeding
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
+        db = Path(tmp) / "chat.db"
+        for i in range(3):
+            seeding.seed_conversation(
+                db_path=str(db), topic=f"t{i}", participants=[f"a{i}", f"b{i}"],
+                mode="turns", max_turns=1, initial_system_message="x" * 5000)
+        web_ui.set_db_path(str(db))
+        web_ui.db_init()
+        c = TestClient(web_ui.app, base_url=LOCAL)
+        full = c.get("/api/conversations")
+        url = "/api/conversations?fields=id,topic,status,participants"
+        slim = c.get(url)
+        assert slim.status_code == 200
+        assert all(set(r) == {"id", "topic", "status", "participants"} for r in slim.json())
+        assert len(slim.content) * 5 < len(full.content), (len(slim.content), len(full.content))
+        etag = slim.headers["etag"]
+        again = c.get(url, headers={"If-None-Match": etag})
+        assert again.status_code == 304 and again.content == b""
+        from web.assets import SHELL_JS
+        assert "/api/conversations?fields=id,topic,status,participants" in SHELL_JS
+
+
+def test_nothing_blocks_first_paint_and_html_is_compressed():
+    """A phone waited ~1.2 s on the font CSS and highlight.js in <head>, and
+    a local or tailnet instance sent 270 KB of HTML uncompressed (RT-41)."""
+    from web.assets import HIGHLIGHT_JS_HEAD
+    from web.render.common import FONTS_HEAD
+    assert 'rel="stylesheet"' not in FONTS_HEAD.split("<noscript>")[0]
+    assert 'rel="preload" as="style"' in FONTS_HEAD
+    assert "<script src=" not in HIGHLIGHT_JS_HEAD and "<link" not in HIGHLIGHT_JS_HEAD
+    assert HIGHLIGHT_JS_HEAD.count("integrity: 'sha512-") == 2
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
+        web_ui.set_db_path(str(Path(tmp) / "chat.db"))
+        web_ui.db_init()
+        c = TestClient(web_ui.app, base_url=LOCAL)
+        r = c.get("/conversations", headers={"Accept-Encoding": "gzip"})
+        assert r.headers.get("content-encoding") == "gzip"
 
 def _outline(html_text: str) -> list[int]:
     import re
