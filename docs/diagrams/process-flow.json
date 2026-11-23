@@ -7,7 +7,7 @@
     "output": "docs/diagrams/process-flow.html",
     "repository": {
       "url": "https://github.com/ai-automation-tools/roundtable.git",
-      "revision": "a65de743ede12d809fa0a75bdd9b9166b99efc65"
+      "revision": "e48550945bb060270c871720f40c82144fbd2086"
     }
   },
   "lanes": [
@@ -148,8 +148,8 @@
       "sources": [
         {
           "path": "src/agent_chat_mcp.py",
-          "line": 579,
-          "end_line": 632
+          "line": 659,
+          "end_line": 712
         }
       ]
     },
@@ -164,8 +164,8 @@
       "sources": [
         {
           "path": "src/agent_chat_mcp.py",
-          "line": 894,
-          "end_line": 929
+          "line": 980,
+          "end_line": 1022
         }
       ]
     },
@@ -205,8 +205,8 @@
       "sources": [
         {
           "path": "src/agent_chat_mcp.py",
-          "line": 761,
-          "end_line": 850
+          "line": 847,
+          "end_line": 936
         }
       ]
     },
@@ -221,13 +221,13 @@
       "sources": [
         {
           "path": "src/agent_chat_mcp.py",
-          "line": 851,
-          "end_line": 858
+          "line": 937,
+          "end_line": 944
         },
         {
           "path": "src/agent_chat_mcp.py",
-          "line": 729,
-          "end_line": 748
+          "line": 815,
+          "end_line": 834
         }
       ]
     },

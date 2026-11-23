@@ -65,9 +65,9 @@ def _send(agent: str, text: str = "hi", signal: str | None = None) -> dict:
         mcp.send_message(mcp.SendMessageInput(content=text, signal=signal))))
 
 
-def _turn_state(agent: str) -> dict:
+def _turn_state(agent: str, history: str = "delta") -> dict:
     mcp.AGENT_ID = agent
-    return json.loads(asyncio.run(mcp.get_my_turn(mcp.GetMyTurnInput())))
+    return json.loads(asyncio.run(mcp.get_my_turn(mcp.GetMyTurnInput(history=history))))
 
 
 def _row(db: str, cid: int) -> sqlite3.Row:
@@ -297,21 +297,21 @@ def test_blind_first_hides_others_until_you_have_posted() -> None:
         db, cid = _seed(Path(td), ["a", "b", "c"], max_turns=2, preset="audit",
                         system="Audit the repo.")
         _send("a", "a-opening")
-        b = _turn_state("b")
+        b = _turn_state("b", "full")
         assert b["status"] == "your_turn" and b["protocol"] == "blind-first"
         assert _others(b, "b") == [], b["history"]
         assert "1 message" in b["protocol_note"]
         # The kickoff stays visible — it is the task, not a peer's take.
         assert any(m["sender"] == "system" for m in b["history"])
         _send("b", "b-opening")
-        c = _turn_state("c")
+        c = _turn_state("c", "full")
         assert _others(c, "c") == [] and "2 message" in c["protocol_note"]
         _send("c", "c-opening")
         # Revealed: a's second turn sees both openings, and nobody is filtered.
-        a = _turn_state("a")
+        a = _turn_state("a", "full")
         assert _others(a, "a") == ["b-opening", "c-opening"]
         assert "protocol_note" not in a
-        assert _others(_turn_state("b"), "b") == ["a-opening", "c-opening"]
+        assert _others(_turn_state("b", "full"), "b") == ["a-opening", "c-opening"]
 
 
 def test_blind_first_is_per_agent_so_a_stalled_seat_blinds_nobody_else() -> None:
@@ -322,9 +322,9 @@ def test_blind_first_is_per_agent_so_a_stalled_seat_blinds_nobody_else() -> None
                         mode="continuous", preset="audit")
         _send("a", "a1")
         _send("b", "b1")
-        assert _others(_turn_state("b"), "b") == ["a1"]
-        assert _others(_turn_state("a"), "a") == ["b1"]
-        assert _others(_turn_state("c"), "c") == []
+        assert _others(_turn_state("b", "full"), "b") == ["a1"]
+        assert _others(_turn_state("a", "full"), "a") == ["b1"]
+        assert _others(_turn_state("c", "full"), "c") == []
 
 
 def test_blind_first_filters_the_view_not_the_record() -> None:
@@ -558,6 +558,82 @@ def test_a_finished_session_is_pointed_at_its_next_conversation() -> None:
         assert state["status"] == "complete" and state["conversation_id"] == c1
         assert state["newer_conversation_id"] == c2
         assert "get_kickoff" in state["message"]
+
+
+# ---------------------------------------------------------------------------
+# History delta (audit RT-13): a turn payload carries what's new, not the run.
+# ---------------------------------------------------------------------------
+
+def _wait(agent: str, **kw) -> dict:
+    mcp.AGENT_ID = agent
+    return json.loads(asyncio.run(mcp.wait_for_turn(mcp.WaitForTurnInput(**kw))))
+
+
+def test_a_late_turn_returns_only_new_messages() -> None:
+    """The audit's case: 28 messages in, a turn call returns what arrived since
+    this session last looked, not the 28."""
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
+        db, cid = _seed(Path(td), ["a", "b"], max_turns=15, system="Kick off.")
+        first = _turn_state("a")
+        assert [m["sender"] for m in first["history"]] == ["system"]
+        for i in range(14):
+            _send("a", f"a{i}")
+            _send("b", f"b{i}")
+        state = _wait("a", timeout_seconds=5)
+        assert state["status"] == "your_turn"
+        assert state["history_mode"] == "delta"
+        # a's own sends returned deltas too, so only b's latest is new.
+        assert [m["content"] for m in state["history"]] == ["b13"], state["history"]
+        assert state["last_message_id"] == 29
+        assert len(_turn_state("a", "full")["history"]) == 29
+        assert _turn_state("a")["history"] == []
+
+
+def test_a_restarted_session_gets_everything_once() -> None:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
+        db, cid = _seed(Path(td), ["a", "b"], max_turns=3)
+        _send("a", "a0")
+        _send("b", "b0")
+        mcp._SEEN.clear()  # a new server process remembers nothing
+        assert [m["content"] for m in _turn_state("a")["history"]] == ["b0"]
+        assert _turn_state("a")["history"] == []
+
+
+def test_timeouts_carry_no_history_and_lose_nothing() -> None:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
+        db, cid = _seed(Path(td), ["a", "b", "c"], max_turns=3)
+        _send("a", "a0")
+        timed_out = _wait("c", timeout_seconds=5)  # b's turn, not c's
+        assert timed_out["status"] == "timeout"
+        assert timed_out["history"] == [] and timed_out["history_mode"] == "none"
+        _send("b", "b0")
+        # Nothing was marked seen on the timeout, so c gets both now.
+        assert [m["content"] for m in _turn_state("c")["history"]] == ["a0", "b0"]
+
+
+def test_since_id_and_none_override_the_session_mark() -> None:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
+        db, cid = _seed(Path(td), ["a", "b"], max_turns=3)
+        _send("a", "a0")
+        _send("b", "b0")
+        _send("a", "a1")
+        _send("b", "b1")
+        assert _turn_state("a")["history"]  # marks everything seen
+        mcp.AGENT_ID = "a"
+        again = json.loads(asyncio.run(mcp.get_my_turn(mcp.GetMyTurnInput(since_id=0))))
+        assert [m["content"] for m in again["history"]] == ["b0", "b1"]
+        assert _turn_state("a", "none")["history"] == []
+
+
+def test_blind_first_reveal_survives_the_delta() -> None:
+    """A message hidden by blind-first must arrive once it is revealed, even
+    though the session was already shown a (filtered) payload."""
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
+        db, cid = _seed(Path(td), ["a", "b"], max_turns=2, preset="audit")
+        _send("a", "a-opening")
+        assert _others(_turn_state("b"), "b") == []  # hidden
+        after = _send("b", "b-opening")              # b has posted: revealed
+        assert _others(after, "b") == ["a-opening"]
 
 
 # ---------------------------------------------------------------------------

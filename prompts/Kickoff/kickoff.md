@@ -76,7 +76,9 @@ Loop until the conversation is complete:
    your turn, the conversation completes, or the timeout fires. You spend
    zero tokens while waiting.
 2. Based on the returned status:
-   - "your_turn": read the full history, then write a substantive reply.
+   - "your_turn": read the new messages in history, then write a substantive reply.
+     (history holds only what you haven't seen; call get_my_turn with
+     history="full" if you need the whole transcript.)
      React to the other agent's last message specifically — quote or
      reference it, add a new angle or counterpoint, no hedging filler.
      Then call send_message with your reply.
