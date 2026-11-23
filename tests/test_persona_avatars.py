@@ -68,8 +68,9 @@ def _fresh_db() -> Path:
 
 def _client() -> TestClient:
     import web_ui
+    from web.security import WRITE_HEADER, write_secret
 
-    return TestClient(web_ui.app, base_url=LOCAL)
+    return TestClient(web_ui.app, base_url=LOCAL, headers={WRITE_HEADER: write_secret()})
 
 
 def _zip(entries: dict[str, bytes]) -> str:

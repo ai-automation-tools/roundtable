@@ -103,7 +103,13 @@ list. Add the host part of the URL to the repo-root `.env` (copy
 
 ```
 AGENT_CHAT_ALLOWED_HOSTS=my-pc.tailnet-name.ts.net
+AGENT_CHAT_BASIC_AUTH_PASSWORD=a-long-random-string
 ```
+
+The password is **required** with a tailnet name: since 2026-11-22 the web UI
+refuses to start when `AGENT_CHAT_ALLOWED_HOSTS` names a host other than
+`127.0.0.1`/`localhost` and no password is set. See
+[A password on every request](#a-password-on-every-request).
 
 > [!IMPORTANT]
 > **Use `--http=`, not the short form.** `tailscale serve --bg 8765` implies TLS.
@@ -122,20 +128,20 @@ AGENT_CHAT_ALLOWED_HOSTS=my-pc.tailnet-name.ts.net
 > internet** — a page with no login that can spawn processes on your PC, on a
 > URL anyone can open. Don't.
 
-## Optional: a password as a second factor
+## A password on every request
 
-Tailnet membership is the gate. If you want a password *behind* it as well —
-say, other people share your tailnet — the web UI already ships HTTP basic auth,
-off by default:
+Tailnet membership gets a device to the page; the password is what stops every
+other device on the tailnet from launching agents on your PC. Put it in the
+repo-root `.env` (gitignored) next to the host name:
 
-```powershell
-setx AGENT_CHAT_BASIC_AUTH_PASSWORD "a-long-random-string"
-setx AGENT_CHAT_BASIC_AUTH_USER "mike"        # optional; defaults to admin
+```
+AGENT_CHAT_BASIC_AUTH_PASSWORD=a-long-random-string
+AGENT_CHAT_BASIC_AUTH_USER=mike        # optional; defaults to admin
 ```
 
-Then restart the web UI. `setx` writes to your **user** environment, which is
-where the logon task that autostarts the app reads from; an `$env:` assignment
-in one terminal would not reach it. Two things to know:
+Then restart the web UI. Keep it in `.env`, not in your user environment:
+every process the app starts, agent seats included, inherits the user
+environment. Two things to know:
 
 - It gates **every** address the process answers on, including `127.0.0.1` in
   your own browser. One process, one middleware.
@@ -196,7 +202,9 @@ tailscale serve --http=8765 off
 | Worked for months, then stopped, nothing changed | Node key expiry — the 180-day default. `Self.KeyExpiry` in `tailscale status --json`. Re-authenticate, then disable expiry for the PC. |
 | The URL changed by itself | The device name follows the Windows hostname; renaming the PC renames the URL. Pin the machine name in the admin console. Enabling HTTPS also changes the scheme. |
 | Live messages don't stream on the phone | They go over the same `/api/…/stream` SSE call the PC uses, so if the page loads, the stream works. If it doesn't, the phone's browser has backgrounded the tab — SSE reconnects on its own when you return. |
-| Browser asks for a password you never set | `AGENT_CHAT_BASIC_AUTH_PASSWORD` is set in the user environment. `[Environment]::GetEnvironmentVariable('AGENT_CHAT_BASIC_AUTH_PASSWORD','User')` shows it. |
+| Browser asks for a password you never set | `AGENT_CHAT_BASIC_AUTH_PASSWORD` is set in `.env` or in the user environment (`[Environment]::GetEnvironmentVariable('AGENT_CHAT_BASIC_AUTH_PASSWORD','User')` shows the second; move it to `.env`). |
+| The web UI won't start: `refused to start: AGENT_CHAT_ALLOWED_HOSTS names …` | A tailnet name is allowed but no password is set. Add `AGENT_CHAT_BASIC_AUTH_PASSWORD` to `.env`. |
+| A button answers `missing write secret` | The browser dropped the app's cookie, or `config/web-write-secret` was replaced. Reload the page. |
 
 ## Security checklist
 
@@ -207,7 +215,8 @@ tailscale serve --http=8765 off
 - [ ] Key expiry is disabled on the PC, and you know that a lost phone stays on
       the tailnet until you remove it at
       [Admin → Machines](https://login.tailscale.com/admin/machines).
-- [ ] If anyone else is on your tailnet, basic auth is on.
+- [ ] Basic auth is on (the web UI won't start with a tailnet name and no
+      password), and the password lives in `.env`, not the user environment.
 - [ ] You understand that the `/orchestrate` form **spawns CLI windows on the
       PC**, from any device that can open the page.
 

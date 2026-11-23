@@ -1533,7 +1533,7 @@ stack from two independent, default-off env flags:
 | Surface | Trigger env var | Status | Mechanism | Realm |
 |:---|:---|:---|:---|:---|
 | Browser **mutations** (any non-GET/HEAD/OPTIONS, except `/api/ingest`) | `AGENT_CHAT_PUBLIC_READONLY` | **on** for the Fly deploy (`fly.toml`); off locally | `ReadOnlyMiddleware` → `403 read-only deployment`. Keys off the HTTP method, so new mutation routes are covered automatically. | — |
-| Browser pages + JSON API | `AGENT_CHAT_BASIC_AUTH_PASSWORD` | off (unset) | HTTP Basic via `BasicAuthMiddleware`, attached when the password is set. Username defaults to `admin`, override with `AGENT_CHAT_BASIC_AUTH_USER`. Listed first so it forms the outermost layer. | `roundtable` |
+| Browser pages + JSON API | `AGENT_CHAT_BASIC_AUTH_PASSWORD` (environment, then `.env`) | off (unset); **required** when `AGENT_CHAT_ALLOWED_HOSTS` names a non-loopback host on a writable instance: `main()` refuses to start without it (`security.exposure_error()`, since 2026-11-22) | HTTP Basic via `BasicAuthMiddleware`, attached when the password is set. Username defaults to `admin`, override with `AGENT_CHAT_BASIC_AUTH_USER`. Listed first so it forms the outermost layer. | `roundtable` |
 | `/api/ingest` | `AGENT_CHAT_INGEST_TOKEN` | active when env var set | `Authorization: Bearer <token>`, constant-time compared. | `agent_chat_ingest` |
 
 Read-only mode is the public-safety baseline (it stops data loss without a
@@ -1557,6 +1557,7 @@ Under both flags sit layers that are **always on**, local and hosted alike
 | Host allowlist (Starlette `TrustedHostMiddleware`, outermost, every method) | Any `Host` other than `127.0.0.1`, `localhost` or a name in `AGENT_CHAT_ALLOWED_HOSTS` → `400 Invalid host header` | The cross-site guard compares `Origin` with `Host`, and a DNS-rebinding page controls both. Pinning `Host` closes that. |
 | `CrossSiteWriteGuard` | A mutation whose `Origin` isn't this host → `403`, except the AgentBattleground extension named in `AGENT_CHAT_EXTENSION_IDS`, and only under `/api/battleground/` (since 2026-11-12; any extension used to pass on every route); a mutation **with a body** that isn't `application/json` → `415` | A `no-cors` page can POST at localhost but only as `text/plain`, form-encoded or multipart. Body-less POSTs (stop, delete) pass. Another installed extension can't reach `/api/settings/delivery` and through it a command sink. See [battleground.md › Auth + CORS](battleground.md#auth--cors). |
 | `SecurityHeadersMiddleware` | — | `nosniff`, `X-Frame-Options: DENY`, `frame-ancestors 'none'`, HSTS over HTTPS. |
+| `WriteSecretMiddleware` (innermost; local only, the read-only mirror doesn't install it) | A mutation without this install's write secret → `401 missing write secret`. The secret lives in `config/web-write-secret` (gitignored, generated on first use); any GET that lacks it sets it as an `HttpOnly`, `SameSite=Strict` cookie `rt_write`, so the app's own pages need no change, and a script sends it as `X-Roundtable-Write`. Exempt: `/api/ingest` (bearer) and `/api/battleground/*`, whose handler accepts the bridge token or a same-origin request **with** the cookie. Since 2026-11-22. | A request with no `Origin` passes the cross-site guard: a blind POST from another local service, a webhook pointed at `127.0.0.1`. The secret makes a write prove it could read one of this app's responses first. It does not stop a local process that can GET a page or read `config/`; containing agent seats is the launcher's job. |
 
 `AGENT_CHAT_ALLOWED_HOSTS` is comma-separated and read once at startup, from
 the environment first and then the repo-root `.env` (see
@@ -1599,8 +1600,9 @@ rail.
 | Bind address | `--host` or `$HOST` | `127.0.0.1` |
 | Port | `--port` or `$PORT` | `8765` |
 | Public read-only mode | `$AGENT_CHAT_PUBLIC_READONLY` | unset → off (writable) locally; `"1"` on the Fly deploy → browser mutations return `403` |
-| Basic auth password | `$AGENT_CHAT_BASIC_AUTH_PASSWORD` | unset → gate off; set → HTTP Basic attached |
-| Basic auth user | `$AGENT_CHAT_BASIC_AUTH_USER` | `admin` |
+| Basic auth password | `$AGENT_CHAT_BASIC_AUTH_PASSWORD`, then `.env` | unset → gate off (startup refused if `AGENT_CHAT_ALLOWED_HOSTS` has a non-loopback name and the instance is writable); set → HTTP Basic attached |
+| Basic auth user | `$AGENT_CHAT_BASIC_AUTH_USER`, then `.env` | `admin` |
+| Write secret | `config/web-write-secret` | generated on first use; the browser sends it back as the `rt_write` cookie, a script as `X-Roundtable-Write` |
 | Ingest token | `$AGENT_CHAT_INGEST_TOKEN` | unset → ingest off (404) |
 
 Local dev (no env vars set):

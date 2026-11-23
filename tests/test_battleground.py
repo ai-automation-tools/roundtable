@@ -417,10 +417,18 @@ def test_other_extensions_are_just_another_site():
 
 def test_console_posts_same_origin_without_a_token():
     """The /battleground console's buttons post from this app's own page with
-    no bearer token; that must keep working now the token is required."""
+    no bearer token; that must keep working now the token is required. The
+    page's write-secret cookie is what proves it (audit RT-05): ``Origin`` is
+    a header any local process can send."""
     with _Env() as env:
         arena = _open_arena(env.client)
+        forged = TestClient(web_ui.app, base_url=LOCAL).post(
+            f"/api/battleground/arenas/{arena['id']}",
+            headers={"Origin": LOCAL}, json={"status": "closed"},
+        )
+        assert forged.status_code == 401, forged.text
         bare = TestClient(web_ui.app, base_url=LOCAL)
+        assert bare.get("/battleground").status_code == 200  # sets the cookie
         r = bare.post(
             f"/api/battleground/arenas/{arena['id']}",
             headers={"Origin": LOCAL}, json={"status": "closed"},
