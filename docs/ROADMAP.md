@@ -151,7 +151,7 @@ From a full audit of `4f71561` (kept outside the repo). One item per PR, titled 
 
 - [ ] **RT-01** Harden spawned seat permissions and MCP scope — 🔒 Needs owner **(2026-11-22)** Part 1 landed: every spawned seat is contained (Claude Code `--tools Read` + roundtable-only MCP, Codex read-only sandbox + config servers off, OpenCode `permission` block, secrets dropped from the seat's env). Still open: seat folders outside the repo tree, so no ancestor `CLAUDE.md`/`AGENTS.md` loads into a seat; Antigravity flags
 - [x] **RT-02** Validate link schemes in the battleground console and bridge — done 2026-11-22: http(s) only at the bridge, in the extension and at render
-- [ ] **RT-03** Harden how captured threads and peer messages reach seats — 🔒 Needs owner
+- [x] **RT-03** Harden how captured threads and peer messages reach seats — done 2026-11-22: `untrusted_thread` envelope + house rule 0, `history_note` on every turn payload, seat docs drop "the topic wins / work there"
 - [ ] **RT-04** Tighten what the sync sidecar trusts from the mirror — 🔒 Needs owner
 - [ ] **RT-05** Harden the local control surface's write auth — 🔒 Needs owner
 - [x] **RT-06** Harden the delivery command sink — done 2026-11-22: topic/status move to `ROUNDTABLE_*` env vars; a shell evaluating a string needs `allow_shell`
