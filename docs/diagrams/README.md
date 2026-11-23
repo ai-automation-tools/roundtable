@@ -34,7 +34,7 @@ For the process-level picture (which process talks to which over what), see
 |:---|:---|:---|
 | [`process-flow.json`](process-flow.json) | The source: lanes, phases, nodes, edges, cards, and the code each node cites | **Yes, this is the only file you edit** |
 | `process-flow.html` · `.png` | Generated: the interactive diagram, which the homepage embeds live, and a static PNG snapshot | Never; rebuild |
-| `homepage/diagram/process-flow.html` · `.png` | Copies the build writes for the homepage, which publishes only `homepage/`. `--check` flags a copy that differs | Never; rebuild |
+| `homepage/diagram/` | Not in git. The *Homepage* workflow copies the `.html` and `.png` in at deploy time, since Pages publishes only `homepage/` | — |
 | `process-flow.delivery.json` · `.sources.lock.json` | Build receipt, and the git blob of every cited file at the pinned commit | Never; rebuild |
 | [`../../scripts/build_diagram.py`](../../scripts/build_diagram.py) | Builds the diagram and checks it for drift | Only to change how it builds or checks |
 
@@ -64,7 +64,7 @@ To bring it up to date:
    .\.venv\Scripts\python.exe scripts\build_diagram.py --pin-head
    ```
 
-4. Commit the JSON, the generated files and the `homepage/diagram/` copies together, with a [CHANGELOG](../CHANGELOG.md) line.
+4. Commit the JSON and the generated files together, with a [CHANGELOG](../CHANGELOG.md) line. A merge to `main` republishes the homepage copy.
 
 Building needs Node 18+, Chrome, and the [Archify](https://github.com/tt-a1i/archify) skill
 (default path `~/.claude/skills/archify/bin/archify.mjs`; pass `--archify <path>` to point

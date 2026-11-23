@@ -196,6 +196,7 @@ args = [
   "<repo>/scripts/run-mcp-server.ps1",
   "codex",
 ]
+tool_timeout_sec = 330  # wait_for_turn may block up to 300 s; Codex defaults to 300
 ```
 
 > [!NOTE]

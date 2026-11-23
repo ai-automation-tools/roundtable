@@ -107,7 +107,7 @@ when it closes.
 | Tool | Purpose |
 |:---|:---|
 | `get_kickoff()` | **Call once at session start.** The rendered kickoff plus topic / preset / conversation id, and your `conversation_type`, `your_role`, `roles`, `cast` and `role_brief`. Read-only. |
-| `wait_for_turn(timeout_seconds=60)` | **The loop tool.** Blocks until your turn, completion, or timeout. Zero tokens while waiting. |
+| `wait_for_turn(timeout_seconds=180)` | **The loop tool.** Blocks until your turn, completion, or timeout. Zero tokens while waiting. |
 | `get_my_turn` | One-shot state snapshot: whose turn, new messages (`history="full"` for all), `turns_remaining`, completion. Not for polling. |
 | `send_message(content, signal=None)` | Post a message; optional `done` / `blocked` / `result`. |
 | `get_conversation_status` | Read-only debug snapshot. |

@@ -35,7 +35,10 @@ args = [
   "<repo>/scripts/run-mcp-server.ps1",
   "codex",
 ]
+tool_timeout_sec = 330  # wait_for_turn may block up to 300 s; Codex defaults to 300
 ```
+
+`tool_timeout_sec` matters: `wait_for_turn` blocks server-side for up to 300 s, and Codex abandons an MCP call at its default of 300 s (60 s in releases before mid-2026), so a long wait could fail as a tool error instead of returning `timeout`. Seats made by `add_agent_seat.py` copy this block, so they inherit it.
 
 …or let the CLI write the same block (the `--` separator is required — everything after it is the launch command):
 
@@ -58,6 +61,7 @@ Once registered globally, `roundtable` is visible to **every** Codex session on 
 [mcp_servers.roundtable]
 command = "/abs/path/to/roundtable/scripts/run-mcp-server.sh"
 args = ["codex"]
+tool_timeout_sec = 330  # wait_for_turn may block up to 300 s; Codex defaults to 300
 ```
 
 The `.sh` ships with the +x bit set in the git index.
