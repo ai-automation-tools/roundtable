@@ -8,7 +8,7 @@ Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changel
 
 ### Fixed — the hosted mirror stops describing its own container
 
-- **Reads about the local machine are `404` on the mirror:** `/api/setup` (it listed container paths and `/root/.claude.json`), `/api/settings/*`, `/api/notifications` and `/api/battleground/*`. Writes there are still the read-only `403`.
+- **Reads about the local machine are `404` on the mirror:** `/api/setup` (it listed container paths and `/root/.claude.json`), `/api/settings/*` and `/api/notifications`. Writes there are still the read-only `403`.
 - The web UI's startup log prints `public read-only: on|off` next to `basic auth`.
 - Audit item RT-31.
 

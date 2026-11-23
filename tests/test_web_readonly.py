@@ -541,12 +541,13 @@ def test_real_routes_readonly_end_to_end():
 
             # Reads about this machine 404 on the mirror: /api/setup showed the
             # container's paths and /root/.claude.json (audit RT-31).
-            for path in ("/api/setup", "/api/notifications", "/api/settings/delivery",
-                         "/api/battleground/healthz", "/api/battleground/arenas"):
+            for path in ("/api/setup", "/api/notifications", "/api/settings/delivery"):
                 resp = client.get(path)
                 assert resp.status_code == 404, f"GET {path} -> {resp.status_code}"
-            # ...while a public read that merely shares a prefix still works.
+            # ...while a public page that shares a prefix still works, and so
+            # does healthz: fly.toml and CI's image job health-check it.
             assert client.get("/settings").status_code == 200
+            assert client.get("/api/battleground/healthz").status_code == 200
         finally:
             os.environ.pop("AGENT_CHAT_PUBLIC_READONLY", None)
             if saved is not None:
