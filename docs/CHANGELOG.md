@@ -6,6 +6,11 @@ Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changel
 
 ## 2026-11-22 (latest)
 
+### Changed — one copy of the process-flow diagram
+
+- The generated diagram is committed once, in `docs/diagrams/`. The *Homepage* workflow copies it into the published site at deploy time and now also runs when the diagram changes. `build_diagram.py` no longer writes `homepage/diagram/`, and `--check` no longer compares a second copy (which, lacking `-text`, read as drift on a CRLF checkout).
+- Audit item RT-33.
+
 ### Changed — the app's fonts match the homepage and the org's other sites
 
 - **Inter for text, JetBrains Mono for code and numerals**, instead of IBM Plex Sans and IBM Plex Mono. One font stylesheet per page: the persona console no longer `@import`s a second one.

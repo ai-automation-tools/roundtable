@@ -1,13 +1,16 @@
 name: Homepage
 
 # Publishes homepage/ to GitHub Pages at roundtable.ai-automation-tools.dev.
-# Nothing is built: the folder is plain HTML and ships as-is. The hosted app
-# itself is on Fly (fly.toml) and never reads this folder.
+# Nothing is built: the folder is plain HTML and ships as-is, plus the
+# process-flow diagram copied in from docs/diagrams/ (committed once there,
+# audit RT-33). The hosted app itself is on Fly (fly.toml) and never reads this folder.
 on:
   push:
     branches: [main]
     paths:
       - 'homepage/**'
+      - 'docs/diagrams/process-flow.html'
+      - 'docs/diagrams/process-flow.png'
       - '.github/workflows/homepage.yml'
   workflow_dispatch:
 
@@ -29,6 +32,10 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Copy in the process-flow diagram
+        run: |
+          mkdir -p homepage/diagram
+          cp docs/diagrams/process-flow.html docs/diagrams/process-flow.png homepage/diagram/
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: homepage

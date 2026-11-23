@@ -47,7 +47,7 @@ From a full audit of `4f71561` (kept outside the repo). One item per PR, titled 
 - [ ] **RT-30** Docs accuracy sweep
 - [ ] **RT-31** Hosted mirror: refuse local-only routes; truthful startup log — 🔒 Needs owner
 - [ ] **RT-32** Repo housekeeping: merged branches, release tags (owner settings) — 🔒 Needs owner
-- [ ] **RT-33** One copy of the generated diagram; EOL rule
+- [x] **RT-33** One copy of the generated diagram; EOL rule — done 2026-11-22: the diagram is committed once, in `docs/diagrams/`; the Pages workflow copies the HTML and PNG into the published `homepage/diagram/` (backup of the removed copies: `_maintenance/backups/2026-11-22-roundtable-homepage-diagram-copies`). The CRLF-checkout drift came from the second copy lacking `-text`; with one copy under `docs/diagrams/process-flow.* -text` it can't recur
 - [ ] **RT-34** Move inline CSS/JS into static files; nonce CSP
 - [ ] **RT-35** Align `wait_for_turn` default with client tool timeouts
 - [ ] **RT-36** Per-seat model choice
