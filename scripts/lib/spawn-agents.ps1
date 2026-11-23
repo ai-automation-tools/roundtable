@@ -150,7 +150,7 @@ function Resolve-AgentSeat {
     $envPrefix = ''
     if ($cli -eq 'codex' -and $seat -ge 2) {
         $codexHome = Join-Path (Join-Path $RepoRoot $dir) '.codex'
-        $envPrefix = "`$env:CODEX_HOME = '$codexHome'; "
+        $envPrefix = "`$env:CODEX_HOME = $(ConvertTo-PsLiteral $codexHome); "
     }
 
     @{
@@ -358,6 +358,10 @@ Begin now.
 }
 
 # --------------------------------------------------------------------------
+# A path as a single-quoted PowerShell literal: ' doubles to ''. A clone under
+# "Mike's Projects" broke every seat's command line until this (audit RT-37).
+function ConvertTo-PsLiteral([string] $Text) { "'" + $Text.Replace("'", "''") + "'" }
+
 # New-AgentLaunchPlan — for each assignment, (optionally) write its prompt file
 # and build the exact pwsh launch command. Returns one object per agent:
 #   { Cli; PromptFile; LaunchDir; Command }
@@ -424,14 +428,17 @@ function New-AgentLaunchPlan {
 
         $dir     = Join-Path $RepoRoot $spec.Dir
         $argPart = $spec.PromptArg -f ('"' + $opening + '"')
-        $deny    = if ($spec.Deny) { ' ' + ($spec.Deny -f "'$LaunchDir'", "'$mcpFile'") } else { '' }
-        $allow   = if ($SkipPermissions -and $spec.Allow) { ' ' + ($spec.Allow -f "'$LaunchDir'") } else { '' }
+        $deny    = if ($spec.Deny) { ' ' + ($spec.Deny -f (ConvertTo-PsLiteral $LaunchDir), (ConvertTo-PsLiteral $mcpFile)) } else { '' }
+        $allow   = if ($SkipPermissions -and $spec.Allow) { ' ' + ($spec.Allow -f (ConvertTo-PsLiteral $LaunchDir)) } else { '' }
         $scrub   = 'Remove-Item ' + (($SeatScrubbedEnv | ForEach-Object { "Env:$_" }) -join ',') + ' -ErrorAction Ignore; '
         # First thing the window does: record its PID and start time, so the web
         # UI's "close windows" can end exactly this process tree (audit RT-21).
         $pidFile = Join-Path $LaunchDir ("conv{0}-{1}.pid" -f $ConvId, $a.Cli)
         $record  = "Set-Content -LiteralPath '$pidFile' -Value " + '("$PID " + (Get-Process -Id $PID).StartTime.ToFileTimeUtc()); '
         $cmd     = $record + "Set-Location -LiteralPath '$dir'; $scrub$($spec.EnvPrefix)$($spec.Pre)$($spec.Exe)$modelArg $argPart$deny$allow"
+
+        $record  = "Set-Content -LiteralPath $(ConvertTo-PsLiteral $pidFile) -Value " + '("$PID " + (Get-Process -Id $PID).StartTime.ToFileTimeUtc()); '
+        $cmd     = $record + "Set-Location -LiteralPath $(ConvertTo-PsLiteral $dir); $scrub$($spec.EnvPrefix)$($spec.Pre)$($spec.Exe) $argPart$deny$allow"
 
         [pscustomobject]@{ Cli = $a.Cli; PromptFile = $promptFile; LaunchDir = $dir; Command = $cmd }
     }

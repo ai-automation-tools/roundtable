@@ -49,7 +49,9 @@ def _row(status: str, end_reason: str | None) -> sqlite3.Row:
     conn.row_factory = sqlite3.Row
     conn.execute("CREATE TABLE t (status TEXT, end_reason TEXT)")
     conn.execute("INSERT INTO t VALUES (?, ?)", (status, end_reason))
-    return conn.execute("SELECT status, end_reason FROM t").fetchone()
+    row = conn.execute("SELECT status, end_reason FROM t").fetchone()
+    conn.close()  # a Row outlives its connection
+    return row
 
 
 def _seed_db(path: Path, *, status: str = "active",
