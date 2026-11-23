@@ -18,7 +18,9 @@ import {
 } from './state.js';
 import { api, bridgeUp, setBridgeStatus } from './bridge.js';
 import { hasPageAccess } from './permissions.js';
-import { isCustomPersona, persistSettings, saveCustomPersona } from './settings.js';
+import {
+  currentDisclosure, isCustomPersona, persistSettings, saveCustomPersona,
+} from './settings.js';
 import { runCapture } from './capture.js';
 import { render, renderAutoStatus } from './view.js';
 
@@ -158,12 +160,27 @@ export async function createArena() {
         stance: $('stance').value.trim() || null,
         reply_to: state.replyTo || null,
         agent_id: $('agent').value,
+        disclosure: currentDisclosure(),
         ...cast,
       },
     });
     await linkArena(state.tab.id, data.arena.id, state.capture.url);
     say('arena-msg', `Arena ${data.arena.id} is open.`, 'ok');
     await openArena(data.arena.id);
+  } catch (err) {
+    say('arena-msg', String(err.message || err), 'err');
+  }
+}
+
+/** Tell the bridge about a disclosure change on the open arena (RT-22). */
+export async function syncDisclosure() {
+  if (!state.arena) return;
+  try {
+    await api(`/arenas/${state.arena.arena.id}`, {
+      method: 'POST',
+      body: { disclosure: currentDisclosure() },
+    });
+    await openArena(state.arena.arena.id);
   } catch (err) {
     say('arena-msg', String(err.message || err), 'err');
   }

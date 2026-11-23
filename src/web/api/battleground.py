@@ -323,7 +323,12 @@ def api_bg_create_arena(request: Request) -> Response:
          "thread": [{"id", "author", "text", "permalink"?, "score"?,
                      "timestamp"?, "depth"?}, ...],
          "stance": str?, "reply_to": str?, "agent_id": str?,
-         "persona": str?, "persona_instructions": str?, "persona_name": str?}
+         "persona": str?, "persona_instructions": str?, "persona_name": str?,
+         "disclosure": str?}
+
+    ``disclosure`` is the AI-disclosure line the panel will append on insert
+    (``""`` when it's switched off). ``submit_draft`` refuses to draft as a
+    real person while it's empty (audit RT-22).
 
     ``persona`` is a slug or display name resolved against the registry; the
     card **body is snapshotted onto the arena row** so a later edit to the
@@ -391,6 +396,7 @@ def api_bg_create_arena(request: Request) -> Response:
             persona_slug=persona_slug,
             persona_name=persona_name,
             persona_body=persona_body,
+            disclosure=_clip(body.get("disclosure"), 500) or "",
         )
     except sqlite3.Error as e:
         return JSONResponse({"error": f"db error: {e}"}, status_code=500)
@@ -482,6 +488,9 @@ def api_bg_update_arena(request: Request) -> Response:
             # replaced rather than leaving the two halves disagreeing.
             clear_persona_slug=bool(persona_body and not persona_slug),
             status=status,
+            # Sent when the panel's disclosure setting changes; absent = leave.
+            disclosure=(_clip(body.get("disclosure"), 500) or "")
+            if "disclosure" in body else None,
         )
     except sqlite3.Error as e:
         return JSONResponse({"error": f"db error: {e}"}, status_code=500)

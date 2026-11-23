@@ -6,6 +6,13 @@ Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changel
 
 ## 2026-11-23 (latest)
 
+### Changed — real people: parody framing, mandatory disclosure, review before publishing
+
+- A persona of a real person (`real_or_fictional: real` on its card) is tagged `real-person` and its body opens with a **Parody** line saying it's an AI sketch, not the person. `personas.py mark-real` frames rows imported earlier.
+- **AgentBattleground:** an arena cast as a real person can't take a draft while the panel's AI disclosure is off or empty. `submit_draft` refuses it, and the panel won't insert it.
+- The weekly content job's new cards wait in a local-only `Pending-Review` group until their PR merges (`personas.py promote-pending`), so nothing reaches the public registry before review. A never-list for cards is in `docs/guides/add-a-persona.md`.
+- Audit item RT-22.
+
 ### Added — extension releases
 
 - **`extension-v0.2.0`** is the first GitHub release: the AgentBattleground extension as a Chrome zip and a Firefox zip, for loading without a clone. `.github/workflows/extension-release.yml` publishes the next one when the version in both manifests changes on `main`.
