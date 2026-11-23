@@ -65,6 +65,16 @@ $CodexMcpOff = '$cfg = Join-Path ($env:CODEX_HOME ?? (Join-Path $HOME ''.codex''
     'ForEach-Object { ''-c''; "mcp_servers.$_.enabled=false" } }); '
 # Secrets the web UI or an operator shell may carry. A seat never needs them,
 # and a seat that can read its own environment shouldn't find them there.
+# The kill switch (audit RT-21): while this file exists nothing spawns. Same
+# path as orchestrator/killswitch.py; the env override exists for tests.
+$NoSpawnFile = if ($env:AGENT_CHAT_NO_SPAWN_FILE) { $env:AGENT_CHAT_NO_SPAWN_FILE } `
+               else { Join-Path (Split-Path (Split-Path $PSScriptRoot)) 'config\NO_SPAWN' }
+function Assert-SpawnAllowed {
+    if (Test-Path -LiteralPath $NoSpawnFile) {
+        throw "spawning is switched off: delete $NoSpawnFile to allow it"
+    }
+}
+
 $SeatScrubbedEnv = @('AGENT_CHAT_INGEST_TOKEN', 'AGENT_CHAT_BATTLEGROUND_TOKEN', 'AGENT_CHAT_BASIC_AUTH_PASSWORD', 'FLY_API_TOKEN')
 $Clis = [ordered]@{
     # mcp__roundtable is the server-wide rule add_agent_seat.py writes for seat
@@ -409,7 +419,11 @@ function New-AgentLaunchPlan {
         $deny    = if ($spec.Deny) { ' ' + ($spec.Deny -f "'$LaunchDir'", "'$mcpFile'") } else { '' }
         $allow   = if ($SkipPermissions -and $spec.Allow) { ' ' + ($spec.Allow -f "'$LaunchDir'") } else { '' }
         $scrub   = 'Remove-Item ' + (($SeatScrubbedEnv | ForEach-Object { "Env:$_" }) -join ',') + ' -ErrorAction Ignore; '
-        $cmd     = "Set-Location -LiteralPath '$dir'; $scrub$($spec.EnvPrefix)$($spec.Pre)$($spec.Exe) $argPart$deny$allow"
+        # First thing the window does: record its PID and start time, so the web
+        # UI's "close windows" can end exactly this process tree (audit RT-21).
+        $pidFile = Join-Path $LaunchDir ("conv{0}-{1}.pid" -f $ConvId, $a.Cli)
+        $record  = "Set-Content -LiteralPath '$pidFile' -Value " + '("$PID " + (Get-Process -Id $PID).StartTime.ToFileTimeUtc()); '
+        $cmd     = $record + "Set-Location -LiteralPath '$dir'; $scrub$($spec.EnvPrefix)$($spec.Pre)$($spec.Exe) $argPart$deny$allow"
 
         [pscustomobject]@{ Cli = $a.Cli; PromptFile = $promptFile; LaunchDir = $dir; Command = $cmd }
     }
@@ -427,6 +441,7 @@ function New-AgentLaunchPlan {
 function Invoke-AgentLaunch {
     param([Parameter(Mandatory)] $LaunchPlan)
 
+    Assert-SpawnAllowed
     $useWt = ($env:AGENT_CHAT_TERMINAL -eq 'wt')
     foreach ($p in $LaunchPlan) {
         $enc = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($p.Command))

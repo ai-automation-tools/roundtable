@@ -221,6 +221,13 @@ $CastPersonas = (-not $IsCollab) -or [bool]$Personalities -or [bool]$Group
 # scripts/orchestrate-debate.ps1 so the CLI binary/flag table lives in one place.
 . $SpawnLib
 
+# The kill switch: refuse before seeding anything. A dry run spawns nothing,
+# so it only says so.
+if (Test-Path -LiteralPath $NoSpawnFile) {
+    if (-not $DryRun) { Assert-SpawnAllowed }
+    Write-Host "NO_SPAWN is set ($NoSpawnFile): a real run would be refused." -ForegroundColor Yellow
+}
+
 # The CLI registry ($Clis) — binaries, launch dirs, prompt-arg shapes, and
 # tool-allowlist flags — now lives in scripts/lib/spawn-agents.ps1 (dot-sourced
 # above) so debate.ps1 and orchestrate-debate.ps1 share one source of truth.

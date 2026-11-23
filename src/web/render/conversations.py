@@ -1243,6 +1243,15 @@ def _render_conversation_main(data: dict[str, Any],
               try {{
                 const res = await fetch('/api/conversations/' + cid + '/stop', {{ method: 'POST' }});
                 if (!res.ok) throw new Error('HTTP ' + res.status);
+                // A stopped run reaches an agent only at its next MCP call; one
+                // mid-tool-call keeps going. Offer to close the windows this app
+                // opened for it (audit RT-21).
+                const info = await res.json().catch(() => ({{}}));
+                const n = info.seat_windows || 0;
+                if (n && confirm('Also close the ' + n + ' CLI window' + (n === 1 ? '' : 's') +
+                                 ' this app opened for it? Anything unsaved in them is lost.')) {{
+                  await fetch('/api/conversations/' + cid + '/close-windows', {{ method: 'POST' }});
+                }}
                 // Server flipped status='complete'. The SSE stream will emit
                 // 'event: complete' on its next tick; the pill flips there.
               }} catch (err) {{

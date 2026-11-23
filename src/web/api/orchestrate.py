@@ -23,6 +23,7 @@ from starlette.responses import JSONResponse, Response
 
 from orchestrator import availability as orch_availability
 from orchestrator import delivery as orch_delivery
+from orchestrator import killswitch
 from orchestrator import personas as orch_personas
 from orchestrator import preflight as orch_preflight
 from orchestrator import seeding as orch_seeding
@@ -142,6 +143,24 @@ def api_orchestrate(request: Request) -> Response:
         if max_turns < 1 or max_turns > 50:
             return JSONResponse({"ok": False, "kind": "validation",
                                  "error": "max_turns must be between 1 and 50"}, status_code=400)
+
+    max_minutes = payload.get("max_minutes")
+    if max_minutes is not None:
+        try:
+            max_minutes = int(max_minutes)
+        except (TypeError, ValueError):
+            max_minutes = 0
+        if not 1 <= max_minutes <= 24 * 60:
+            return JSONResponse({"ok": False, "kind": "validation",
+                                 "error": "max_minutes must be between 1 and 1440"},
+                                status_code=400)
+
+    # The kill switch (audit RT-21): refused before anything is seeded.
+    if payload.get("spawn") and killswitch.spawn_disabled():
+        return JSONResponse({"ok": False, "kind": "spawn_disabled",
+                             "error": f"spawning is switched off: delete {killswitch.NO_SPAWN_FILE} "
+                                      "to allow it, or launch without auto-spawn"},
+                            status_code=409)
 
     first = payload.get("first") or None
     if first and first not in participants:
@@ -363,6 +382,7 @@ def api_orchestrate(request: Request) -> Response:
             participant_personas=participant_personas or None,
             conv_type=conv_type,
             participant_roles=participant_roles,
+            max_minutes=max_minutes,
         )
     except orch_seeding.SeedError as e:
         return JSONResponse({"ok": False, "kind": "seed_error",

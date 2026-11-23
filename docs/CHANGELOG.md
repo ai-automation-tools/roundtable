@@ -4,6 +4,13 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 ## 2026-11-22 (latest)
 
+### Added — a hard stop: close the seat windows, a time limit, a kill switch
+
+- **Stop can close the windows.** Each seat window `/orchestrate` or `debate.ps1` opens records its PID and start time when it starts. After **Stop**, the page offers to close those windows; only a process with that PID *and* that start time is ended, so a reused PID is never touched. Stopping alone only reaches an agent at its next MCP call.
+- **Time limit.** `--max-minutes N` on `start_conversation.py`, or *Time limit* on `/orchestrate`, ends the run with `time limit (N min)` on the first agent call after N minutes. **Schema:** new nullable `conversations.max_minutes` (migrated in place, synced to the mirror; deploy the web app before restarting the sidecar, which the merge does).
+- **Kill switch.** While `config/NO_SPAWN` exists, nothing spawns: `/orchestrate` refuses an auto-spawn launch before seeding, and the PowerShell launchers refuse before opening a window.
+- Audit item RT-21.
+
 ### Fixed — transcripts paint in half the time on a phone
 
 - **Nothing blocks first paint.** highlight.js and its theme load only when a transcript has a code block, after the page renders, with integrity hashes; the web-font stylesheet is preloaded and applied when it arrives. On a throttled phone profile a transcript's largest paint went from 3.3 s to 1.3 s.

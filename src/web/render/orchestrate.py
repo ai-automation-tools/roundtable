@@ -717,6 +717,10 @@ def _render_orchestrate(
           <input name="max_turns" type="number" min="1" max="50" value="8" />
         </label>
         <label>
+          <span class="orch-flabel">Time limit (minutes)</span>
+          <input name="max_minutes" type="number" min="1" max="1440" placeholder="none" />
+        </label>
+        <label>
           <span class="orch-flabel" id="orch-first-label">First speaker</span>
           <select name="first">
             <option value="">(first selected)</option>
@@ -1602,6 +1606,7 @@ def _render_orchestrate(
       participants: participants,
       preset: currentPreset() || null,
       max_turns: parseInt(fd.get('max_turns'), 10) || null,
+      max_minutes: parseInt(fd.get('max_minutes'), 10) || null,
       first: fd.get('first') || null,
       kickoff: (fd.get('kickoff') || '').trim() || null,
       personas: personas,

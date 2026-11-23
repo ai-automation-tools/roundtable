@@ -67,6 +67,9 @@ def main() -> int:
                    help="Per-agent message cap. Conversation completes when any agent "
                         "hits this number. Default: 10 (or the preset's default when "
                         "--preset is set).")
+    p.add_argument("--max-minutes", type=int, default=None,
+                   help="Wall-clock cap: the run ends with end_reason 'time limit' on "
+                        "the first agent call after this many minutes. Default: none.")
     p.add_argument("--first", default=None,
                    help="Which agent goes first in turns mode. Defaults to the first "
                         "agent in --participants. Must be the --host when one is set.")
@@ -187,6 +190,7 @@ def main() -> int:
             participant_personas=participant_personas,
             conv_type=conv_type.key,
             participant_roles=participant_roles,
+            max_minutes=args.max_minutes,
         )
     except seeding.SeedError as e:
         print(f"ERROR: {e}", file=sys.stderr)

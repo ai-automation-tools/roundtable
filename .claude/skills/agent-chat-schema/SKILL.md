@@ -85,7 +85,8 @@ Pragmas are **not** uniform today, which is worth knowing before you "fix" one:
   `{agent_id: {persona_slug, persona_name, persona_body}}`), `conv_type`
   (`NOT NULL DEFAULT 'debate'` — the default is the backfill for every
   pre-2026-08-11 row; validated against `orchestrator/conv_types.py`),
-  `participant_roles` (JSON `{agent_id: 'moderator'|'debater'|'host'|'guest'}`).
+  `participant_roles` (JSON `{agent_id: 'moderator'|'debater'|'host'|'guest'}`),
+  `max_minutes` (nullable wall-clock cap read by `evaluate_stop`; since 2026-11-22).
 - **`messages`** — `id`, `conversation_id` → conversations(id), `sender`,
   `content`, `signal` (`done`|`blocked`), `created_at`.
 - **`personas`** — `"group"` (quoted — SQL reserved word), `slug`, `name`,

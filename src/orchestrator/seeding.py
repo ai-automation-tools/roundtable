@@ -202,6 +202,7 @@ def seed_conversation(
     participant_personas: Optional[dict] = None,
     conv_type: Optional[str] = None,
     participant_roles: Optional[dict[str, str]] = None,
+    max_minutes: Optional[int] = None,
 ) -> SeedResult:
     """Insert a conversation row, optionally rendering a kickoff template body.
 
@@ -323,12 +324,12 @@ def seed_conversation(
                 INSERT INTO conversations
                     (topic, participants, mode, max_turns, current_turn, status,
                      end_reason, created_at, updated_at, preset, kickoff_template,
-                     participant_personas, conv_type, participant_roles)
-                VALUES (?, ?, ?, ?, ?, 'active', NULL, ?, ?, ?, ?, ?, ?, ?)
+                     participant_personas, conv_type, participant_roles, max_minutes)
+                VALUES (?, ?, ?, ?, ?, 'active', NULL, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (topic, json.dumps(participants), mode, max_turns,
                  current_turn, ts, ts, preset, kickoff_rendered, personas_json,
-                 resolved_type, json.dumps(resolved_roles)),
+                 resolved_type, json.dumps(resolved_roles), max_minutes),
             )
             conv_id = cur.lastrowid
 
