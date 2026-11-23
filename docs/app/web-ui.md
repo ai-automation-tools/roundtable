@@ -1485,19 +1485,32 @@ caching), and propagate to the other side on the next sync tick (~5s).
 ## SSE stream (`GET /api/conversations/{cid}/stream`)
 
 Long-lived `text/event-stream` connection. Query string: `?since=<last_id>`
-to skip messages the client has already rendered.
+to skip messages the client has already rendered; anything but an integer is
+a `400`.
+
+**Caps.** At most `MAX_STREAMS = 100` open streams per process and
+`MAX_STREAMS_PER_CLIENT = 10` per client (`Fly-Client-IP` on the mirror, the
+socket peer locally); past either, `429` with `Retry-After: 30`. A slot is
+taken on the stream's first iteration and given back when it ends. On Fly,
+`[http_service.concurrency]` (hard limit 200 connections) backs this up at the
+proxy. Since 2026-11-22, audit RT-17: each stream holds a connection and polls
+SQLite every second on a 256 MB VM.
 
 **Tick loop** (`POLL_INTERVAL_SECONDS = 1.0`, in `web/api/conversations.py`):
 
 1. `request.is_disconnected()` → break (client closed tab).
-2. `messages_since(cid, last_id)` → emit `event: message` per row with
+2. `conversation_turn_state(cid)` — read **first**. A send commits its
+   message and the close in one transaction, so once this says `complete`,
+   every message is visible to the next read. Reading messages first could see
+   `complete` a moment later and stop without the final message (audit RT-17).
+3. `messages_since(cid, last_id)` → emit `event: message` per row with
    payload `{...message_row, "content_html": render_markdown(content)}`.
-3. `conversation_turn_state(cid)` → if `complete`, emit `event: complete`
-   and break; if the row is gone (deleted), break silently; else if
-   `current_turn` changed since the last tick (including the first tick),
-   emit `event: turn` with `{"current_turn": "<agent-id-or-null>"}` — the
-   reader's whose-turn badge listens for this.
-4. `await asyncio.sleep(1.0)`, continue.
+4. If the state was `complete`, emit `event: complete` and break; if the row
+   is gone (deleted), break silently; else if `current_turn` changed since the
+   last tick (including the first tick), emit `event: turn` with
+   `{"current_turn": "<agent-id-or-null>"}` — the reader's whose-turn badge
+   listens for this.
+5. `await asyncio.sleep(1.0)`, continue.
 
 **Why 1 second.** Same cadence as `wait_for_turn` server-side polling.
 Cheap (each tick is one indexed query). New rows surface within

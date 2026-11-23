@@ -242,8 +242,8 @@
       "sources": [
         {
           "path": "src/web/api/conversations.py",
-          "line": 152,
-          "end_line": 180
+          "line": 168,
+          "end_line": 219
         }
       ]
     },

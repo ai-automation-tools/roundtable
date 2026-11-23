@@ -33,6 +33,22 @@ from web.render.common import render_markdown
 
 POLL_INTERVAL_SECONDS = 1.0
 
+# Open SSE streams, in total and per client. Each one holds a connection and
+# polls SQLite every second, and the public mirror is a 256 MB VM anyone can
+# open a hundred tabs against (audit RT-17). A browser caps a host at ~6
+# HTTP/1.1 connections anyway, so a real reader never meets the per-client cap.
+MAX_STREAMS = 100
+MAX_STREAMS_PER_CLIENT = 10
+_streams: dict[str, int] = {}
+
+
+def _stream_client(request: Request) -> str:
+    """Who is opening a stream: Fly's ``Fly-Client-IP`` on the mirror (every
+    request reaches the app from Fly's proxy), else the socket's peer."""
+    headers = getattr(request, "headers", None) or {}
+    client = getattr(request, "client", None)
+    return headers.get("fly-client-ip") or (client.host if client else "?")
+
 
 async def api_conversations(request: Request) -> Response:
     return JSONResponse(list_conversations())
@@ -153,7 +169,14 @@ async def api_stream(request: Request) -> Response:
     """SSE stream for a conversation: ``message`` per new row, ``turn`` when
     ``current_turn`` changes (whose-turn indicator), ``complete`` on close."""
     cid = int(request.path_params["cid"])
-    last_id = int(request.query_params.get("since", "0"))
+    try:
+        last_id = int(request.query_params.get("since", "0"))
+    except ValueError:
+        return JSONResponse({"error": "since must be a message id"}, status_code=400)
+    who = _stream_client(request)
+    if sum(_streams.values()) >= MAX_STREAMS or _streams.get(who, 0) >= MAX_STREAMS_PER_CLIENT:
+        return JSONResponse({"error": "too many open streams"}, status_code=429,
+                            headers={"Retry-After": "30"})
 
     async def event_generator():
         nonlocal last_id
@@ -161,12 +184,16 @@ async def api_stream(request: Request) -> Response:
         while True:
             if await request.is_disconnected():
                 break
+            # State BEFORE messages: a send commits its message and the close
+            # in one transaction (RT-09), so once 'complete' is read every
+            # message is visible to the read below. The other order could see
+            # 'complete' and stop without the final message (audit RT-17).
+            status, current_turn = conversation_turn_state(cid)
             new = messages_since(cid, last_id)
             for m in new:
                 payload = {**m, "content_html": render_markdown(m["content"])}
                 yield {"event": "message", "data": json.dumps(payload)}
                 last_id = max(last_id, m["id"])
-            status, current_turn = conversation_turn_state(cid)
             if status == "complete":
                 yield {"event": "complete", "data": ""}
                 break
@@ -177,4 +204,16 @@ async def api_stream(request: Request) -> Response:
                 last_turn = current_turn
             await asyncio.sleep(POLL_INTERVAL_SECONDS)
 
-    return EventSourceResponse(event_generator())
+    async def counted():
+        # Counted from the first iteration, so a response that never starts
+        # streaming can't leak a slot (an unstarted generator runs no finally).
+        _streams[who] = _streams.get(who, 0) + 1
+        try:
+            async for event in event_generator():
+                yield event
+        finally:
+            _streams[who] -= 1
+            if not _streams[who]:
+                del _streams[who]
+
+    return EventSourceResponse(counted())

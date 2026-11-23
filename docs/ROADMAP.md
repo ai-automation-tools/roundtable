@@ -165,7 +165,7 @@ From a full audit of `4f71561` (kept outside the repo). One item per PR, titled 
 - [x] **RT-14** Delivery off the event loop; watchdog retry when no sink succeeded — done 2026-11-22: `delivery.deliver_later()` runs the fan-out on a non-daemon thread for `send_message`, the web Stop and seeding (a 3 s sink no longer delays `send_message`; the event loop's worst gap fell from the whole webhook call to ~0.08 s); the watchdog marks a stall notified only when a sink line isn't an `ERROR`. Structured sink results skipped: `reached()` reads the existing lines
 - [ ] **RT-15** Sync robustness: POST `/api/since`, push not blocked by pull, watermark overlap
 - [x] **RT-16** Export: demote headings inside message bodies to keep the `##` contract — done 2026-11-22: body headings drop two levels; the audit's repro no longer reproduces
-- [ ] **RT-17** SSE: drain final messages before `complete`; 400 on a bad `since`; cap streams
+- [x] **RT-17** SSE: drain final messages before `complete`; 400 on a bad `since`; cap streams — done 2026-11-22: the stream reads the turn state before the messages, so `complete` never beats the final message; a non-integer `since` is a 400; 100 streams per process and 10 per client (`Fly-Client-IP` on the mirror), else 429; `fly.toml` sets a 200-connection hard limit
 - [ ] **RT-18** Harden transcript rendering and ingest validation — 🔒 Needs owner
 - [ ] **RT-19** Harden notification URL handling — 🔒 Needs owner
 - [ ] **RT-20** One DB-path resolver
