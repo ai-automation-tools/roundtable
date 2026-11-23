@@ -89,7 +89,7 @@ $Tasks = @(
        Desc = 'Probe http://127.0.0.1:8765/ and the sidecar process; restart whatever is down. See scripts/healthcheck-app.ps1.' }
     @{ Name = 'Maintain-Roundtable-App'
        Script = 'scripts\maintain-app.ps1'
-       Desc = 'Nightly: consistent SQLite backup of db/chat.db, prune old backups, trim db/*.log. See scripts/maintain-app.ps1.' }
+       Desc = 'Nightly: consistent SQLite backup of db/chat.db with an integrity check (exit 1 and one alert on failure), prune only nightly chat-YYYYMMDD-* copies, trim db/*.log. See scripts/maintain-app.ps1.' }
 )
 
 # ---------------------------------------------------------------- unregister
