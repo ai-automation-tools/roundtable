@@ -6,6 +6,13 @@ Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changel
 
 ## 2026-11-23 (latest)
 
+### Changed — publishing to the public mirror is opt-in
+
+- **A new conversation stays on this machine** unless you publish it: the *Publish to the public mirror* box on `/orchestrate`, `debate.ps1 -Publish`, or `start_conversation.py --publish`. `inspect_conversations publish <id>` publishes one later; `--off` takes it back down from the mirror.
+- Every conversation already on the mirror stays there (the new `publish` column is backfilled to 1), and `config/sync-exclude.json` still keeps a published one local.
+- The flag itself never syncs. **Restart the sidecar** after updating, or the old one keeps mirroring every new run.
+- Audit item RT-07.
+
 ### Changed — CI must pass before a merge into `main`
 
 - A repo ruleset (**Require CI**) makes `test`, `test-linux` and `lint` required checks on `main`; a PR with failing CI can't be merged.

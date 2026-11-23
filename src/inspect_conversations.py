@@ -41,7 +41,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from orchestrator import delivery, watchdog  # noqa: E402
-from schema import ClosingConnection, complete_conversation, resolve_db_path  # noqa: E402
+from schema import (  # noqa: E402
+    ClosingConnection, complete_conversation, ensure_schema, resolve_db_path,
+)
 
 
 def _default_db_path() -> str:
@@ -203,6 +205,24 @@ def cmd_stop(conn: sqlite3.Connection, conv_id: int, db_path: str) -> int:
     return 0
 
 
+def cmd_publish(conn: sqlite3.Connection, conv_id: int, on: bool) -> int:
+    """Publish a conversation to the mirror, or take it back (audit RT-07).
+
+    Only the flag changes; the sync sidecar does the rest on its next tick:
+    it ships a newly published row with all its messages, and deletes an
+    unpublished one from the mirror."""
+    ensure_schema(conn)  # a file from before the column
+    cur = conn.execute("UPDATE conversations SET publish = ? WHERE id = ?",
+                       (1 if on else 0, conv_id))
+    if cur.rowcount == 0:
+        print(f"(no conversation #{conv_id})")
+        return 1
+    print(f"Conversation #{conv_id} is now "
+          + ("published: the sidecar copies it to the mirror on its next tick"
+             if on else "local only: the sidecar removes it from the mirror"))
+    return 0
+
+
 def cmd_deliver(conv_id: int | None, event: str, db_path: str,
                 init: bool = False, show: bool = False) -> int:
     """Re-run delivery for one conversation, or manage its config.
@@ -302,6 +322,13 @@ def main() -> int:
     sp_stop = sub.add_parser("stop")
     sp_stop.add_argument("conversation_id", type=int)
 
+    sp_pub = sub.add_parser(
+        "publish", help="Let the sync sidecar copy a conversation to the public "
+                        "mirror (--off takes it back).")
+    sp_pub.add_argument("conversation_id", type=int)
+    sp_pub.add_argument("--off", action="store_true",
+                        help="Make it local-only again; the mirror copy is deleted.")
+
     sp_watch = sub.add_parser(
         "watch", help="Report active conversations that have gone quiet.")
     sp_watch.add_argument("--quiet", action="store_true",
@@ -356,6 +383,8 @@ def _dispatch(args: argparse.Namespace, conn: sqlite3.Connection) -> int:
         return cmd_tail(conn, args.conversation_id, args.interval)
     if args.cmd == "stop":
         return cmd_stop(conn, args.conversation_id, args.db_path)
+    if args.cmd == "publish":
+        return cmd_publish(conn, args.conversation_id, not args.off)
     if args.cmd == "deliver":
         return cmd_deliver(args.conversation_id, args.event, args.db_path)
     if args.cmd == "watch":
