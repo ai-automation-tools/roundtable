@@ -1183,6 +1183,29 @@ def test_console_is_reachable_from_the_nav_rail():
         assert 'href="/battleground"' in rail
 
 
+def test_panel_markup_keeps_its_accessibility_fixes():
+    """The side panel has no browser test (audit RT-43 was checked with
+    Lighthouse once), so pin the markup it relies on: status lines are live
+    regions, every input has a name, the bridge state is words, not a colour."""
+    import re as _re
+    panel = Path(__file__).resolve().parent.parent / "extension" / "src" / "panel"
+    html = (panel / "panel.html").read_text(encoding="utf-8")
+    for el in ("settings-msg", "capture-summary", "arena-msg", "handoff-msg", "auto-status"):
+        assert _re.search(rf'id="{el}" role="status"', html), el
+    assert 'for="disclosure-text"' in html
+    assert _re.search(r'id="auto-seconds"[^>]*aria-label=', html)
+    auto = html[html.index('id="auto-recapture"'):]
+    assert auto.index("</label>") < auto.index('id="auto-seconds"'), "number input inside the checkbox label"
+    assert 'aria-controls="settings"' in html and 'aria-expanded="false"' in html
+    assert html.count("<main>") == 1
+    js = (panel / "panel.js").read_text(encoding="utf-8")
+    assert "setAttribute('aria-expanded'" in js
+    bridge = (panel / "lib" / "bridge.js").read_text(encoding="utf-8")
+    assert "aria-label" in bridge and "Offline" in bridge
+    css = (panel / "panel.css").read_text(encoding="utf-8")
+    assert "background: var(--accent-fill)" in css and ".hint { color: var(--muted)" in css
+
+
 def test_panel_reaches_the_extension_apis_through_the_ext_alias():
     """Firefox exposes ``chrome.*`` only as a callback-based porting aid — the
     promise-returning namespace on Gecko is ``browser.*``. Every panel call is
