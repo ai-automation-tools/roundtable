@@ -14,6 +14,17 @@ Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changel
 - **Homepage:** 76 seed personas, not 62 — the number a fresh clone imports, now checked by a test.
 - Audit item RT-42.
 
+### Fixed — `wait_for_turn` fits inside every CLI's tool timeout
+
+- The Codex config snippets set `tool_timeout_sec = 330`. `wait_for_turn` may block for 300 s and Codex abandons an MCP call at 300 s by default, so the longest wait could surface as a tool error. **If you registered Codex before this change, add that line to `[mcp_servers.roundtable]` in `~/.codex/config.toml`.** OpenCode v2 (12 h) and Claude Code have no short limit; the 180 s default fits all of them.
+- The seat role docs' tool table said `wait_for_turn(timeout_seconds=60)`, contradicting the 180 s default two sections up; regenerated.
+- Audit item RT-35.
+
+### Changed — one copy of the process-flow diagram
+
+- The generated diagram is committed once, in `docs/diagrams/`. The *Homepage* workflow copies it into the published site at deploy time and now also runs when the diagram changes. `build_diagram.py` no longer writes `homepage/diagram/`, and `--check` no longer compares a second copy (which, lacking `-text`, read as drift on a CRLF checkout).
+- Audit item RT-33.
+
 ### Fixed — the hosted mirror stops describing its own container
 
 - **Reads about the local machine are `404` on the mirror:** `/api/setup` (it listed container paths and `/root/.claude.json`), `/api/settings/*` and `/api/notifications`. Writes there are still the read-only `403`.
