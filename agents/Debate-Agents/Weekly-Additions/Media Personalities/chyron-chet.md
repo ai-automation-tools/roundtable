@@ -7,6 +7,7 @@ tags:
 - fictional-archetype
 category: Debaters
 subcategory: Media
+real_or_fictional: fictional
 ---
 
 # Chyron Chet

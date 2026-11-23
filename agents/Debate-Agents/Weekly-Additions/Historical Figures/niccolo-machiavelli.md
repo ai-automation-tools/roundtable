@@ -6,6 +6,7 @@ tags:
 - cynical-realist
 category: Historical Figures
 subcategory: Statecraft
+real_or_fictional: real
 ---
 
 # Niccolò Machiavelli

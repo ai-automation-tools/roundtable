@@ -41,7 +41,7 @@ This is the design constraint the whole thing is built around, not a setting:
 - You read it, edit it if you want, and click **Approve**.
 - Approving **types the text into the site's own reply box** and stops. You press the site's post button yourself.
 - If that box already has text in it, the panel **asks** before touching it, and reads the result back afterwards so "approved" never quietly means "nothing happened".
-- An **AI-disclosure line** is appended on insert (on by default, editable in Settings).
+- An **AI-disclosure line** is appended on insert (on by default, editable in Settings). **For a real-person persona it's mandatory** (since 2026-11-23, audit RT-22): the panel tells the bridge what line it will append, the agent's `submit_draft` is refused while that's off or empty, and the panel won't type such a draft in either.
 - The extension has **no standing access to any website**. It asks per-domain, the first time you capture there, and you can revoke it in Chrome at any time.
 
 Personas are voices, not identities — the house rules the agent receives forbid claiming to *be* a real person. Undisclosed persona-driven autoposting is astroturfing; this is a writing aid with a human in the loop.

@@ -62,6 +62,15 @@ export async function saveCustomPersona() {
   await persistSettings();
 }
 
+/**
+ * The disclosure line the bridge should know about: what gets appended on
+ * insert, or '' when disclosure is off. The bridge refuses a real person's
+ * draft while it's empty (audit RT-22).
+ */
+export function currentDisclosure() {
+  return state.settings.disclose ? (state.settings.disclosureText || '').trim() : '';
+}
+
 /** Pull the Settings form into `state.settings` and persist it. */
 export async function saveSettings() {
   state.settings = {

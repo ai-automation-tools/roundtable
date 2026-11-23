@@ -6,6 +6,7 @@ tags:
 - experimental-science
 category: Scientists
 subcategory: Physics and Chemistry
+real_or_fictional: real
 ---
 
 # Marie Curie

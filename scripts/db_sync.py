@@ -66,7 +66,8 @@ from typing import Any
 # /api/ingest so the two ends can't drift.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from schema import (  # noqa: E402,F401
-    CONV_COLUMNS, MSG_COLUMNS, PERSONA_COLS_SQL, PERSONA_COLUMNS, ClosingConnection,
+    CONV_COLUMNS, MSG_COLUMNS, PENDING_PERSONA_GROUP, PERSONA_COLS_SQL, PERSONA_COLUMNS,
+    ClosingConnection,
 )
 
 
@@ -412,8 +413,8 @@ def read_changed_personas(
         try:
             rows = conn.execute(
                 f"SELECT {PERSONA_COLS_SQL} FROM personas "
-                f"WHERE updated_at > ? ORDER BY updated_at ASC",
-                (updated_after,),
+                f'WHERE updated_at > ? AND "group" != ? ORDER BY updated_at ASC',
+                (updated_after, PENDING_PERSONA_GROUP),
             ).fetchall()
         except sqlite3.OperationalError:
             # personas table not created yet (pre-upgrade local DB) — nothing
@@ -426,7 +427,8 @@ def read_all_persona_keys(db_path: Path) -> list[str]:
     with _connect(db_path) as conn:
         try:
             rows = conn.execute(
-                'SELECT "group", slug FROM personas'
+                'SELECT "group", slug FROM personas WHERE "group" != ?',
+                (PENDING_PERSONA_GROUP,),
             ).fetchall()
         except sqlite3.OperationalError:
             return []

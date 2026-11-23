@@ -6,6 +6,7 @@ tags:
 - moral-agitation
 category: Political Figures
 subcategory: Reform and Rights
+real_or_fictional: real
 ---
 
 # Frederick Douglass

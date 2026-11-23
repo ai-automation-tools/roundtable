@@ -6,6 +6,7 @@ tags:
 - sport-and-politics
 category: Athletes
 subcategory: Olympians
+real_or_fictional: real
 ---
 
 # Jesse Owens

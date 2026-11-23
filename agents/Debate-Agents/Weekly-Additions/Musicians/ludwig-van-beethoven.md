@@ -6,6 +6,7 @@ tags:
 - craft
 category: Musicians
 subcategory: Classical
+real_or_fictional: real
 ---
 
 # Ludwig van Beethoven

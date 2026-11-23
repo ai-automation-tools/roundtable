@@ -6,6 +6,13 @@ Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changel
 
 ## 2026-11-23 (latest)
 
+### Changed — real people: parody framing, mandatory disclosure, review before publishing
+
+- A persona of a real person (`real_or_fictional: real` on its card) is tagged `real-person` and its body opens with a **Parody** line saying it's an AI sketch, not the person. `personas.py mark-real` frames rows imported earlier.
+- **AgentBattleground:** an arena cast as a real person can't take a draft while the panel's AI disclosure is off or empty. `submit_draft` refuses it, and the panel won't insert it.
+- The weekly content job's new cards wait in a local-only `Pending-Review` group until their PR merges (`personas.py promote-pending`), so nothing reaches the public registry before review. A never-list for cards is in `docs/guides/add-a-persona.md`.
+- Audit item RT-22.
+
 ### Changed — publishing to the public mirror is opt-in
 
 - **A new conversation stays on this machine** unless you publish it: the *Publish to the public mirror* box on `/orchestrate`, `debate.ps1 -Publish`, or `start_conversation.py --publish`. `inspect_conversations publish <id>` publishes one later; `--off` takes it back down from the mirror.

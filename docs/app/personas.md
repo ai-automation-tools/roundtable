@@ -382,6 +382,8 @@ code `1` + `{"status":"not_found"}` on a miss); `import` emits
 
 ## Storage & sync
 
+> **Real people and held cards** (audit RT-22). A card with `real_or_fictional: real` is tagged `real-person` and its body opens with the `> **Parody.**` line (`personas.frame_real_person`, applied in `parse_card_text`, so every importer does it). `personas.py mark-real` backfills rows imported before that. Rows in the `Pending-Review` group (`schema.PENDING_PERSONA_GROUP`) never sync and are never drawn at random; `personas.py promote-pending` moves a row into its card's group once the card is on `main`. See [add-a-persona](../guides/add-a-persona.md#-real-people).
+
 Personas live in a `personas` table in `db/chat.db` — the same WAL SQLite file
 that carries the conversation message bus:
 
