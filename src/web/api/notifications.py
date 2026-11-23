@@ -29,6 +29,7 @@ import json
 import re
 import urllib.error
 from typing import Any
+from urllib.parse import urlsplit
 
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
@@ -93,6 +94,19 @@ DEFAULT_SERVICE = "ntfy"
 _TOKEN_RE = re.compile(r"^[A-Za-z0-9_.\-]{1,64}$")
 
 
+def _web_url(url: str, what: str, https_only: bool = False) -> str:
+    """``url`` if it parses as http(s) with a host, else ValueError.
+
+    Parsed, not prefix-matched: ``urllib`` will happily open ``file:///`` for
+    a server field that only had to *start* with something (audit RT-19)."""
+    parts = urlsplit(url)
+    schemes = ("https",) if https_only else ("http", "https")
+    if parts.scheme.lower() not in schemes or not parts.hostname:
+        need = "https://" if https_only else "http:// or https://"
+        raise ValueError(f"{what} must be a {need} URL with a host")
+    return url
+
+
 def _build_sink(service: str, target: str, server: str, events: list[str],
                 enabled: bool) -> dict[str, Any]:
     """The sink JSON for one service. Raises ValueError on bad input."""
@@ -113,7 +127,7 @@ def _build_sink(service: str, target: str, server: str, events: list[str],
         if not _TOKEN_RE.match(target):
             raise ValueError("an ntfy topic can use letters, numbers, dash, dot "
                              "and underscore only")
-        base = (server or SERVICES["ntfy"]["server"]).rstrip("/")
+        base = _web_url(server or SERVICES["ntfy"]["server"], "the ntfy server").rstrip("/")
         sink["url"] = f"{base}/{target}"
         # Topic-URL mode: the message is the raw body, everything else is a
         # header. Title carries the event so a glance at the lock screen says
@@ -128,22 +142,18 @@ def _build_sink(service: str, target: str, server: str, events: list[str],
         if not _TOKEN_RE.match(target):
             raise ValueError("a Gotify app token can use letters, numbers, dash, "
                              "dot and underscore only")
-        base = (server or SERVICES["gotify"]["server"]).rstrip("/")
+        base = _web_url(server or SERVICES["gotify"]["server"], "the Gotify server").rstrip("/")
         sink["url"] = f"{base}/message?token={target}"
         sink["text_key"] = "message"   # Gotify reads {"title", "message"}
         sink["template"] = "{summary}\n{url}"
     elif service in ("discord", "slack"):
-        if not target.lower().startswith("https://"):
-            raise ValueError(f"a {SERVICES[service]['label']} webhook URL must "
-                             "start with https://")
-        sink["url"] = target
+        sink["url"] = _web_url(target, f"a {SERVICES[service]['label']} webhook URL",
+                               https_only=True)
         # One key name is the entire difference between the two.
         sink["text_key"] = "content" if service == "discord" else "text"
         sink["template"] = "**{summary}**\n{url}"
     elif service == "webhook":
-        if not re.match(r"^https?://", target, re.IGNORECASE):
-            raise ValueError("a webhook URL must start with http:// or https://")
-        sink["url"] = target
+        sink["url"] = _web_url(target, "a webhook URL")
     else:
         raise ValueError(f"unknown service {service!r}")
     return sink
@@ -173,11 +183,14 @@ def _service_of(sink: dict[str, Any] | None) -> str:
     if named in SERVICES:
         return named
     url = str(sink.get("url") or "")
-    if "ntfy" in url:
+    # The HOST decides, not a substring of the whole URL: a webhook at
+    # https://n8n.example/discord.com/ is not Discord (CodeQL #3/#4).
+    host = (urlsplit(url).hostname or "").lower()
+    if "ntfy" in host:
         return "ntfy"
-    if "discord.com" in url:
+    if host in ("discord.com", "discordapp.com") or host.endswith(".discord.com"):
         return "discord"
-    if "hooks.slack.com" in url:
+    if host == "hooks.slack.com":
         return "slack"
     if "/message?token=" in url:
         return "gotify"
@@ -316,15 +329,11 @@ async def api_notifications_test(request: Request) -> Response:
     try:
         detail = delivery.send_test(sink, event)
     except urllib.error.HTTPError as e:
-        body = ""
-        try:
-            body = e.read().decode("utf-8", "replace")[:200].strip()
-        except Exception:  # noqa: BLE001 — the status is the useful part
-            pass
+        # The status only: echoing the upstream body turned this route into a
+        # way to read whatever a URL answers (audit RT-19).
         return JSONResponse(
             {"ok": False,
-             "error": f"{SERVICES[service]['label']} answered HTTP {e.code}"
-                      + (f": {body}" if body else "")},
+             "error": f"{SERVICES[service]['label']} answered HTTP {e.code}"},
             status_code=400)
     except urllib.error.URLError as e:
         return JSONResponse(
