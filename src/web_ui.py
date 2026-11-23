@@ -18,7 +18,8 @@ Then open http://127.0.0.1:8765/ in a browser.
 This module is the app-assembly entrypoint: page routes, the route table,
 middleware wiring, and main(). The implementation lives in the ``web``
 package (``web.db`` / ``web.security`` / ``web.assets`` / ``web.render`` /
-``web.api``) — see each module's docstring.
+``web.api``) — see each module's docstring — and the stylesheets and scripts
+in ``web/static/``.
 """
 
 from __future__ import annotations
@@ -30,7 +31,7 @@ import uvicorn
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
-from starlette.routing import Route
+from starlette.routing import Mount, Route
 
 # Orchestrator package (sibling to this file). When run as ``python src/web_ui.py``
 # the script's directory is on sys.path so ``orchestrator`` imports natively.
@@ -89,7 +90,7 @@ from web.api.setup import (  # noqa: E402
     api_setup_seats,
 )
 from web.api.sync import api_ingest, api_since  # noqa: E402
-from web.assets import FAVICON_SVG  # noqa: E402
+from web.assets import FAVICON_SVG, STATIC_DIR, CachedStaticFiles  # noqa: E402
 from web.avatars import avatar_response  # noqa: E402
 # Read helpers the page routes below call directly. Separate from the
 # re-export block further down, which exists for the tests, not for us.
@@ -426,6 +427,9 @@ routes = [
     Route("/api/battleground/drafts/{did:int}/verdict", api_bg_verdict, methods=["POST"]),
     Route("/favicon.svg", favicon),
     Route("/avatars/{slug}", avatars),
+    # Every page's CSS and JS (audit RT-34). Linked with ?v=<content hash>,
+    # served immutable for a year; see web.assets.
+    Mount("/static", app=CachedStaticFiles(directory=STATIC_DIR), name="static"),
 ]
 
 app = Starlette(

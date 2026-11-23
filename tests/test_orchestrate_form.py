@@ -1,7 +1,8 @@
-r"""Tests for the ``/orchestrate`` form's inline browser JS — string invariants only.
+r"""Tests for the ``/orchestrate`` form's browser JS — string invariants only.
 
-The form is ~750 lines of markup plus ~740 lines of inline script rendered from
-one f-string in ``web/render/orchestrate.py``, and until this file it had zero
+The form is ~750 lines of markup rendered by ``web/render/orchestrate.py`` plus
+~760 lines of script in ``web/static/js/orchestrate.js`` (an inline f-string
+until audit RT-34 moved it to a static file), and until this file it had zero
 coverage of the script half. That is not a theoretical gap: the host seat picker
 once shipped *invisible* because ``updatePersonaRows()`` collected every
 ``.orch-persona-row`` — the moderator's row included — and ``display:none``'d
@@ -43,6 +44,7 @@ if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
 from orchestrator.conv_types import CONV_TYPES  # noqa: E402
+from web.assets import static_text  # noqa: E402
 from web.render.orchestrate import _render_orchestrate  # noqa: E402
 
 # Controls the renderer emits only in some configurations. Each one must be
@@ -79,11 +81,11 @@ def _pages() -> dict[str, str]:
 
 
 def _script(page: str) -> str:
-    """The form's own <script> block (the page also carries the topbar's)."""
-    blocks = [b for b in re.findall(r"<script>(.*?)</script>", page, re.S)
-              if "orch-form" in b]
-    assert len(blocks) == 1, f"expected exactly 1 orchestrate script, got {len(blocks)}"
-    return blocks[0]
+    """The form's own script: the static file the page loads (the page also
+    carries the topbar's, and the boot script)."""
+    srcs = re.findall(r'<script src="/static/js/orchestrate\.js\?v=[0-9a-f]+"', page)
+    assert len(srcs) == 1, f"expected exactly 1 orchestrate script, got {len(srcs)}"
+    return static_text("js/orchestrate.js")
 
 
 def _class_tokens(page: str) -> set[str]:
@@ -206,7 +208,7 @@ def test_every_class_selector_in_the_script_exists() -> None:
         classes = set(re.findall(
             r"querySelector(?:All)?\('\.([A-Za-z0-9_-]+)'\)", script))
         assert classes, "no class lookups found — did the script move?"
-        missing = sorted(classes - _class_tokens(page))
+        missing = sorted(classes - _class_tokens(page + script))
         assert not missing, \
             f"/orchestrate?type={conv_type}: script queries classes that exist " \
             f"nowhere in the page or the row template: {missing}"

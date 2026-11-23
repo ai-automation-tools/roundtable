@@ -7,11 +7,12 @@
  * operator's to press.
  */
 
-import { $, el, state } from './state.js';
+import { $, el, say, state } from './state.js';
 import { api } from './bridge.js';
 import { requestPageAccess } from './permissions.js';
 import { insertIntoComposer, probeComposer, readComposerText } from './compose.js';
 import { openArena } from './arena.js';
+import { currentDisclosure } from './settings.js';
 
 /**
  * One-click revision briefs. Each sends a `rejected` verdict whose note the
@@ -79,13 +80,20 @@ function draftChecks(text) {
     flags.push(['bad', 'Reads as first-hand experience. The agent has none — check this before approving.']);
   }
 
-  if (state.settings.disclose) {
+  if (realPersonBlocked()) {
+    flags.push(['bad', 'This persona is a real person and disclosure is off or empty, so it can’t be typed in. Turn disclosure on in Settings.']);
+  } else if (state.settings.disclose) {
     flags.push(['ok', 'AI-disclosure line will be appended on insert.']);
   } else {
     flags.push(['bad', 'Disclosure is OFF — this will be typed in with no AI marker.']);
   }
 
   return flags;
+}
+
+/** A real person's draft never reaches a page without the AI marker (RT-22). */
+function realPersonBlocked() {
+  return Boolean(state.arena && state.arena.arena.real_person) && !currentDisclosure();
 }
 
 function withDisclosure(text) {
@@ -107,6 +115,10 @@ function withDisclosure(text) {
  * — and its question — survive on screen until the operator answers.
  */
 async function approveAndInsert(draft, editedText, access) {
+  if (realPersonBlocked()) {
+    say('arena-msg', 'This persona is a real person: turn the AI disclosure on in Settings before inserting.', 'err');
+    return;
+  }
   const finalText = withDisclosure(editedText);
   const probe = await probeComposer(access);
   if (probe.ok && probe.found && probe.text.trim()) {

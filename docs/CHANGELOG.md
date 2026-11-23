@@ -15,6 +15,34 @@ Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changel
 - Preflight, `/setup`, `discover_seats()`, the battleground launch hint and `setup-skill-links` read the new location. **Existing machines:** copy any seat 2+ folder (and seat 1's local `.claude/` / `.codex/` state) from `agents/CLIs/` to the seat root; the old folders are no longer read.
 - Audit item RT-01.
 
+### Changed — no inline CSS or JS; every page sends a nonce CSP
+
+- **Every stylesheet and script moved out of Python strings into `src/web/static/`** (`css/`, `js/`), served at `/static` with a content-hash query (`?v=…`) and a year-long immutable cache, so a deploy that changes a file busts caches on its own. About 6,300 lines left `web/assets.py` and `web/render/*`; the HTML renderers stay in Python.
+- **Every HTML page, local and on the hosted mirror, sends a Content-Security-Policy with a per-request script nonce**: `script-src 'self' 'nonce-…'`, no `'unsafe-inline'` for scripts, plus `object-src 'none'`, `base-uri 'self'`, `form-action 'self'` and `frame-ancestors 'none'`. An injected `<script>` or `on*=` attribute no longer runs. Styles still allow `'unsafe-inline'` for computed `style=` attributes.
+- Server values a script needs arrive as an escaped JSON block or a `data-*` attribute. The notification settings' saved state used to be interpolated into a script unescaped; it now goes through the same escaping as the rest.
+- Inline handlers are gone: image fallbacks are `data-fallback` / `data-on-error`, the explorer's filters auto-submit through `data-autosubmit`, and the web-font stylesheet is inserted by `js/boot.js` instead of an `onload=` attribute.
+- CI's lint job now runs `node --check` over every script. New suite: `tests/test_static_csp.py`.
+- Audit item RT-34.
+
+### Fixed — the three installed agent-skills copies match upstream again
+
+- `agent-chat-delivery`, `agent-chat-conv-types` and `agent-chat-run-triage` were reinstalled from agent-skills `main` (#134). They name `src/schema.py` as the one `SCHEMA` and describe `deliver_later()`. Each carries an `.installed-from-agent-skills` marker naming the commit it came from.
+- Audit item RT-24.
+
+### Changed — real people: parody framing, mandatory disclosure, review before publishing
+
+- A persona of a real person (`real_or_fictional: real` on its card) is tagged `real-person` and its body opens with a **Parody** line saying it's an AI sketch, not the person. `personas.py mark-real` frames rows imported earlier.
+- **AgentBattleground:** an arena cast as a real person can't take a draft while the panel's AI disclosure is off or empty. `submit_draft` refuses it, and the panel won't insert it.
+- The weekly content job's new cards wait in a local-only `Pending-Review` group until their PR merges (`personas.py promote-pending`), so nothing reaches the public registry before review. A never-list for cards is in `docs/guides/add-a-persona.md`.
+- Audit item RT-22.
+
+### Changed — publishing to the public mirror is opt-in
+
+- **A new conversation stays on this machine** unless you publish it: the *Publish to the public mirror* box on `/orchestrate`, `debate.ps1 -Publish`, or `start_conversation.py --publish`. `inspect_conversations publish <id>` publishes one later; `--off` takes it back down from the mirror.
+- Every conversation already on the mirror stays there (the new `publish` column is backfilled to 1), and `config/sync-exclude.json` still keeps a published one local.
+- The flag itself never syncs. **Restart the sidecar** after updating, or the old one keeps mirroring every new run.
+- Audit item RT-07.
+
 ### Added — a weekly backup copy on another disk
 
 - `maintain-app.ps1 -OffDiskDir <folder>` copies that night's verified backup to another disk once a week, checks the hash, and keeps the newest 8. A missing or full disk fails the run (exit 1 and one alert), like a failed backup. Register it with `register-app-tasks.ps1 -OffDiskDir`.

@@ -6,6 +6,7 @@ tags:
 - curiosity
 category: Scientists
 subcategory: Physics
+real_or_fictional: real
 ---
 
 # Richard Feynman

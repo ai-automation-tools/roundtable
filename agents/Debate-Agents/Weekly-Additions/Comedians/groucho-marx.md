@@ -6,6 +6,7 @@ tags:
 - anti-pomposity
 category: Comedians
 subcategory: Classic Wit
+real_or_fictional: real
 ---
 
 # Groucho Marx

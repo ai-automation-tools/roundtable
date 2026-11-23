@@ -49,7 +49,7 @@ No daemon, no new port, no new auth surface. The extension needs the web UI runn
 | Insert | extension | Types the approved text into the page's **existing** composer. Never clicks submit. |
 | Post | operator | Presses the site's own post button. |
 
-Plus: an AI-disclosure suffix appended at insert time (on by default, editable), house rules delivered in-band with every arena that forbid claiming to *be* a real person, and no static content scripts — the extension holds no standing access to any site.
+Plus: an AI-disclosure suffix appended at insert time (on by default, editable; **required** when the arena is cast as a real person: the arena stores the panel's line in `battleground_arenas.disclosure` and `submit_draft` refuses while it's empty, audit RT-22), house rules delivered in-band with every arena that forbid claiming to *be* a real person, and no static content scripts — the extension holds no standing access to any site.
 
 The reason is straightforward: an agent that autoposts persona-driven replies into live threads is astroturfing, regardless of intent. Approving each reply is what keeps this a writing aid.
 
@@ -195,7 +195,7 @@ Other things worth knowing:
 - **Everything on the page is escaped, not rendered.** Titles, authors and post text came off a third-party website; unlike a conversation message (rendered as Markdown), captured content is emitted as text in a `white-space: pre-wrap` block. Draft content too — it's destined for a plain comment box, so what you review should be exactly what would be typed.
 - **The hosted mirror gets an explainer**, not an empty list. Both arena tables are excluded from the sidecar sync, so a list there wouldn't be "no arenas yet", it would be permanently empty — which reads as the opposite of the guarantee. Same shape `/orchestrate` uses when hosted.
 
-Implementation: [`src/web/render/battleground.py`](../../src/web/render/battleground.py) (rendering), the two page routes in [`src/web_ui.py`](../../src/web_ui.py), `BATTLEGROUND_CSS` in `web/assets.py`.
+Implementation: [`src/web/render/battleground.py`](../../src/web/render/battleground.py) (rendering), the two page routes in [`src/web_ui.py`](../../src/web_ui.py), `web/static/css/battleground.css` and `js/battleground-arena.js`.
 
 ## Extension internals
 

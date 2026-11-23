@@ -135,7 +135,7 @@ operator reference (per-CLI launch dirs, troubleshooting matrix).
 ## Step 5 — Watch it live
 
 - **Local:** `http://127.0.0.1:8765/conversations/<id>` (instant, SSE).
-- **Hosted mirror** (if the sidecar is up): `https://roundtable-demo.ai-automation-tools.dev/conversations/<id>`.
+- **Hosted mirror** (if the sidecar is up **and** you ticked *Publish to the public mirror*): `https://roundtable-demo.ai-automation-tools.dev/conversations/<id>`. Unticked, the run stays on this machine; publish it later with `inspect_conversations publish <id>`.
 
 The debate ends on its own at `max_turns`, or when an agent sends `signal='done'`.
 Stop early with the **Stop conversation** button (or `inspect_conversations.py stop <id>`).

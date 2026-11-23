@@ -7,6 +7,7 @@ tags:
 - fictional-archetype
 category: Debaters
 subcategory: Wellness
+real_or_fictional: fictional
 ---
 
 # Longevity Linnea

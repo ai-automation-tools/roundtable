@@ -18,11 +18,10 @@ keep in visual sync instead of one.
 from __future__ import annotations
 
 import html
-import json
 
 from web.api.notifications import DEFAULT_SERVICE, SERVICES
-from web.assets import (NOTIFICATIONS_CSS, ORCHESTRATE_CSS, SETUP_CSS,
-                        _ORCH_READONLY_CSS)
+from web.assets import json_script, stylesheets
+from web.assets import script as js_script
 from web.render.common import _layout
 
 _DOCS = ("https://github.com/ai-automation-tools/roundtable/blob/main/"
@@ -107,21 +106,24 @@ def notifications_body(state: dict) -> str:
             'left exactly as they are.</p>'
         )
 
-    meta_json = json.dumps({k: {"target_label": v["target_label"],
-                                "target_hint": v["target_hint"],
-                                "placeholder": v["placeholder"],
-                                "server": v.get("server") or "",
-                                "docs": v.get("docs") or ""}
-                            for k, v in SERVICES.items()})
+    meta = {k: {"target_label": v["target_label"],
+                "target_hint": v["target_hint"],
+                "placeholder": v["placeholder"],
+                "server": v.get("server") or "",
+                "docs": v.get("docs") or ""}
+            for k, v in SERVICES.items()}
     # On a page that has never been configured, `enabled` is False — there is no
     # sink to be enabled. Seeding the toggle from that would hand a first-time
     # operator a form that fills in, saves, and arms nothing. An untouched page
     # means "I am here to turn this on".
     toggle_on = bool(state.get("enabled")) if state.get("configured") else True
-    state_json = json.dumps({"target": state.get("target") or "",
-                             "server": state.get("server") or "",
-                             "enabled": toggle_on,
-                             "service": service})
+    saved = {"target": state.get("target") or "",
+             "server": state.get("server") or "",
+             "enabled": toggle_on,
+             "service": service}
+    # js/notifications.js reads these from one escaped JSON block (audit RT-34).
+    nt_data = json_script("nt-data", {"meta": meta, "saved": saved,
+                                      "defaultService": DEFAULT_SERVICE})
 
     body = f"""
 <div class="orch-shell su-shell nt-shell">
@@ -189,133 +191,13 @@ def notifications_body(state: dict) -> str:
   </form>
 </div>
 
-<script>
-(function() {{
-  const META = {meta_json};
-  const SAVED = {state_json};
-  const form = document.getElementById('nt-form');
-  const targetIn = document.getElementById('nt-target');
-  const serverIn = document.getElementById('nt-server');
-  const serverWrap = document.getElementById('nt-server-wrap');
-  const tLabel = document.getElementById('nt-target-label');
-  const tHint = document.getElementById('nt-target-hint');
-  const errorPanel = document.getElementById('nt-error');
-  const msg = document.getElementById('nt-msg');
-  const testBtn = document.getElementById('nt-test');
-  const saveBtn = form.querySelector('button[type=submit]');
-  const enabledIn = document.getElementById('nt-enabled');
-
-  // Per-service scratch, so switching radios to compare options and switching
-  // back doesn't silently drop the URL you already pasted.
-  const scratch = {{}};
-  let current = SAVED.service;
-  scratch[SAVED.service] = {{target: SAVED.target, server: SAVED.server}};
-  enabledIn.checked = SAVED.enabled;
-
-  function svc() {{
-    const el = form.querySelector('input[name=nt-service]:checked');
-    return el ? el.value : '{DEFAULT_SERVICE}';
-  }}
-
-  function paint(to) {{
-    const meta = META[to] || {{}};
-    tLabel.textContent = meta.target_label || 'URL';
-    tHint.innerHTML = meta.target_hint || '';
-    if (meta.docs) {{
-      tHint.innerHTML += ' <a href="' + meta.docs + '" target="_blank" ' +
-        'rel="noopener noreferrer">Docs \\u2197</a>';
-    }}
-    targetIn.placeholder = meta.placeholder || '';
-    const saved = scratch[to] || {{}};
-    targetIn.value = saved.target || '';
-    if (meta.server) {{
-      serverWrap.style.display = '';
-      serverIn.value = saved.server || meta.server;
-    }} else {{
-      serverWrap.style.display = 'none';
-      serverIn.value = '';
-    }}
-  }}
-
-  form.addEventListener('change', (ev) => {{
-    if (ev.target.name !== 'nt-service') return;
-    scratch[current] = {{target: targetIn.value, server: serverIn.value}};
-    current = ev.target.value;
-    paint(current);
-  }});
-
-  function events() {{
-    return Array.from(form.querySelectorAll('input[name=nt-event]:checked'))
-      .map(b => b.value);
-  }}
-
-  function payload() {{
-    return {{
-      service: svc(),
-      target: targetIn.value.trim(),
-      server: serverIn.value.trim(),
-      events: events(),
-      enabled: enabledIn.checked,
-    }};
-  }}
-
-  function esc(s) {{
-    return String(s).replace(/[&<>"']/g, c => (
-      {{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}}[c]
-    ));
-  }}
-
-  function fail(title, detail) {{
-    errorPanel.innerHTML = '<h2>' + esc(title) + '</h2><p>' + esc(detail) + '</p>';
-    errorPanel.classList.remove('hidden');
-  }}
-
-  async function send(url, btn, busy, done) {{
-    errorPanel.classList.add('hidden');
-    msg.className = 'su-seats-msg';
-    msg.textContent = busy;
-    btn.disabled = true;
-    try {{
-      const res = await fetch(url, {{
-        method: 'POST',
-        headers: {{'Content-Type': 'application/json'}},
-        body: JSON.stringify(payload()),
-      }});
-      const data = await res.json();
-      if (data.ok) {{
-        msg.className = 'su-seats-msg ok';
-        msg.textContent = done;
-        return true;
-      }}
-      msg.textContent = '';
-      fail('Not sent', data.error || 'Unknown error');
-    }} catch (err) {{
-      msg.textContent = '';
-      fail('Network error', String(err));
-    }} finally {{
-      btn.disabled = false;
-    }}
-    return false;
-  }}
-
-  testBtn.addEventListener('click', () => send(
-    '/api/notifications/test', testBtn,
-    'Sending\\u2026', 'Sent \\u2713 \\u2014 check your device'));
-
-  form.addEventListener('submit', (ev) => {{
-    ev.preventDefault();
-    send('/api/notifications', saveBtn, 'Saving\\u2026', 'Saved \\u2713');
-  }});
-
-  paint(current);
-}})();
-</script>
+{nt_data}{js_script("notifications")}
 """
     return body
 
 
 #: Stylesheets this tab's markup needs, in order.
-NOTIFICATIONS_TAB_CSS = (ORCHESTRATE_CSS, SETUP_CSS, NOTIFICATIONS_CSS)
+NOTIFICATIONS_TAB_CSS = ("orchestrate", "setup", "notifications")
 
 
 def _render_notifications(state: dict) -> str:
@@ -323,8 +205,7 @@ def _render_notifications(state: dict) -> str:
     route itself now renders through `/settings`."""
     return _layout(
         "Notifications", "", notifications_body(state),
-        head_extras=(f"<style>{ORCHESTRATE_CSS}</style><style>{SETUP_CSS}</style>"
-                     f"<style>{NOTIFICATIONS_CSS}</style>"),
+        head_extras=stylesheets(*NOTIFICATIONS_TAB_CSS),
         active="settings",
     )
 
@@ -379,7 +260,7 @@ def _render_notifications_readonly() -> str:
 """
     return _layout(
         "Notifications", "", body,
-        head_extras=f"<style>{ORCHESTRATE_CSS}</style>{_ORCH_READONLY_CSS}",
+        head_extras=stylesheets("orchestrate", "orch-readonly"),
         active="settings",
     )
 

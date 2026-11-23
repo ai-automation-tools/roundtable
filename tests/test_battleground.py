@@ -627,6 +627,127 @@ def test_persona_body_is_snapshotted_onto_the_arena():
         assert again["arena"]["persona_body"] == "Be terse."
 
 
+_REAL_CARD = """---
+title: "Ada Example"
+tags:
+- maths
+real_or_fictional: real
+---
+
+# Ada Example
+
+You are Ada Example. Argue like a mathematician.
+"""
+
+
+def test_a_real_person_card_is_tagged_and_framed_once():
+    """RT-22: `real_or_fictional: real` adds the tag and the parody line at
+    parse time, and an exported card re-imports without a second line."""
+    from orchestrator import personas as reg
+
+    p = reg.parse_card_text(_REAL_CARD, "ada-example", "Testers")
+    assert reg.REAL_PERSON_TAG in p.tags and "maths" in p.tags
+    assert p.body.startswith(reg.PARODY_MARKER), p.body[:80]
+    assert "It is not Ada Example" in p.body.splitlines()[0]
+    assert not p.summary.startswith(">"), "the summary is about the person, not the frame"
+    again = reg.parse_card_text(reg.card_text(p), "ada-example", "Testers")
+    assert again.body.count(reg.PARODY_MARKER) == 1
+    assert again.tags.count(reg.REAL_PERSON_TAG) == 1
+    fiction = reg.parse_card_text(_REAL_CARD.replace("real\n", "fictional\n"), "x", "T")
+    assert reg.REAL_PERSON_TAG not in fiction.tags
+    assert not fiction.body.startswith(reg.PARODY_MARKER)
+
+
+def test_submit_draft_refuses_a_real_person_without_disclosure():
+    """RT-22: no draft in a real person's voice while the panel's AI
+    disclosure is off or empty; turning it on lets the same arena draft."""
+    import asyncio
+
+    import agent_chat_mcp as mcp
+    from orchestrator import personas as reg
+
+    with _Env() as env:
+        reg.import_persona_card(_REAL_CARD, group="Testers", filename="ada-example.md")
+        reg.create_persona(name="Made Up", body="Be terse.", group="Testers")
+        real = _open_arena(env.client, persona="ada-example", disclosure="")
+        assert real["real_person"] is True
+        made_up = _open_arena(env.client, persona="made-up", disclosure="",
+                              agent_id="codex")
+        assert made_up["real_person"] is False
+
+        saved_agent, saved_db = mcp.AGENT_ID, mcp.DB_PATH
+        mcp.AGENT_ID, mcp.DB_PATH = "claude-code", env.db_path
+        try:
+            def submit(aid: int) -> dict:
+                return _mcp_json(asyncio.run(mcp.submit_draft(
+                    mcp.SubmitDraftInput(arena_id=aid, content="A point."))))
+
+            refused = submit(real["id"])
+            assert refused["status"] == "error", refused
+            assert "real person" in refused["message"]
+            env.client.post(f"/api/battleground/arenas/{real['id']}",
+                            json={"disclosure": "   "})
+            assert submit(real["id"])["status"] == "error", "whitespace is not a disclosure"
+            env.client.post(f"/api/battleground/arenas/{real['id']}",
+                            json={"disclosure": "-- drafted by an AI"})
+            assert submit(real["id"])["status"] == "submitted"
+
+            mcp.AGENT_ID = "codex"
+            assert submit(made_up["id"])["status"] == "submitted", \
+                "a fictional persona drafts with disclosure off, as before"
+        finally:
+            mcp.AGENT_ID, mcp.DB_PATH = saved_agent, saved_db
+
+
+def test_mark_real_persons_frames_old_rows_once():
+    """Rows imported before cards carried the marker get the tag and the
+    parody line (keeping the row's own body), once."""
+    from orchestrator import personas as reg
+
+    with _Env():
+        reg.create_persona(name="Steve Jobs", body="You are Steve Jobs.",
+                           group="Weekly-Additions/Tech Figures")
+        first = reg.mark_real_persons()
+        assert first["updated"] >= 1, first
+        row = reg.get_persona("steve-jobs", "Weekly-Additions/Tech Figures")
+        assert row is not None
+        assert reg.REAL_PERSON_TAG in row.tags
+        assert row.body.startswith(reg.PARODY_MARKER)
+        assert row.body.endswith("You are Steve Jobs.")
+        assert reg.mark_real_persons()["updated"] == 0
+
+
+def test_a_pending_persona_stays_local_until_promoted():
+    """RT-22: the content job's Pending-Review rows never sync and are never
+    drawn at random; promote_pending() moves a merged card's row out."""
+    import importlib.util
+
+    from orchestrator import personas as reg
+
+    spec = importlib.util.spec_from_file_location(
+        "_db_sync_rt22", Path(__file__).resolve().parent.parent / "scripts" / "db_sync.py")
+    db_sync = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = db_sync
+    spec.loader.exec_module(db_sync)
+
+    with _Env() as env:
+        held = reg.import_persona_card(
+            "---\ntitle: Steve Jobs\nreal_or_fictional: real\n---\n\nYou are Steve Jobs.\n",
+            group=reg.PENDING_GROUP, filename="steve-jobs.md")
+        assert held.group == reg.PENDING_GROUP
+        assert db_sync.read_changed_personas(Path(env.db_path), "1970") == []
+        assert db_sync.read_all_persona_keys(Path(env.db_path)) == []
+        assert all(p.group != reg.PENDING_GROUP for p in reg.list_debater_personas())
+
+        out = reg.promote_pending()
+        assert out["promoted"] == 1, out
+        moved = [r for r in db_sync.read_changed_personas(Path(env.db_path), "1970")
+                 if r["slug"] == "steve-jobs"]
+        assert len(moved) == 1 and moved[0]["group"] != reg.PENDING_GROUP
+        assert moved[0]["body"].startswith(reg.PARODY_MARKER)
+        assert reg.promote_pending()["promoted"] == 0
+
+
 def test_custom_persona_instructions_cast_without_a_registry_row():
     """The panel's "✎ custom instructions…" option: a card typed for one arena.
 

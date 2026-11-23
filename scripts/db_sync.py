@@ -36,8 +36,12 @@ every local conversation, message and persona. ``/api/ingest`` is
 idempotent, so it is a safe way to repair a mirror that has drifted
 without hand-editing ``db/.sync-state.json``.
 
-``config/sync-exclude.json`` keeps named conversations **local-only** —
-see ``load_exclusions``. The mirror is public; not every local run is.
+Publishing is **opt-in** (audit RT-07): only a conversation with
+``publish = 1`` reaches the mirror (``--publish`` on ``start_conversation.py``,
+``-Publish`` on ``debate.ps1``, the *Publish* box on ``/orchestrate``,
+``inspect_conversations publish <id>``). ``config/sync-exclude.json`` still
+keeps named conversations **local-only** on top of that — see
+``load_exclusions``. The mirror is public; not every local run is.
 """
 
 from __future__ import annotations
@@ -62,7 +66,8 @@ from typing import Any
 # /api/ingest so the two ends can't drift.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from schema import (  # noqa: E402,F401
-    CONV_COLUMNS, MSG_COLUMNS, PERSONA_COLS_SQL, PERSONA_COLUMNS, ClosingConnection,
+    CONV_COLUMNS, MSG_COLUMNS, PENDING_PERSONA_GROUP, PERSONA_COLS_SQL, PERSONA_COLUMNS,
+    ClosingConnection,
 )
 
 
@@ -384,6 +389,23 @@ def read_all_conversation_ids(db_path: Path) -> list[int]:
     return sorted(int(r["id"]) for r in rows)
 
 
+def read_unpublished_ids(db_path: Path) -> set[int]:
+    """Conversations nobody chose to publish (``publish = 0``, audit RT-07).
+
+    They join the exclusion file's ids, so everything ``load_exclusions``
+    describes applies: never pushed, deleted from the mirror if already there,
+    and shipped in full the tick after someone publishes one. A file from
+    before the column (nothing has seeded since the upgrade) has none."""
+    if not db_path.exists():
+        return set()
+    with _connect(db_path) as conn:
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(conversations)")}
+        if "publish" not in cols:
+            return set()
+        rows = conn.execute("SELECT id FROM conversations WHERE publish = 0").fetchall()
+    return {int(r["id"]) for r in rows}
+
+
 def read_changed_personas(
     db_path: Path, updated_after: str
 ) -> list[dict[str, Any]]:
@@ -391,8 +413,8 @@ def read_changed_personas(
         try:
             rows = conn.execute(
                 f"SELECT {PERSONA_COLS_SQL} FROM personas "
-                f"WHERE updated_at > ? ORDER BY updated_at ASC",
-                (updated_after,),
+                f'WHERE updated_at > ? AND "group" != ? ORDER BY updated_at ASC',
+                (updated_after, PENDING_PERSONA_GROUP),
             ).fetchall()
         except sqlite3.OperationalError:
             # personas table not created yet (pre-upgrade local DB) — nothing
@@ -405,7 +427,8 @@ def read_all_persona_keys(db_path: Path) -> list[str]:
     with _connect(db_path) as conn:
         try:
             rows = conn.execute(
-                'SELECT "group", slug FROM personas'
+                'SELECT "group", slug FROM personas WHERE "group" != ?',
+                (PENDING_PERSONA_GROUP,),
             ).fetchall()
         except sqlite3.OperationalError:
             return []
@@ -638,6 +661,8 @@ def run_tick(
     if not db_path.exists():
         log.debug("local DB not present yet (%s); skipping tick.", db_path)
         return state
+    # Unpublished conversations are excluded exactly like the file's ids.
+    exclude = set(exclude) | read_unpublished_ids(db_path)
 
     # ---------- Pull ----------
     pulled_server_time: str | None = None

@@ -453,12 +453,15 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _arena_row(row: sqlite3.Row) -> dict[str, Any]:
+def _arena_row(row: sqlite3.Row, conn: sqlite3.Connection) -> dict[str, Any]:
     d = dict(row)
     try:
         d["thread"] = json.loads(d["thread"])
     except (json.JSONDecodeError, TypeError):
         d["thread"] = []
+    # The panel won't type a real person's draft in without disclosure (RT-22).
+    d["real_person"] = personas.arena_real_person(
+        conn, d.get("persona_slug"), d.get("persona_body"))
     return d
 
 
@@ -474,6 +477,7 @@ def bg_create_arena(
     persona_slug: str | None = None,
     persona_name: str | None = None,
     persona_body: str | None = None,
+    disclosure: str | None = None,
 ) -> dict[str, Any]:
     """Insert a captured debate as a new open arena and return the full row."""
     ts = _now()
@@ -481,17 +485,18 @@ def bg_create_arena(
         cur = conn.execute(
             "INSERT INTO battleground_arenas "
             "(url, site, title, thread, stance, reply_to, agent_id, "
-            " persona_slug, persona_name, persona_body, status, created_at, "
-            " updated_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            " persona_slug, persona_name, persona_body, disclosure, status, "
+            " created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (url, site, title, json.dumps(thread), stance, reply_to, agent_id,
-             persona_slug, persona_name, persona_body, ARENA_OPEN, ts, ts),
+             persona_slug, persona_name, persona_body, disclosure, ARENA_OPEN,
+             ts, ts),
         )
         aid = int(cur.lastrowid)
         row = conn.execute(
             "SELECT * FROM battleground_arenas WHERE id = ?", (aid,)
         ).fetchone()
-    return _arena_row(row)
+        return _arena_row(row, conn)
 
 
 def bg_list_arenas(
@@ -520,7 +525,7 @@ def bg_list_arenas(
         rows = conn.execute(sql, params).fetchall()
         out = []
         for r in rows:
-            d = _arena_row(r)
+            d = _arena_row(r, conn)
             d["draft_count"] = conn.execute(
                 "SELECT COUNT(*) FROM battleground_drafts WHERE arena_id = ?",
                 (r["id"],),
@@ -546,7 +551,7 @@ def bg_get_arena(aid: int) -> dict[str, Any] | None:
             "SELECT * FROM battleground_drafts WHERE arena_id = ? ORDER BY id ASC",
             (aid,),
         ).fetchall()
-    return {"arena": _arena_row(row), "drafts": [dict(d) for d in drafts]}
+        return {"arena": _arena_row(row, conn), "drafts": [dict(d) for d in drafts]}
 
 
 def bg_update_arena(
@@ -561,6 +566,7 @@ def bg_update_arena(
     persona_body: str | None = None,
     clear_persona_slug: bool = False,
     status: str | None = None,
+    disclosure: str | None = None,
 ) -> dict[str, Any] | None:
     """Patch the operator-controlled fields on an arena. None args are skipped
     (so a partial update can't blank out the cast).
@@ -584,6 +590,7 @@ def bg_update_arena(
         ("persona_name", persona_name),
         ("persona_body", persona_body),
         ("status", status),
+        ("disclosure", disclosure),  # "" is a value: disclosure switched off
     ):
         if val is not None:
             sets.append(f"{col} = ?")
@@ -607,7 +614,7 @@ def bg_update_arena(
         row = conn.execute(
             "SELECT * FROM battleground_arenas WHERE id = ?", (aid,)
         ).fetchone()
-    return _arena_row(row)
+        return _arena_row(row, conn)
 
 
 def bg_merge_thread(aid: int, posts: list[dict[str, Any]]) -> dict[str, Any] | None:
@@ -648,7 +655,7 @@ def bg_merge_thread(aid: int, posts: list[dict[str, Any]]) -> dict[str, Any] | N
         arena = conn.execute(
             "SELECT * FROM battleground_arenas WHERE id = ?", (aid,)
         ).fetchone()
-    result = _arena_row(arena)
+        result = _arena_row(arena, conn)
     result["posts_added"] = added
     return result
 

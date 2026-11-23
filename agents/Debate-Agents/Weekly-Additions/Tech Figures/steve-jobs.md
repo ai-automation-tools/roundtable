@@ -7,6 +7,7 @@ tags:
 - design
 category: Debaters
 subcategory: Tech
+real_or_fictional: real
 ---
 
 # Steve Jobs

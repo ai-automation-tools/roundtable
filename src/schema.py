@@ -91,7 +91,8 @@ CREATE TABLE IF NOT EXISTS conversations (
     participant_personas TEXT,               -- JSON: {agent_id: {persona_slug, persona_name, persona_body}} (debate-mode casts)
     conv_type         TEXT NOT NULL DEFAULT 'debate',  -- structure: see orchestrator/conv_types.py
     participant_roles TEXT,                  -- JSON: {agent_id: <role>} — roles per type, see orchestrator/conv_types.py
-    max_minutes       INTEGER                -- wall-clock cap from created_at; NULL = none (audit RT-21)
+    max_minutes       INTEGER,               -- wall-clock cap from created_at; NULL = none (audit RT-21)
+    publish           INTEGER NOT NULL DEFAULT 0  -- 1 = the sidecar may copy it to the public mirror (audit RT-07)
 );
 
 CREATE TABLE IF NOT EXISTS messages (
@@ -136,6 +137,7 @@ CREATE TABLE IF NOT EXISTS battleground_arenas (
     persona_slug  TEXT,
     persona_name  TEXT,
     persona_body  TEXT,                   -- snapshot of the card at capture time
+    disclosure    TEXT,                   -- the AI-disclosure line the panel appends; '' or NULL = off (audit RT-22)
     status        TEXT NOT NULL,          -- 'open' | 'closed'
     created_at    TEXT NOT NULL,
     updated_at    TEXT NOT NULL
@@ -174,7 +176,14 @@ MIGRATIONS = (
      "ALTER TABLE conversations ADD COLUMN participant_roles TEXT"),
     ("conversations", "max_minutes",
      "ALTER TABLE conversations ADD COLUMN max_minutes INTEGER"),
+    # Publishing is opt-in (audit RT-07), but every row that predates the column
+    # was already being mirrored, so the backfill is 1: nothing public goes
+    # private and nothing private goes public. The DEFAULT also stays 1 on a
+    # migrated file, which is why seed_conversation() always writes the column.
+    ("conversations", "publish",
+     "ALTER TABLE conversations ADD COLUMN publish INTEGER NOT NULL DEFAULT 1"),
     ("battleground_arenas", "reply_to", "ALTER TABLE battleground_arenas ADD COLUMN reply_to TEXT"),
+    ("battleground_arenas", "disclosure", "ALTER TABLE battleground_arenas ADD COLUMN disclosure TEXT"),
     ("personas", "avatar_mime", "ALTER TABLE personas ADD COLUMN avatar_mime TEXT"),
     ("personas", "avatar_data", "ALTER TABLE personas ADD COLUMN avatar_data TEXT"),
 )
@@ -188,6 +197,9 @@ CONV_COLUMNS = (
     "preset", "kickoff_template", "participant_personas",
     "conv_type", "participant_roles", "max_minutes",
 )
+# conversations columns that never sync: the mirror only ever holds published
+# rows, so it has no use for the flag (audit RT-07).
+CONV_LOCAL_COLUMNS = ("publish",)
 MSG_COLUMNS = (
     "id", "conversation_id", "sender", "content", "signal", "created_at",
 )
@@ -197,6 +209,9 @@ PERSONA_COLUMNS = (
     "group", "slug", "name", "tags", "category", "subcategory",
     "body", "avatar_mime", "avatar_data", "created_at", "updated_at",
 )
+# The weekly content job's holding group: its rows never sync (audit RT-22,
+# see orchestrator/personas.py PENDING_GROUP).
+PENDING_PERSONA_GROUP = "Pending-Review"
 PERSONA_COLS_SQL = ",".join(f'"{c}"' for c in PERSONA_COLUMNS)
 
 # messages.sender: an agent id (`codex`, `claude-code-2`) or `system`. The web

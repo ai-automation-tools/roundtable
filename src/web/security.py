@@ -8,8 +8,9 @@ mutations — the hosted Fly-mirror posture).
 
 Always on: a ``Host`` allowlist (``127.0.0.1``, ``localhost`` and
 ``AGENT_CHAT_ALLOWED_HOSTS``), the cross-site write guard, the baseline
-security headers, and — wherever writes are possible — the per-install write
-secret (``WriteSecretMiddleware``).
+security headers including a per-request nonce Content-Security-Policy on every
+HTML page, and — wherever writes are possible — the per-install write secret
+(``WriteSecretMiddleware``).
 """
 
 from __future__ import annotations
@@ -18,6 +19,7 @@ import base64
 import os
 import secrets
 import time
+from contextvars import ContextVar
 from pathlib import Path
 
 from starlette.middleware import Middleware
@@ -453,17 +455,73 @@ class CrossSiteWriteGuard(BaseHTTPMiddleware):
         return await call_next(request)
 
 
+# ---------------------------------------------------------------------------
+# Content-Security-Policy — a fresh script nonce per request (audit RT-34)
+# ---------------------------------------------------------------------------
+
+# The nonce for the request being served. SecurityHeadersMiddleware sets it
+# before the route runs (the threadpooled handler inherits the context), every
+# <script> the renderers emit carries it (web.assets.script / json_script), and
+# the same value goes into the response's policy. Empty outside a request.
+_CSP_NONCE: ContextVar[str] = ContextVar("csp_nonce", default="")
+
+
+def csp_nonce() -> str:
+    """This request's CSP nonce, for a ``<script nonce=…>`` attribute."""
+    return _CSP_NONCE.get()
+
+
+def content_security_policy(nonce: str) -> str:
+    """The policy every HTML page is served with, local and hosted alike.
+
+    Scripts: same-origin files under /static plus anything carrying this
+    request's nonce (the hosted consent script; the highlight.js loader copies
+    the nonce onto the CDN script it injects). No ``'unsafe-inline'``, so an
+    inline handler or an injected ``<script>`` without the nonce never runs.
+
+    Styles keep ``'unsafe-inline'``: markup still carries computed ``style=``
+    attributes (avatar colours, progress widths) and the hosted consent banner
+    injects a ``<style>`` into its shadow root. Every stylesheet the app owns
+    is a file under /static.
+
+    Images allow any https origin and ``data:``/``blob:``: persona covers come
+    from ``PERSONA_MEDIA_URL``, Markdown in a transcript may link images, and
+    the avatar upload previews a local file."""
+    return "; ".join((
+        "default-src 'self'",
+        f"script-src 'self' 'nonce-{nonce}'",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com "
+        "https://cdnjs.cloudflare.com",
+        "font-src 'self' https://fonts.gstatic.com",
+        "img-src 'self' data: blob: https:",
+        "connect-src 'self'",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+        "frame-ancestors 'none'",
+    ))
+
+
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Baseline response headers. ``setdefault`` so a route's own CSP wins
-    (avatars set one). HSTS only when the request arrived over HTTPS."""
+    (avatars set one). HTML gets the full nonce policy; anything else keeps
+    ``frame-ancestors 'none'``. HSTS only when the request arrived over HTTPS."""
 
     async def dispatch(self, request: Request, call_next):
-        response = await call_next(request)
+        token = _CSP_NONCE.set(secrets.token_urlsafe(18))
+        try:
+            response = await call_next(request)
+            nonce = _CSP_NONCE.get()
+        finally:
+            _CSP_NONCE.reset(token)
         h = response.headers
         h.setdefault("X-Content-Type-Options", "nosniff")
         h.setdefault("X-Frame-Options", "DENY")
         h.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
-        h.setdefault("Content-Security-Policy", "frame-ancestors 'none'")
+        if h.get("content-type", "").startswith("text/html"):
+            h.setdefault("Content-Security-Policy", content_security_policy(nonce))
+        else:
+            h.setdefault("Content-Security-Policy", "frame-ancestors 'none'")
         if request.headers.get("x-forwarded-proto", request.url.scheme) == "https":
             h.setdefault("Strict-Transport-Security", "max-age=31536000")
         return response
@@ -473,9 +531,9 @@ class RegistryHostMiddleware(BaseHTTPMiddleware):
     """On the persona registry's own hostname, serve ONLY the registry.
 
     The registry is a separate site that happens to share this deployment
-    (and so its database). ``/`` opens it; the explorer, its downloads and the
-    avatars it shows are served; every other path — the console, the app,
-    the API — redirects to the same path on the demo, so the registry host
+    (and so its database). ``/`` opens it; the explorer, its downloads, the
+    avatars it shows and its stylesheets and scripts (``/static``) are served;
+    every other path — the console, the app, the API — redirects to the same path on the demo, so the registry host
     never turns into a second copy of the app.
     """
 
@@ -487,7 +545,7 @@ class RegistryHostMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         if path == "/":
             return RedirectResponse("/personas", status_code=302)
-        own = (path == "/personas" or path.startswith(("/personas/", "/avatars/"))
+        own = (path == "/personas" or path.startswith(("/personas/", "/avatars/", "/static/"))
                or path == "/favicon.svg") and not path.startswith("/personas/manage")
         if own:
             return await call_next(request)

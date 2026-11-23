@@ -1,0 +1,18 @@
+/* Indented block under each sink's on/off switch, so the switch reads as the
+   thing that owns the fields below it rather than as one more field. */
+.set-sub {
+  margin: 14px 0 0 26px; padding-left: 18px;
+  border-left: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 4px;
+}
+.set-sub .lbl { margin-top: 12px; }
+.set-sub .lbl:first-child { margin-top: 0; }
+.set-evrow { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 4px; }
+.set-evchk {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 13px; color: var(--muted); cursor: pointer;
+}
+.set-evchk input { width: 15px; height: 15px; accent-color: var(--accent); }
+.set-evchk code { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; }
+.set-inline { margin-top: 12px; }
+.set-num { max-width: 140px; }
