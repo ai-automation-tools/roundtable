@@ -4,7 +4,15 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changelog/2026-09.md) · [August 2026](changelog/2026-08.md) · [July 2026](changelog/2026-07.md) · [June 2026](changelog/2026-06.md) · [May 2026](changelog/2026-05.md) — the [archive](changelog/README.md) holds one file per month.
 
-## 2026-11-22 (latest)
+## 2026-11-23 (latest)
+
+### Added — extension releases
+
+- **`extension-v0.2.0`** is the first GitHub release: the AgentBattleground extension as a Chrome zip and a Firefox zip, for loading without a clone. `.github/workflows/extension-release.yml` publishes the next one when the version in both manifests changes on `main`.
+- The logon task (`register-startup-task.ps1`) now starts through `scripts/run-hidden.vbs`, like the other app tasks, so no console flashes at sign-in. Re-run the script to pick it up.
+- Audit item RT-32.
+
+## 2026-11-22
 
 ### Added — choose the model for each seat
 

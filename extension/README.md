@@ -68,6 +68,7 @@ whether a token is required. Worth a look before you go hunting in Settings.
   ```
 
   Then `about:debugging#/runtime/this-firefox` → **Load Temporary Add-on** → pick `extension\dist\firefox\manifest.json`. The panel opens in the sidebar from the toolbar button.
+- **Without a clone:** each released version is on the [Releases](https://github.com/ai-automation-tools/roundtable/releases) page as `extension-v<version>`, with a Chrome zip and a Firefox zip. Unzip one and load the folder as above. `.github/workflows/extension-release.yml` publishes a release when the version in both manifests changes on `main`; bump the two together.
 
 **3. Name the extension and set a token** (both required since 2026-11-12). In the `.env` at the repo root, then paste the same token into the panel's Settings:
 
