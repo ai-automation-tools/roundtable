@@ -590,6 +590,63 @@ def test_the_command_sink_cannot_be_enabled_without_the_folder_sink():
     raise AssertionError("accepted a command sink with no folder sink")
 
 
+def test_notification_urls_are_parsed_not_prefix_matched():
+    """A server or webhook field only had to start with http(s), and urllib
+    opens file:// too; the service was guessed from a substring of the whole
+    URL (audit RT-19, CodeQL #3/#4)."""
+    for service, target, server in (
+        ("ntfy", "topic", "file:///C:/Windows/win.ini"),
+        ("gotify", "token", "ftp://example.com"),
+        ("ntfy", "topic", "https://"),
+        ("webhook", "file:///etc/passwd", ""),
+        ("discord", "http://discord.com/api/webhooks/1/x", ""),
+    ):
+        try:
+            api._build_sink(service, target, server, ["complete"], True)
+        except ValueError:
+            continue
+        raise AssertionError(f"{service} accepted {target or server}")
+    assert api._service_of({"url": "https://n8n.example/discord.com/hook"}) == "webhook"
+    assert api._service_of({"url": "https://evil.example/?hooks.slack.com"}) == "webhook"
+    assert api._service_of({"url": "https://discord.com/api/webhooks/1/x"}) == "discord"
+    assert api._service_of({"url": "https://hooks.slack.com/services/x"}) == "slack"
+    assert api._service_of({"url": "https://ntfy.sh/topic"}) == "ntfy"
+    try:
+        delivery.post_webhook({"url": "file:///C:/Windows/win.ini"}, {}, "complete")
+    except ValueError as e:
+        assert "http" in str(e)
+    else:
+        raise AssertionError("post_webhook opened a file:// URL")
+
+
+def test_send_test_does_not_echo_the_upstream_body():
+    """Send test returned the first 200 bytes of whatever the URL answered,
+    which made it a way to read any page the server can reach (RT-19)."""
+    import io
+    import urllib.error
+
+    from starlette.applications import Starlette
+    from starlette.routing import Route
+    from starlette.testclient import TestClient
+
+    real = delivery.send_test
+
+    def refuse(sink, event="complete"):
+        raise urllib.error.HTTPError(sink["url"], 403, "Forbidden", {},
+                                     io.BytesIO(b"internal-secret-page"))
+
+    delivery.send_test = refuse
+    try:
+        client = TestClient(Starlette(routes=[Route(
+            "/t", api.api_notifications_test, methods=["POST"])]))
+        r = client.post("/t", json={"service": "webhook", "target": "http://127.0.0.1:9/x",
+                                    "events": ["complete"]})
+    finally:
+        delivery.send_test = real
+    assert r.status_code == 400 and "HTTP 403" in r.json()["error"], r.text
+    assert "internal-secret-page" not in r.text, r.text
+
+
 def test_saving_a_shell_string_command_is_refused_unless_allowed():
     """A shell evaluating a string turns any value into code, so the form
     refuses it; an ``allow_shell`` the operator hand-wrote survives a save."""

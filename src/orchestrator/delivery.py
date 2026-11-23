@@ -34,6 +34,7 @@ import json
 import os
 import subprocess
 import threading
+import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
@@ -426,6 +427,10 @@ def post_webhook(sink: dict[str, Any], payload: dict[str, Any],
     url = sink.get("url")
     if not url:
         raise ValueError("webhook sink has no 'url'")
+    # urllib also opens file:// and ftp://; a hand-edited config must not turn
+    # a webhook into a file read (audit RT-19).
+    if urllib.parse.urlsplit(str(url)).scheme.lower() not in ("http", "https"):
+        raise ValueError("webhook sink url must be http:// or https://")
 
     fields = dict(payload)
     fields.setdefault("summary", summary_line(payload, event))

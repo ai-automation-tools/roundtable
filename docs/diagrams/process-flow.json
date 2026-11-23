@@ -7,7 +7,7 @@
     "output": "docs/diagrams/process-flow.html",
     "repository": {
       "url": "https://github.com/ai-automation-tools/roundtable.git",
-      "revision": "3404f2c4365b7695e8255b12b6e5d77f0fd4e531"
+      "revision": "ceb6e3dbe8195a6d322c27e52b743f5ac61f3337"
     }
   },
   "lanes": [
@@ -259,12 +259,12 @@
         {
           "path": "src/orchestrator/delivery.py",
           "line": 1,
-          "end_line": 56
+          "end_line": 57
         },
         {
           "path": "src/orchestrator/delivery.py",
-          "line": 631,
-          "end_line": 656
+          "line": 636,
+          "end_line": 661
         }
       ]
     }

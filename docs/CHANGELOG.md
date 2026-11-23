@@ -4,6 +4,13 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 ## 2026-11-22 (latest)
 
+### Changed — notification URLs are parsed, not prefix-matched
+
+- **Settings → Notifications parses every URL it takes.** The ntfy/Gotify server and the Discord, Slack and raw webhook URLs must be `http(s)://` with a host (Discord and Slack `https://`). The server fields weren't checked at all, and Python's `urllib` will open `file://`. `post_webhook()` now refuses any non-http(s) URL, so a hand-edited config can't do it either.
+- **The service of a hand-written sink is read from the URL's host**, so `https://n8n.example/discord.com/` is a raw webhook, not Discord.
+- **Send test reports the HTTP status only**, not the first 200 bytes of whatever the URL answered.
+- Tests: `tests/test_notifications.py`. Audit item RT-19.
+
 ### Changed — message senders and signals are escaped and checked; ingest validates rows
 
 - **The transcript escapes a message's `sender` and `signal`** where they become CSS class names, on the server and in the live-append script. Both used to be pasted in raw.
