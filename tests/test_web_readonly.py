@@ -687,6 +687,64 @@ def test_the_transcript_page_counts_messages_once():
         assert sum("GROUP BY conversation_id" in q for q in sql) == 1, sql
 
 
+def _outline(html_text: str) -> list[int]:
+    import re
+    html_text = re.sub(r"<(script|style)\b.*?</\1>|<!--.*?-->", "", html_text, flags=re.S)
+    return [int(x) for x in re.findall(r"<h([1-6])\b", html_text)]
+
+
+def test_every_page_has_one_h1_and_no_skipped_heading_level():
+    """Audit RT-40: five page types had no h1, a transcript had one per cast
+    card, and home skipped h2 -> h4. Messages and cards render their markdown
+    headings beneath the page's own."""
+    from orchestrator import seeding
+    from web.render.common import render_markdown
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
+        db = Path(tmp) / "chat.db"
+        cid = seeding.seed_conversation(
+            db_path=str(db), topic="outline", participants=["a", "b"], mode="turns",
+            max_turns=2, initial_system_message="## Background\n\n### Detail\n\ntext",
+            participant_personas={"a": {"persona_name": "Ann",
+                                        "persona_body": "# Ann\n\n## Voice\nDry."}},
+        ).conversation_id
+        web_ui.set_db_path(str(db))
+        web_ui.db_init()
+        c = TestClient(web_ui.app, base_url=LOCAL)
+        for path in ("/", "/conversations", f"/conversations/{cid}", "/conversations/99999",
+                     "/personas", "/personas/manage", "/orchestrate", "/settings",
+                     "/settings?tab=notifications", "/settings?tab=delivery",
+                     "/battleground", "/extension", "/no-such-page"):
+            hs = _outline(c.get(path).text)
+            assert hs.count(1) == 1, (path, hs)
+            skips = [(a, b) for a, b in zip(hs, hs[1:]) if b > a + 1]
+            assert not skips, (path, skips, hs)
+        page = c.get(f"/conversations/{cid}").text
+        assert 'id="transcript" class="transcript" role="log" aria-live="polite"' in page
+        assert '<article class="msg ' in page and 'aria-labelledby="m' in page
+        assert '<h3 class="who" id="m' in page
+    # The content's top heading lands one level under the given one.
+    assert render_markdown("## A\n### B", 3).startswith('<h4 class="md-h2">A</h4>\n<h5 class="md-h3">')
+    assert render_markdown("# T", 2) == '<h3 class="md-h1">T</h3>\n'
+    assert render_markdown("# plain") == "<h1>plain</h1>\n"
+
+
+def test_form_fields_have_names():
+    """Audit RT-40 (UX-06): the topic, brief and notification fields had no
+    accessible name, and the radio sets no group label."""
+    c = TestClient(web_ui.app, base_url=LOCAL)
+    orch = c.get("/orchestrate").text
+    if 'id="orch-topic"' in orch:  # the local form, not the hosted explainer
+        assert '<label class="lbl" for="orch-topic">' in orch
+        assert 'aria-labelledby="orch-brief-label"' in orch
+        assert 'role="radiogroup" aria-labelledby="orch-type-label"' in orch
+    nt = c.get("/settings?tab=notifications").text
+    for needle in ('for="nt-target"', 'for="nt-server"', 'aria-labelledby="nt-svc-label"'):
+        assert needle in nt, needle
+    dl = c.get("/settings?tab=delivery").text
+    for needle in ('for="dl-folder-path"', 'for="dl-cmd-argv"', 'for="dl-cmd-timeout"'):
+        assert needle in dl, needle
+
+
 def test_sse_stream_sends_the_final_message_before_complete():
     """The stream read messages, then the status: a send landing between the
     two reads closed the stream without its final message (audit RT-17).

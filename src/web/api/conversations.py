@@ -30,7 +30,7 @@ from web.db import (
     messages_since,
     stop_conversation,
 )
-from web.render.common import render_markdown
+from web.render.common import MESSAGE_HEADING_LEVEL, render_markdown
 
 POLL_INTERVAL_SECONDS = 1.0
 
@@ -197,7 +197,7 @@ async def api_stream(request: Request) -> Response:
             # up the loop that serves every other viewer (audit RT-28).
             (status, current_turn), new = await run_in_threadpool(_tick, cid, last_id)
             for m in new:
-                payload = {**m, "content_html": render_markdown(m["content"])}
+                payload = {**m, "content_html": render_markdown(m["content"], MESSAGE_HEADING_LEVEL)}
                 yield {"event": "message", "data": json.dumps(payload)}
                 last_id = max(last_id, m["id"])
             if status == "complete":

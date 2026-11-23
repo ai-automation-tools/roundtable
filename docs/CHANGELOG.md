@@ -4,6 +4,14 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 ## 2026-11-22 (latest)
 
+### Fixed — page structure a screen reader can navigate
+
+- **One `h1` per page and no skipped heading levels.** The persona explorer, persona manager, orchestrate, settings, battleground and extension pages and both 404s had no `h1`; a conversation had one per cast card; the home page jumped from `h2` to `h4`.
+- **Messages and persona cards nest their headings under the page's.** A message's `# Heading` now renders beneath its speaker, a card's beneath its section, at the same visual size as before.
+- **The transcript is a live log.** Each message is an `article` named by its speaker, and messages that arrive over the stream are announced.
+- **Form fields have names.** The orchestrate title and brief, the format and sub-type choices, and the notification and delivery settings fields are labelled. Lighthouse accessibility is 100 on the home page, `/orchestrate`, the notifications tab and a long transcript.
+- Audit item RT-40.
+
 ### Changed — persona zips and covers leave the repo; every seed card imports
 
 - **The bulk persona zips (89 MB) and cover PNGs are no longer tracked.** The zips duplicated the cards beside them; the covers are served from the roundtable-personas site, which already has all 22. Nothing at runtime read either. `.gitignore` now keeps them out. They are still in git history; rewriting history is a separate decision.

@@ -106,7 +106,7 @@ def setup_body(statuses: list[avail.CliStatus], declared: bool) -> str:
     body = f"""
 <div class="orch-shell su-shell">
   <header class="orch-head">
-    <h2>Which CLI tools do you have?</h2>
+    <h1>Which CLI tools do you have?</h1>
     <p>Roundtable doesn't need all four. It needs <strong>one</strong> &mdash; a seat is
        configuration, not a program, so a single install can argue with itself. Tick what
        you actually have and everything else in the app (the orchestrate form, the
@@ -283,10 +283,10 @@ def setup_body(statuses: list[avail.CliStatus], declared: bool) -> str:
         }}, 1600);
         return;
       }}
-      errorPanel.innerHTML = '<h4>Not saved</h4><p>' + esc(data.error || 'Unknown error') + '</p>';
+      errorPanel.innerHTML = '<h2>Not saved</h2><p>' + esc(data.error || 'Unknown error') + '</p>';
       errorPanel.classList.remove('hidden');
     }} catch (err) {{
-      errorPanel.innerHTML = '<h4>Network error</h4><p>' + esc(String(err)) + '</p>';
+      errorPanel.innerHTML = '<h2>Network error</h2><p>' + esc(String(err)) + '</p>';
       errorPanel.classList.remove('hidden');
     }} finally {{
       if (submitBtn.textContent === 'Saving\\u2026') {{
@@ -320,7 +320,7 @@ def _render_setup_readonly() -> str:
     body = """
 <div class="orch-shell">
   <header class="orch-head">
-    <h2>CLI setup happens on your machine</h2>
+    <h1>CLI setup happens on your machine</h1>
     <p>This hosted site is a <strong>read-only demo</strong>. It has no CLI tools, no
        <code>PATH</code> to probe, and nothing to save &mdash; which CLIs you have is a
        fact about your own computer, so this page only does something on a local
@@ -328,7 +328,7 @@ def _render_setup_readonly() -> str:
   </header>
 
   <div class="orch-ro-card">
-    <h3>You need exactly one CLI to start</h3>
+    <h2>You need exactly one CLI to start</h2>
     <p>Claude Code, Codex, Antigravity or OpenCode &mdash; any one of them. A
        participant seat is configuration rather than a separate program, so a single
        install can hold both chairs in a debate: <code>claude-code</code> against
@@ -336,7 +336,7 @@ def _render_setup_readonly() -> str:
   </div>
 
   <div class="orch-ro-card">
-    <h3>Then run this page locally</h3>
+    <h2>Then run this page locally</h2>
     <pre><code>.\\.venv\\Scripts\\python.exe src\\web_ui.py
 # then open http://127.0.0.1:8765/setup</code></pre>
     <p>It probes each tool (binary on <code>PATH</code>, MCP config valid), lets you
