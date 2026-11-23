@@ -18,6 +18,7 @@ check-then-write that must not interleave with another process.
 
 from __future__ import annotations
 
+import re
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -144,6 +145,13 @@ PERSONA_COLUMNS = (
     "body", "avatar_mime", "avatar_data", "created_at", "updated_at",
 )
 PERSONA_COLS_SQL = ",".join(f'"{c}"' for c in PERSONA_COLUMNS)
+
+# messages.sender: an agent id (`codex`, `claude-code-2`) or `system`. The web
+# UI puts it in class names and the mirror takes it from /api/ingest, so it is
+# a token, never markup (audit RT-18). Checked at MCP startup and at ingest.
+SENDER_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}")
+# messages.signal: NULL or one of these (send_message refuses anything else).
+SIGNALS = ("done", "blocked", "result")
 
 # battleground_arenas.status / battleground_drafts.status values.
 ARENA_OPEN = "open"

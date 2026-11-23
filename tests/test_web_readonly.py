@@ -660,6 +660,72 @@ def test_sse_stream_refuses_a_bad_since_and_too_many_streams():
         api._streams.update(saved)
 
 
+def test_a_hostile_sender_renders_inert():
+    """sender and signal went into class="..." unescaped, so a row that came
+    in through ingest could break out of the attribute (audit RT-18)."""
+    from web.render.conversations import _render_message
+    out = _render_message({
+        "id": 7, "sender": 'codex"><img src=x onerror=alert(1)>',
+        "signal": 'result"><b>x</b>', "content": "hi",
+        "created_at": "2026-01-01T00:00:00+00:00"})
+    assert "<img src=x" not in out and "<b>x</b>" not in out, out
+    assert 'class="msg sender-codex&quot;&gt;&lt;img' in out, out
+    # The live-append path builds the same markup in JS: escaped there too.
+    from web.render import conversations as conv
+    import inspect
+    src = inspect.getsource(conv)
+    assert "'sender-' + esc(m.sender" in src and "'signal-' + esc(m.signal)" in src
+
+
+def test_ingest_checks_rows_and_caps_the_body():
+    from web.api import sync
+    token = "t" * 32
+    saved = os.environ.get("AGENT_CHAT_INGEST_TOKEN")
+    os.environ["AGENT_CHAT_INGEST_TOKEN"] = token
+    cap = sync.MAX_INGEST_BYTES
+    try:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
+            web_ui.set_db_path(str(Path(tmp) / "chat.db"))
+            web_ui.db_init()
+            client = TestClient(web_ui.app, base_url=LOCAL,
+                                headers={"Authorization": f"Bearer {token}"})
+            conv = {"id": 1, "topic": "t", "participants": "[]", "status": "complete",
+                    "mode": "turns", "max_turns": 2, "conv_type": "debate",
+                    "created_at": "2026-01-01T00:00:00+00:00",
+                    "updated_at": "2026-01-01T00:00:00+00:00"}
+            msg = {"id": 1, "conversation_id": 1, "sender": "codex", "content": "hi",
+                   "signal": None, "created_at": "2026-01-01T00:00:00+00:00"}
+
+            def post(**over):
+                return client.post("/api/ingest", json={
+                    "conversations": [conv], "messages": [{**msg, **over}]})
+
+            assert post(sender='x"><img src=x>').status_code == 400
+            assert post(signal="pwned").status_code == 400
+            assert post(id="1").status_code == 400
+            assert post(content=None).status_code == 400
+            ok = post()
+            assert ok.status_code == 200, ok.text
+            sync.MAX_INGEST_BYTES = 200
+            assert post(content="x" * 500).status_code == 413
+    finally:
+        sync.MAX_INGEST_BYTES = cap
+        os.environ.pop("AGENT_CHAT_INGEST_TOKEN", None)
+        if saved is not None:
+            os.environ["AGENT_CHAT_INGEST_TOKEN"] = saved
+
+
+def test_mcp_server_refuses_a_markup_agent_id():
+    import subprocess
+    server = Path(__file__).resolve().parent.parent / "src" / "agent_chat_mcp.py"
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
+        r = subprocess.run(
+            [sys.executable, str(server), "--agent-id", 'codex"><b>',
+             "--db-path", str(Path(tmp) / "chat.db")],
+            capture_output=True, text=True, timeout=60, stdin=subprocess.DEVNULL)
+    assert r.returncode == 2 and "--agent-id" in r.stderr, (r.returncode, r.stderr)
+
+
 def test_notifications_page_is_local_only_when_readonly():
     """Hosted /notifications renders the explainer, not the form. The events it
     would notify about fire in whichever process drives the CLI windows, which

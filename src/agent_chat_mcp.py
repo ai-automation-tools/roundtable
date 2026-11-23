@@ -42,6 +42,7 @@ from orchestrator import personas as personas_registry
 from orchestrator.conv_types import CONV_TYPES, lead_of
 from presets import BLIND_FIRST, protocol_for
 from schema import (
+    SENDER_RE,
     DRAFT_APPROVED, DRAFT_PENDING, DRAFT_POSTED, DRAFT_REJECTED,
     complete_conversation, ensure_schema, write_txn,
 )
@@ -1879,6 +1880,10 @@ def main() -> None:
 
     if not AGENT_ID:
         print("ERROR: --agent-id cannot be empty", file=sys.stderr)
+        sys.exit(2)
+    if not SENDER_RE.fullmatch(AGENT_ID):
+        print(f"ERROR: --agent-id {AGENT_ID!r} must be letters, digits, '-', '_' "
+              "or '.' (max 64), starting with a letter or digit", file=sys.stderr)
         sys.exit(2)
 
     db_init()

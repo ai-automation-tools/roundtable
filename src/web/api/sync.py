@@ -15,8 +15,35 @@ import sqlite3
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
+from schema import SENDER_RE, SIGNALS
 from web.avatars import invalidate_index
 from web.db import ingest_payload, since_payload
+
+# A sync batch carries only rows that changed since the last push, so a
+# normal one is kilobytes; 32 MB still fits a dozen personas with a 2 MB
+# avatar each. Past it the 256 MB mirror would be parsing the body in memory
+# for whoever holds the token (audit RT-18).
+MAX_INGEST_BYTES = 32 * 1024 * 1024
+
+
+def _row_error(conversations: list, messages: list) -> str | None:
+    """Why a batch's rows can't be stored, or None. Type checks only on the
+    columns something renders or joins on; the rest is parameterized SQL."""
+    for c in conversations:
+        if not isinstance(c, dict) or type(c.get("id")) is not int:
+            return "every conversation needs an integer id"
+    for m in messages:
+        if not isinstance(m, dict):
+            return "every message must be an object"
+        if type(m.get("id")) is not int or type(m.get("conversation_id")) is not int:
+            return "message id and conversation_id must be integers"
+        if not isinstance(m.get("sender"), str) or not SENDER_RE.fullmatch(m["sender"]):
+            return f"message {m['id']}: sender must be an agent id"
+        if m.get("signal") is not None and m["signal"] not in SIGNALS:
+            return f"message {m['id']}: unknown signal"
+        if not isinstance(m.get("content"), str):
+            return f"message {m['id']}: content must be a string"
+    return None
 
 
 async def api_since(request: Request) -> Response:
@@ -150,9 +177,21 @@ async def api_ingest(request: Request) -> Response:
             headers={"WWW-Authenticate": 'Bearer realm="agent_chat_ingest"'},
         )
 
+    too_big = JSONResponse(
+        {"error": f"batch over {MAX_INGEST_BYTES // (1024 * 1024)} MB"}, status_code=413)
     try:
-        body = await request.json()
-    except json.JSONDecodeError:
+        if int(request.headers.get("content-length") or 0) > MAX_INGEST_BYTES:
+            return too_big
+    except ValueError:
+        return JSONResponse({"error": "bad Content-Length"}, status_code=400)
+    raw = bytearray()
+    async for chunk in request.stream():   # chunked bodies have no length
+        raw += chunk
+        if len(raw) > MAX_INGEST_BYTES:
+            return too_big
+    try:
+        body = json.loads(raw)
+    except (json.JSONDecodeError, UnicodeDecodeError):
         return JSONResponse({"error": "invalid JSON"}, status_code=400)
     if not isinstance(body, dict):
         return JSONResponse(
@@ -190,6 +229,9 @@ async def api_ingest(request: Request) -> Response:
             status_code=400,
         )
     deleted_persona_keys = [str(k) for k in deleted_persona_keys]
+    problem = _row_error(conversations, messages)
+    if problem:
+        return JSONResponse({"error": problem}, status_code=400)
 
     try:
         result = ingest_payload(

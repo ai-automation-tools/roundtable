@@ -166,7 +166,7 @@ From a full audit of `4f71561` (kept outside the repo). One item per PR, titled 
 - [ ] **RT-15** Sync robustness: POST `/api/since`, push not blocked by pull, watermark overlap
 - [x] **RT-16** Export: demote headings inside message bodies to keep the `##` contract — done 2026-11-22: body headings drop two levels; the audit's repro no longer reproduces
 - [x] **RT-17** SSE: drain final messages before `complete`; 400 on a bad `since`; cap streams — done 2026-11-22: the stream reads the turn state before the messages, so `complete` never beats the final message; a non-integer `since` is a 400; 100 streams per process and 10 per client (`Fly-Client-IP` on the mirror), else 429; `fly.toml` sets a 200-connection hard limit
-- [ ] **RT-18** Harden transcript rendering and ingest validation — 🔒 Needs owner
+- [x] **RT-18** Harden transcript rendering and ingest validation — 🔒 Needs owner — done 2026-11-22: sender/signal escaped where they become class names (server and live-append JS); `schema.SENDER_RE` / `SIGNALS` checked at MCP startup and at ingest; ingest type-checks rows and caps the body at 32 MB (413)
 - [ ] **RT-19** Harden notification URL handling — 🔒 Needs owner
 - [ ] **RT-20** One DB-path resolver
 - [ ] **RT-21** Hard stop: seat PIDs, close windows, wall-clock cap, `NO_SPAWN`
