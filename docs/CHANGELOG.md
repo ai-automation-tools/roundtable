@@ -11,6 +11,15 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 - **New `list_persona_groups` tool**: the group names with a card count each. `list_personas`' `group` help used to suggest `Unique-Personas`, which holds no cards.
 - Audit item RT-25.
 
+### Fixed — the sync sidecar survives a big registry, a bad pull and a late commit
+
+- **`/api/since` takes a `POST` with a JSON body**, and `scripts/db_sync.py` sends one. The known-id list rode in the query string, and past ~1,300 persona keys the server refused the request head, so every tick failed. `GET` still works for an older sidecar. Restart the sidecar after pulling (the mirror deploys with the merge).
+- **A failed pull no longer stops the push.** It used to abort the tick, so one persistent pull error froze the mirror.
+- **Network surprises are retried, not fatal.** A reset while reading an error body, a non-JSON reply and any unexpected exception now log and back off (doubling up to 5 minutes) instead of ending the hidden daemon.
+- **A late commit still syncs.** Writers stamp `updated_at` before waiting on the write lock, so a row could commit behind the push cursor and never ship. The push re-reads 15 s behind the cursor and skips rows it already sent (`recent_pushed` in the state file).
+- **Pushes are paged** (500 messages, 25 personas a page, conversations first), so a `--force-push` of a large DB fits under `/api/ingest`'s 32 MB cap.
+- Audit item RT-15.
+
 ### Changed — CI runs once per PR, on Linux too, and lints
 
 - **Pushes run CI only on `main`.** A PR's branch is covered by `pull_request`; running on its pushes as well doubled every PR's CI.

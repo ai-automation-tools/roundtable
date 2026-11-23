@@ -372,7 +372,7 @@ routes = [
     Route("/api/conversations/{cid:int}/delete", api_delete, methods=["POST"]),
     Route("/api/conversations/{cid:int}/stream", api_stream),
     Route("/api/ingest", api_ingest, methods=["POST"]),
-    Route("/api/since", api_since),
+    Route("/api/since", api_since, methods=["GET", "POST"]),
     Route("/orchestrate", orchestrate),
     Route("/api/orchestrate", api_orchestrate, methods=["POST"]),
     # Which CLI tools this machine has. GET re-probes (safe anywhere); the two
