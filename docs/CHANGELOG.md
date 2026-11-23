@@ -4,6 +4,15 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 ## 2026-11-22 (latest)
 
+### Fixed — web UI accessibility quick wins
+
+- **Dark-theme secondary text clears WCAG AA.** `--muted-2` goes from `#71717a` (4.1:1 on the page background, 3.1:1 on raised panels) to `#909099` (6.4:1 and 4.7:1), and the conversation page's hard-coded greys (`#6b7280`, `#52555c`, `#5f6470`, `#71717a`) now use the token, so the time stamps, run details and cast hints that failed Lighthouse pass. Light theme unchanged.
+- **The focused "Skip to content" link sits below the fixed source bar** instead of mostly under it.
+- **The search button's accessible name matches what it shows** ("Search Ctrl K", with `aria-keyshortcuts`), keeps a name on phones where the word hides, and the palette's input has a label.
+- **Bigger targets:** "Run details" is 24px tall and the jump-to-latest pill 32px.
+- **Every app page has a `meta description`**; a conversation page's names its topic.
+- Lighthouse on a local run of this change: `/conversations` 100 (desktop); a mobile transcript 99, with heading order left for the next item. Test: `tests/test_web_readonly.py`.
+
 ### Changed — a failed backup or a failed restart now says so
 
 - **`scripts/maintain-app.ps1` fails loudly.** It used to exit 0 whatever happened, so a failed backup looked green in Task Scheduler. Now each copy is checked with `PRAGMA integrity_check`; a backup that errors or fails the check deletes the bad copy, skips the prune, exits **1**, and sends one alert. **The prune keeps hand-made snapshots:** it removes only its own `chat-YYYYMMDD-HHMMSS.db` files, where it used to delete every `chat-*.db` older than 14 days.

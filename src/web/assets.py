@@ -29,7 +29,7 @@ DESIGN_TOKENS = """
   --panel-2: #27272a;                       /* zinc-800 */
   --text: #f4f4f5;                          /* zinc-100 */
   --muted: #a1a1aa;                         /* zinc-400 */
-  --muted-2: #71717a;                       /* zinc-500 */
+  --muted-2: #909099;                       /* zinc-500 lifted: 6.4:1 on --bg, 4.7:1 on --panel-2 (WCAG AA) */
   --accent: #10b981;                        /* emerald-400 — links */
   --accent-strong: #059669;                 /* emerald-500 */
   --accent-2: #10b981;                      /* emerald-500 — actions/done */
@@ -1138,7 +1138,8 @@ main {
   color: var(--text); font-size: 13px; font-weight: 600; text-decoration: none;
   transition: top 0.14s ease;
 }
-.skip-link:focus { top: 0; text-decoration: none; }
+/* Below the fixed source bar (z 70), or the bar hides most of it. */
+.skip-link:focus { top: var(--srcbar-h); z-index: 80; text-decoration: none; }
 main h2.page-title {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
   font-size: 26px; font-weight: 800;
@@ -1769,7 +1770,7 @@ body.home .muted { color: var(--muted); }
 .step-body a:hover { color: #6ee7b7; }
 /* Code blocks inside the steps — emerald accent rule on the left, mono. */
 .step-code { background: #09090b; border: 1px solid rgba(39, 39, 42, 0.6); border-left: 2px solid #10b981; border-radius: 8px; padding: 14px 16px; overflow-x: auto; font-family: 'IBM Plex Mono', ui-monospace, "Cascadia Mono", "Consolas", monospace; font-size: 12.5px; line-height: 1.6; color: #e4e4e7; margin: 0; }
-.step-code .cmt { color: #71717a; }
+.step-code .cmt { color: var(--muted-2); }
 .step-code .em  { color: #10b981; }
 .step-code-inline { font-family: 'IBM Plex Mono', ui-monospace, "Cascadia Mono", "Consolas", monospace; font-size: 0.86em; color: #10b981; background: rgba(16, 185, 129, 0.08); padding: 1px 6px; border-radius: 4px; }
 
@@ -1778,15 +1779,15 @@ body.home .muted { color: var(--muted); }
 .latest-row { display: grid; grid-template-columns: 70px minmax(0, 2.4fr) minmax(0, 1fr) 110px; gap: 20px; align-items: center; padding: 16px 6px; border-top: 1px solid rgba(39, 39, 42, 0.6); text-decoration: none; color: #f4f4f5; transition: padding-left 0.25s var(--ease), background 0.25s var(--ease); }
 .latest-row:last-child { border-bottom: 1px solid rgba(39, 39, 42, 0.6); }
 .latest-row:hover { padding-left: 16px; background: linear-gradient(90deg, rgba(16,185,129,0.08), transparent 75%); text-decoration: none; }
-.latest-row .lid { font-family: 'IBM Plex Mono', ui-monospace, "Cascadia Mono", "Consolas", monospace; font-size: 12px; color: #71717a; }
+.latest-row .lid { font-family: 'IBM Plex Mono', ui-monospace, "Cascadia Mono", "Consolas", monospace; font-size: 12px; color: var(--muted-2); }
 .latest-row .ltopic { font-weight: 500; font-size: 15px; color: #f4f4f5; letter-spacing: -0.005em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .latest-row .lparts { font-family: 'IBM Plex Mono', ui-monospace, "Cascadia Mono", "Consolas", monospace; font-size: 11.5px; color: #a1a1aa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .latest-row .lstatus { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; text-align: right; display: inline-flex; align-items: center; gap: 6px; justify-content: flex-end; }
 .latest-row .lstatus::before { content: ''; width: 6px; height: 6px; border-radius: 50%; }
 .latest-row .lstatus.active { color: #10b981; }
 .latest-row .lstatus.active::before { background: #10b981; box-shadow: 0 0 6px #10b981; }
-.latest-row .lstatus.complete { color: #71717a; }
-.latest-row .lstatus.complete::before { background: #71717a; }
+.latest-row .lstatus.complete { color: var(--muted-2); }
+.latest-row .lstatus.complete::before { background: var(--muted-2); }
 
 /* ---- resources ---- */
 .res-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 40px; }
@@ -2229,15 +2230,15 @@ _CAST_CSS = """\
              background: rgba(16,185,129,0.10); border: 1px solid rgba(16,185,129,0.28);
              border-radius: 999px; padding: 4px 9px; }
   .cv-factline { font: 400 12px/1.7 'IBM Plex Mono', ui-monospace, monospace;
-                 color: var(--cv-ash, #71717a); }
+                 color: var(--cv-ash, #909099); }
   .cv-factsep { color: #3f4147; }
   /* Run configuration — read rarely, so it collapses. Sits at the end of the
      facts line; the panel it opens breaks to its own row (flex-basis:100%). */
   .cv-details { margin-left: 4px; }
   .cv-details[open] { flex-basis: 100%; margin-left: 0; }
   .cv-details > summary { display: inline-flex; align-items: center; gap: 5px;
-      cursor: pointer; list-style: none; font-size: 12px; color: #6b7280;
-      text-decoration: underline; text-underline-offset: 3px; }
+      cursor: pointer; list-style: none; font-size: 12px; color: var(--cv-ash);
+      text-decoration: underline; text-underline-offset: 3px; min-height: 24px; }
   .cv-details > summary::-webkit-details-marker { display: none; }
   .cv-details > summary:hover { color: var(--cv-bone, #c8ccd1); }
   .cv-dlist { margin: 11px 0 0; padding: 11px 13px; border: 1px solid var(--cv-line, #27272a);
@@ -2245,7 +2246,7 @@ _CAST_CSS = """\
               display: flex; flex-direction: column; gap: 7px; }
   .cv-drow { display: flex; gap: 12px; align-items: baseline;
              font: 400 11.5px/1.5 'IBM Plex Mono', ui-monospace, monospace; }
-  .cv-drow dt { flex: 0 0 88px; color: #6b7280; }
+  .cv-drow dt { flex: 0 0 88px; color: var(--cv-ash); }
   .cv-drow dd { margin: 0; color: var(--cv-bone, #c8ccd1); overflow-wrap: anywhere; }
 
   /* ---- Cast panel (full width, under the topic) ------------------------ */
@@ -2255,8 +2256,8 @@ _CAST_CSS = """\
   .cv-cast-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px;
                   padding: 0 6px; }
   .cv-cast-label { font: 600 10px/1 'IBM Plex Mono', ui-monospace, monospace;
-                   letter-spacing: 0.14em; text-transform: uppercase; color: #6b7280; }
-  .cv-cast-hint { font-size: 11px; color: #52555c; }
+                   letter-spacing: 0.14em; text-transform: uppercase; color: var(--cv-ash); }
+  .cv-cast-hint { font-size: 11px; color: var(--cv-ash); }
   .cast-list { list-style: none; margin: 0; padding: 0; }
   .cast-item + .cast-item { border-top: 1px solid rgba(255,255,255,0.05); }
   .cast-item summary, .cast-missing { cursor: pointer; padding: 10px 6px; display: flex;
@@ -2280,7 +2281,7 @@ _CAST_CSS = """\
                white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .cast-tail { margin-left: auto; display: flex; align-items: center; gap: 14px;
                flex: 0 0 auto; }
-  .cast-cli { font: 400 11px/1 'IBM Plex Mono', ui-monospace, monospace; color: #5f6470;
+  .cast-cli { font: 400 11px/1 'IBM Plex Mono', ui-monospace, monospace; color: var(--cv-ash);
               white-space: nowrap; }
   /* Marks a Cast row that fell back to the CLI's built-in AI-Models card
      because the conversation recorded no persona for that agent. */
@@ -2296,7 +2297,7 @@ _CAST_CSS = """\
                white-space: nowrap; }
   .cast-role.is-lead { color: #10b981; }
   .cast-count { font: 400 11px/1 'IBM Plex Mono', ui-monospace, monospace;
-                color: #6b7280; flex: 0 0 auto; min-width: 46px; text-align: right; }
+                color: var(--cv-ash); flex: 0 0 auto; min-width: 46px; text-align: right; }
   .cast-chev { flex: 0 0 auto; display: inline-flex; color: #3f4147;
                transition: transform .15s ease; }
   .cast-chev svg { width: 13px; height: 13px; }
@@ -2328,7 +2329,7 @@ _CONV_CSS = """\
 main:has(.cv2) { max-width:none; padding:0; margin:0 0 0 var(--rail-w); }
 .cv2 {
   --em:#10b981; --em-soft:rgba(16,185,129,0.10); --em-line:rgba(16,185,129,0.34);
-  --cv-line:rgba(255,255,255,0.07); --cv-ash:#71717a; --cv-bone:#c8ccd1; --cv-paper:#e7eaee;
+  --cv-line:rgba(255,255,255,0.07); --cv-ash:#909099; --cv-bone:#c8ccd1; --cv-paper:#e7eaee;
   height:calc(100dvh - var(--chrome-h));
   display:grid; grid-template-columns:var(--cv-rail-w, 320px) minmax(0,1fr);
   background:#07090a;
@@ -2519,7 +2520,7 @@ main:has(.cv2) { max-width:none; padding:0; margin:0 0 0 var(--rail-w); }
 .cv-jump {
   transform:translateY(14px);
   display:inline-flex; align-items:center; gap:8px;
-  padding:8px 14px; border-radius:999px;
+  padding:8px 14px; border-radius:999px; min-height:32px;
   border:1px solid var(--em-line); background:rgba(9,14,12,0.92);
   backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
   color:var(--em); cursor:pointer;

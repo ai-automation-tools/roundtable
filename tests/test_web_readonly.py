@@ -536,6 +536,21 @@ def test_battleground_console_is_local_only_when_readonly():
             importlib.reload(web_ui)
 
 
+def test_accessibility_quick_fixes_hold():
+    """RT-39 (Lighthouse, 2026-11-22): every app page carries a description,
+    the search button's name contains its visible label, the palette input is
+    named, the focused skip link clears the fixed source bar, and the dark
+    muted token clears 4.5:1."""
+    from web.assets import BASE_CSS
+    from web.render.common import _layout
+    page = _layout("T", "", "<p>x</p>")
+    assert '<meta name="description" content="' in page
+    assert 'aria-label="Search Ctrl K"' in page and "<kbd>Ctrl K</kbd>" in page
+    assert '<input id="cmdk-input"' in page and 'aria-label="Search Roundtable"' in page
+    assert ".skip-link:focus { top: var(--srcbar-h);" in BASE_CSS
+    assert "--muted-2: #909099;" in BASE_CSS
+
+
 # ---------------------------------------------------------------------------
 # Standalone runner (no pytest required)
 # ---------------------------------------------------------------------------
