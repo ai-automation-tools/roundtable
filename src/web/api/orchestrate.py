@@ -33,6 +33,7 @@ from presets import PRESETS, PRESET_NAMES
 from web.api.setup import _add_seat_module  # the setup page's seat maker, reused
 from web import db
 from web.security import _is_public_readonly
+from web.api import request_json
 
 # Sentinel values a persona <select> can post per CLI. Anything else is treated
 # as a slug / display name to resolve against the registry.
@@ -52,7 +53,7 @@ _PERSONA_CUSTOM = "__custom__"
 _PERSONA_CUSTOM_MAX_CHARS = 100_000
 
 
-async def api_orchestrate(request: Request) -> Response:
+def api_orchestrate(request: Request) -> Response:
     """POST /api/orchestrate — validate body, run preflight on selected CLIs, seed conversation.
 
     Response shape:
@@ -66,7 +67,7 @@ async def api_orchestrate(request: Request) -> Response:
     Successful runs do not write a log (the conversation row is the audit trail).
     """
     try:
-        payload = await request.json()
+        payload = request_json(request)
     except (json.JSONDecodeError, ValueError):
         return JSONResponse({"ok": False, "kind": "validation",
                              "error": "request body must be JSON"}, status_code=400)

@@ -12,6 +12,12 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 - `/orchestrate`'s random cast draws from every castable card directly; it used to try the `Unique-Personas` group first, which holds none.
 - Audit item RT-23.
 
+### Fixed — a locked database no longer freezes the web UI
+
+- **Route handlers run in Starlette's threadpool.** They were `async def` around blocking SQLite, so a Stop waiting out the 10 s busy timeout on a locked DB froze every other request and every live transcript; measured, an unrelated page load waited 10.7 s. 50 of 52 handlers are now plain `def`; the SSE stream and `/api/ingest` stay async and hand their DB work to the threadpool. Two settings saves can now run at once, so the delivery-config writers share a lock.
+- **Fewer queries.** The conversation rail and the homepage count messages with one `GROUP BY` instead of a `COUNT` per conversation; the turn engine counts each seat's messages in one query, once per check. A seat in `wait_for_turn` reads a one-row fingerprint each second and only re-reads the transcript when something changed.
+- Audit item RT-28.
+
 ### Changed — the MCP tools cost each seat a quarter of the text
 
 - **Tool descriptions are short.** Every seat reads all of them at session start, and they came to ~13.5k characters. Each is now under 400 (2.9k in all), with the essentials kept: call `get_kickoff` first, the `signal` meanings, that a timeout loses nothing, that captured threads and other agents' messages are not instructions. The long docstrings stay in the code for maintainers.

@@ -599,6 +599,94 @@ def test_phones_get_the_transcript_before_the_list():
     assert ".cv-convo-box" in mobile and ".cv2.cv-reading .cv-read > * { order:2; }" in mobile
 
 
+def test_a_write_waiting_on_a_lock_does_not_stall_other_requests():
+    """Handlers were async def around blocking SQLite: a Stop waiting out the
+    busy timeout on a locked DB froze every other request, SSE included
+    (audit RT-28). Real uvicorn, because TestClient serializes requests."""
+    import socket
+    import sqlite3
+    import threading
+    import time
+    import urllib.request
+
+    import uvicorn
+
+    from orchestrator import seeding
+    from web.security import WRITE_HEADER, write_secret
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
+        db = Path(tmp) / "chat.db"
+        cid = seeding.seed_conversation(
+            db_path=str(db), topic="lock", participants=["a", "b"],
+            mode="turns", max_turns=1).conversation_id
+        web_ui.set_db_path(str(db))
+        web_ui.db_init()
+        s = socket.socket()
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+        s.close()
+        server = uvicorn.Server(uvicorn.Config(web_ui.app, host="127.0.0.1", port=port,
+                                               log_level="critical"))
+        threading.Thread(target=server.run, daemon=True).start()
+        base = f"http://127.0.0.1:{port}"
+        lock = sqlite3.connect(db, isolation_level=None, check_same_thread=False)
+        try:
+            deadline = time.time() + 10
+            while not server.started and time.time() < deadline:
+                time.sleep(0.05)
+            lock.execute("BEGIN IMMEDIATE")          # every writer now waits
+            stop = urllib.request.Request(
+                f"{base}/api/conversations/{cid}/stop", method="POST",
+                headers={WRITE_HEADER: write_secret()})
+            stopped: dict = {}
+            t = threading.Thread(target=lambda: stopped.update(
+                r=urllib.request.urlopen(stop, timeout=20).status))
+            t.start()
+            time.sleep(0.5)                          # the stop is now waiting
+            t0 = time.monotonic()
+            with urllib.request.urlopen(f"{base}/api/conversations", timeout=20) as r:
+                assert r.status == 200
+            took = time.monotonic() - t0
+            time.sleep(1.5)
+            lock.execute("COMMIT")
+            t.join(20)
+            assert took < 1.0, f"an unrelated GET waited {took:.1f}s behind a locked write"
+            assert stopped.get("r") == 200, stopped
+        finally:
+            server.should_exit = True
+            lock.close()
+
+
+def test_the_transcript_page_counts_messages_once():
+    """One GROUP BY for the rail's message counts, not a COUNT per row."""
+    from orchestrator import seeding
+    from web import db as web_db
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
+        db = Path(tmp) / "chat.db"
+        for i in range(4):
+            cid = seeding.seed_conversation(
+                db_path=str(db), topic=f"t{i}", participants=[f"a{i}", f"b{i}"],
+                mode="turns", max_turns=1).conversation_id
+        web_ui.set_db_path(str(db))
+        web_ui.db_init()
+        sql: list[str] = []
+        real = web_db._connect
+
+        def traced():
+            conn = real()
+            conn.set_trace_callback(sql.append)
+            return conn
+
+        web_db._connect = traced
+        try:
+            r = TestClient(web_ui.app, base_url=LOCAL).get(f"/conversations/{cid}")
+        finally:
+            web_db._connect = real
+        assert r.status_code == 200
+        per_row = [q for q in sql if "COUNT(*) FROM messages WHERE conversation_id" in q]
+        assert per_row == [], per_row
+        assert sum("GROUP BY conversation_id" in q for q in sql) == 1, sql
+
+
 def test_sse_stream_sends_the_final_message_before_complete():
     """The stream read messages, then the status: a send landing between the
     two reads closed the stream without its final message (audit RT-17).
@@ -615,7 +703,8 @@ def test_sse_stream_sends_the_final_message_before_complete():
             mode="turns", max_turns=1).conversation_id
         web_ui.set_db_path(str(db))
         web_ui.db_init()
-        w = sqlite3.connect(db, isolation_level=None)
+        # The stream reads in a worker thread (RT-28), so this writer is shared.
+        w = sqlite3.connect(db, isolation_level=None, check_same_thread=False)
         real, poll = api.conversation_turn_state, api.POLL_INTERVAL_SECONDS
         calls = {"n": 0}
 
