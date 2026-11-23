@@ -623,8 +623,10 @@ def _render_message(m: dict[str, Any], personas: dict[str, Any] | None = None,
     replaced — they keep their place in the transcript but collapse, so the
     amber RESULT treatment points at exactly one message."""
     sender = m["sender"]
-    sender_class = f"sender-{sender}"
-    signal_class = f"signal-{m['signal']}" if m.get("signal") else ""
+    # Escaped like any other attribute value: a sender or signal is data, and
+    # one that arrived through ingest needn't be a clean token (audit RT-18).
+    sender_class = f"sender-{html.escape(str(sender))}"
+    signal_class = f"signal-{html.escape(str(m['signal']))}" if m.get("signal") else ""
     is_superseded = bool(superseded) and int(m.get("id") or -1) in superseded
     if is_superseded:
         signal_class += " signal-superseded"
@@ -663,7 +665,7 @@ def _render_message(m: dict[str, Any], personas: dict[str, Any] | None = None,
                 f'Superseded draft — a later result replaced this. Show it.'
                 f'</summary>{body}</details>')
     return f"""
-        <div class="msg {sender_class} {signal_class}" data-id="{m['id']}">
+        <div class="msg {sender_class} {signal_class}" data-id="{int(m['id'])}">
           {head}
           {body}
         </div>"""
@@ -1394,8 +1396,8 @@ def _render_conversation_main(data: dict[str, Any],
             // m.content_html is server-rendered safe HTML (markdown-it-py
             // with html=False + URL-scheme validator + target=_blank patch).
             // No client-side escaping — the server already did it.
-            const senderClass = 'sender-' + (m.sender || '');
-            const signalClass = m.signal ? 'signal-' + m.signal : '';
+            const senderClass = 'sender-' + esc(m.sender || '');
+            const signalClass = m.signal ? 'signal-' + esc(m.signal) : '';
             const signalBadge = m.signal
               ? '<span class="signal ' + esc(m.signal) + '">' + esc(m.signal) + '</span>'
               : '';
@@ -1412,7 +1414,7 @@ def _render_conversation_main(data: dict[str, Any],
             const who = pname
               ? esc(pname) + ' <span class="who-cli">' + esc(m.sender) + '</span>'
               : esc(m.sender);
-            return '<div class="msg ' + senderClass + ' ' + signalClass + '" data-id="' + m.id + '">' +
+            return '<div class="msg ' + senderClass + ' ' + signalClass + '" data-id="' + esc(m.id) + '">' +
               '<div class="msg-head">' + avatar + '<span class="who">' + who + '</span>' +
               '<span class="time">' + esc(fmtTime(m.created_at)) + '</span>' + signalBadge + '</div>' +
               '<div class="msg-body">' + (m.content_html || '') + '</div></div>';

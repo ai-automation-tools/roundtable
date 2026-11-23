@@ -1535,6 +1535,16 @@ endpoint:
 - **Opt-in per deployment.** When `AGENT_CHAT_INGEST_TOKEN` is unset, the
   endpoint short-circuits to `404 ingest disabled` — local dev never has
   to think about it.
+- **Checked before it is stored** (since 2026-11-22, audit RT-18). A body over
+  `MAX_INGEST_BYTES` (32 MB; a normal batch is kilobytes, and 32 MB still fits
+  a dozen personas with a 2 MB avatar each) is `413`, chunked or not. Every
+  conversation needs an integer `id`; every message an integer `id` and
+  `conversation_id`, a string `content`, a `sender` matching
+  `schema.SENDER_RE` (the same grammar the MCP server checks `--agent-id`
+  against at startup) and a `signal` that is NULL or one of `schema.SIGNALS`.
+  Anything else is a `400` naming the row, and nothing in the batch is applied.
+  The sidecar doesn't split batches yet, so a single push over the cap is
+  refused until it does (RT-15).
 
 ---
 
@@ -1546,8 +1556,9 @@ endpoint:
 > persona writes) is rejected with `403` because the deploy sets
 > `AGENT_CHAT_PUBLIC_READONLY=1` (see `[env]` in [`fly.toml`](../../fly.toml)).
 > The bearer-gated `/api/ingest` sync realm is exempt, so the local→Fly
-> sidecar keeps pushing. Local dev runs with the flag **off** — fully
-> writable and unauthenticated.
+> sidecar keeps pushing. Local dev runs with the flag **off**: writable, with
+> each write carrying the per-install write secret (see below), and no login
+> unless a basic-auth password is set.
 
 `_build_middleware()` in [`src/web_ui.py`](../../src/web_ui.py) assembles the
 stack from two independent, default-off env flags:
