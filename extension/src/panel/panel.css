@@ -8,7 +8,10 @@
   --line: #2b3038;
   --ink: #e8eaed;
   --muted: #9aa2ad;
-  --accent: #d4552f;
+  /* Accent as text/border (4.8:1 on the dark card) and as a fill under white
+     text (5.4:1); one #d4552f managed ~4.1 for both (audit RT-43). */
+  --accent: #e2633b;
+  --accent-fill: #b8441f;
   --accent-ink: #fff;
   --ok: #4caf7d;
   --warn: #d9a13b;
@@ -22,6 +25,7 @@
     --line: #e2e5ea;
     --ink: #1a1d21;
     --muted: #5f6771;
+    --accent: #b8441f;
   }
 }
 
@@ -88,9 +92,11 @@ label.check {
 }
 label.check input { margin: 0; }
 
-/* "Auto re-capture every [90] s" — the number sits inline, not full width. */
-label.check.auto { flex-wrap: wrap; gap: 6px; font-size: 12px; }
-label.check.auto input[type="number"] {
+/* "Auto re-capture every [90] s" — the number sits inline, not full width, and
+   outside the checkbox's label so each control has its own name. */
+.check.auto { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 12px; font-size: 12px; }
+.check.auto label.check { margin-top: 0; }
+.check.auto input[type="number"] {
   width: 62px;
   padding: 3px 6px;
   background: var(--bg);
@@ -115,7 +121,8 @@ label.check.auto input[type="number"] {
 }
 .custom-persona textarea { font-size: 12px; line-height: 1.45; }
 
-.hint { opacity: 0.7; font-weight: 400; }
+/* --muted, not a faded --ink: opacity 0.7 left hints at ~3.9:1 (audit RT-43). */
+.hint { color: var(--muted); font-weight: 400; }
 
 input[type="text"],
 input[type="password"],
@@ -145,8 +152,8 @@ button:hover { border-color: var(--muted); }
 button:disabled { opacity: 0.5; cursor: default; }
 
 button.primary {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--accent-fill);
+  border-color: var(--accent-fill);
   color: var(--accent-ink);
   font-weight: 600;
 }
@@ -166,8 +173,8 @@ button.restart {
   font-weight: 600;
 }
 button.restart:hover {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--accent-fill);
+  border-color: var(--accent-fill);
   color: var(--accent-ink);
 }
 
@@ -278,7 +285,7 @@ button.link:hover { filter: brightness(1.2); }
 .pill {
   display: inline-block;
   padding: 1px 7px;
-  background: var(--accent);
+  background: var(--accent-fill);
   color: var(--accent-ink);
   border-radius: 999px;
   font-size: 10.5px;

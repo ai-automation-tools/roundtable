@@ -107,7 +107,10 @@ async function refreshTab() {
 // Wiring
 // ---------------------------------------------------------------------------
 
-$('toggle-settings').onclick = () => $('settings').classList.toggle('hidden');
+$('toggle-settings').onclick = () => {
+  const open = !$('settings').classList.toggle('hidden');
+  $('toggle-settings').setAttribute('aria-expanded', String(open));
+};
 
 $('save-settings').onclick = async () => {
   await saveSettings();
