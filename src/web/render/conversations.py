@@ -1568,7 +1568,9 @@ def _render_conversation(data: dict[str, Any],
         body = f'<div class="cv2">{rail}{main}</div>{_conv_rail_js()}'
     return _layout(title, "", body,
                    head_extras=HIGHLIGHT_JS_HEAD + _CAST_CSS + _CONV_CSS,
-                   active="conversations")
+                   active="conversations",
+                   description=f"Roundtable conversation #{c['id']}: "
+                               f"{str(c.get('topic') or '').strip()[:200]}")
 
 
 def _render_index(convs: list[dict[str, Any]]) -> str:
