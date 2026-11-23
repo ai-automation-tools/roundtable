@@ -187,7 +187,7 @@ From a full audit of `4f71561` (kept outside the repo). One item per PR, titled 
 - [ ] **RT-36** Per-seat model choice
 - [ ] **RT-37** Close SQLite connections explicitly; escape quotes in the PS spawn string
 - [ ] **RT-38** Show the transcript first on phones
-- [ ] **RT-39** Accessibility quick fixes: skip link, dark muted contrast, names, tap targets
+- [x] **RT-39** Accessibility quick fixes: skip link, dark muted contrast, names, tap targets — done 2026-11-22: Lighthouse a11y 100 on /conversations (desktop), 99 on a mobile transcript (only heading-order left, RT-40)
 - [ ] **RT-40** Transcript semantics, one h1 per page, real form labels
 - [ ] **RT-41** Front-end load: defer highlight.js, self-host fonts, slim the polled index
 - [ ] **RT-42** Mirror and registry polish
