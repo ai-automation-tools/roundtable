@@ -29,13 +29,13 @@ if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
 
-def _run(db: Path, backups: Path, logs: Path) -> subprocess.CompletedProcess:
+def _run(db: Path, backups: Path, logs: Path, *extra: str) -> subprocess.CompletedProcess:
     # No delivery config: the failure alert finds no sink and writes nothing.
     env = dict(os.environ, AGENT_CHAT_DELIVERY_CONFIG=str(logs / "none.json"))
     return subprocess.run(
         [_PWSH, "-NoProfile", "-NonInteractive", "-File", str(_SCRIPT),
          "-DbPath", str(db), "-BackupDir", str(backups), "-LogDir", str(logs),
-         "-MaxLogLines", "0"],
+         "-MaxLogLines", "0", *extra],
         capture_output=True, text=True, timeout=120, env=env)
 
 
@@ -84,6 +84,39 @@ def test_a_failed_backup_exits_non_zero_and_prunes_nothing() -> None:
         assert nightly.exists(), "a failed night must not prune the good copies"
         assert sorted(p.name for p in backups.iterdir()) == [nightly.name], \
             "the failed copy was left behind"
+
+
+def test_the_off_disk_copy_is_weekly_verified_and_loud() -> None:
+    """RT-12: a copy on another disk once a week; a bad target fails the run."""
+    if not (_PWSH and _VENV):
+        return
+    from orchestrator.seeding import seed_conversation
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
+        tmp = Path(td)
+        db, backups, off = tmp / "chat.db", tmp / "backups", tmp / "off disk"
+        seed_conversation(db_path=str(db), topic="t", participants=["a", "b"],
+                          mode="turns", max_turns=2)
+        old = [off / f"chat-2020010{i}-000000.db" for i in range(1, 10)]
+        off.mkdir()
+        for p in old:
+            p.write_bytes(b"old")
+        out = _run(db, backups, tmp, "-OffDiskDir", str(off))
+        assert out.returncode == 0, out.stdout + out.stderr
+        copies = sorted(p.name for p in off.glob("chat-*.db"))
+        assert len(copies) == 8, copies  # the new one plus the newest 7 old
+        assert copies[0] == old[2].name, copies
+        new = off / copies[-1]
+        assert new.read_bytes() == (backups / copies[-1]).read_bytes()
+        time.sleep(1.1)  # a second run must not reuse the same stamp
+        again = _run(db, backups, tmp, "-OffDiskDir", str(off))
+        assert again.returncode == 0, again.stdout + again.stderr
+        assert "under 7 days old" in again.stdout, again.stdout
+        assert len(list(off.glob("chat-*.db"))) == 8
+        blocker = tmp / "a-file"
+        blocker.write_text("x")
+        bad = _run(db, backups, tmp, "-OffDiskDir", str(blocker / "sub"))
+        assert bad.returncode == 1, bad.stdout + bad.stderr
+        assert "offdisk: FAILED" in bad.stdout, bad.stdout
 
 
 def _main() -> int:

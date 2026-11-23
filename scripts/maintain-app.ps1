@@ -31,6 +31,13 @@
 .PARAMETER SkipBackup
   Trim logs only.
 
+.PARAMETER OffDiskDir
+  A folder on another physical disk. Once a week the night's verified copy is
+  also written there (hash-checked), and the newest 8 such copies are kept, so
+  one failed drive can't take the DB and every backup with it. A missing or
+  unwritable folder fails the run like a failed backup. Unset: no off-disk copy.
+  register-app-tasks.ps1 -OffDiskDir puts it on the task's command line.
+
 .PARAMETER DbPath / BackupDir / LogDir
   Override the paths (tests point these at a temp folder).
 
@@ -53,7 +60,8 @@ param(
     [switch] $SkipBackup,
     [string] $DbPath,
     [string] $BackupDir,
-    [string] $LogDir
+    [string] $LogDir,
+    [string] $OffDiskDir
 )
 
 $ErrorActionPreference = 'Stop'
@@ -138,6 +146,36 @@ print(f'{n} conversations, {m} messages, integrity ok')
         }
         $kept = @(Get-ChildItem -Path $BackupDir -Filter 'chat-*.db' -ErrorAction SilentlyContinue).Count
         Write-RunLog "prune: $($old.Count) removed, $kept kept (KeepDays=$KeepDays)"
+    }
+
+    # --- Off-disk copy (weekly) --------------------------------------------
+    if ($OffDiskDir -and -not $Failed) {
+        try {
+            if (-not (Test-Path $OffDiskDir)) { New-Item -ItemType Directory -Path $OffDiskDir -ErrorAction Stop | Out-Null }
+            $stampOf = { param($f) [datetime]::ParseExact($f.Name.Substring(5, 15), 'yyyyMMdd-HHmmss', $null) }
+            $last = @(Get-ChildItem -Path $OffDiskDir -Filter 'chat-*.db' |
+                      Where-Object { $_.Name -match $NightlyName } | Sort-Object Name) | Select-Object -Last 1
+            if ($last -and (& $stampOf $last) -gt (Get-Date).AddDays(-7)) {
+                Write-RunLog "offdisk: $($last.Name) is under 7 days old -- nothing to do"
+            } else {
+                $dest = Join-Path $OffDiskDir (Split-Path $target -Leaf)
+                Copy-Item -Path $target -Destination $dest -ErrorAction Stop
+                if ((Get-FileHash $target).Hash -ne (Get-FileHash $dest).Hash) {
+                    Remove-Item $dest -Force -ErrorAction SilentlyContinue
+                    throw "hash mismatch after copying to $dest"
+                }
+                Write-RunLog "offdisk: copied to $dest"
+                $all = @(Get-ChildItem -Path $OffDiskDir -Filter 'chat-*.db' |
+                         Where-Object { $_.Name -match $NightlyName } | Sort-Object Name)
+                foreach ($f in @($all | Select-Object -SkipLast 8)) {
+                    Remove-Item $f.FullName -Force
+                    Write-RunLog "offdisk: pruned $($f.Name)"
+                }
+            }
+        } catch {
+            Write-RunLog "offdisk: FAILED -- $($_.Exception.Message)" 'ERROR'
+            $Failed = $true
+        }
     }
 }
 
