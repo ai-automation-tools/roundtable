@@ -1891,6 +1891,21 @@ async def submit_draft(params: SubmitDraftInput) -> str:
                     f"'{arena['agent_id']}', not you."
                 ),
             }, indent=2)
+        # A real person's voice never reaches a page without the AI marker
+        # (audit RT-22): the panel appends `disclosure` on insert, so an empty
+        # one means the post would read as the person themself.
+        if (personas_registry.arena_real_person(
+                conn, arena["persona_slug"], arena["persona_body"])
+                and not (arena["disclosure"] or "").strip()):
+            return json.dumps({
+                "status": "error",
+                "message": (
+                    f"Arena {params.arena_id} is cast as a real person and the "
+                    "operator's AI disclosure is off or empty, so no draft can "
+                    "be submitted. Ask the operator to turn disclosure on in "
+                    "the panel's Settings; don't try to work around it."
+                ),
+            }, indent=2)
 
         ts = now_iso()
         cur = conn.execute(

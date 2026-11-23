@@ -49,7 +49,7 @@ No daemon, no new port, no new auth surface. The extension needs the web UI runn
 | Insert | extension | Types the approved text into the page's **existing** composer. Never clicks submit. |
 | Post | operator | Presses the site's own post button. |
 
-Plus: an AI-disclosure suffix appended at insert time (on by default, editable), house rules delivered in-band with every arena that forbid claiming to *be* a real person, and no static content scripts — the extension holds no standing access to any site.
+Plus: an AI-disclosure suffix appended at insert time (on by default, editable; **required** when the arena is cast as a real person: the arena stores the panel's line in `battleground_arenas.disclosure` and `submit_draft` refuses while it's empty, audit RT-22), house rules delivered in-band with every arena that forbid claiming to *be* a real person, and no static content scripts — the extension holds no standing access to any site.
 
 The reason is straightforward: an agent that autoposts persona-driven replies into live threads is astroturfing, regardless of intent. Approving each reply is what keeps this a writing aid.
 

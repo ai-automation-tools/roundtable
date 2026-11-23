@@ -73,7 +73,9 @@ _PERSONAS_ROOT = _REPO_ROOT / "agents" / "Debate-Agents"
 # on sys.path; src/schema.py is stdlib-only, so the import graph stays light.
 if str(_REPO_ROOT / "src") not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT / "src"))
-from schema import ClosingConnection, ensure_schema, resolve_db_path  # noqa: E402
+from schema import (  # noqa: E402
+    PENDING_PERSONA_GROUP, ClosingConnection, ensure_schema, resolve_db_path,
+)
 
 
 # Set by the process that owns a database (web.db.set_db_path, the MCP
@@ -81,6 +83,54 @@ from schema import ClosingConnection, ensure_schema, resolve_db_path  # noqa: E4
 # alone, so an MCP server started with --db-path served personas from a
 # different database than its conversations (audit RT-20).
 DB_PATH: str | None = None
+
+# ---------------------------------------------------------------------------
+# Real people (audit RT-22). A card whose frontmatter says
+# `real_or_fictional: real` is tagged REAL_PERSON_TAG and its body opens with
+# the parody line, both at parse time, so every way a card gets in (the seed
+# importer, the web upload, a re-import of an exported card) frames it the
+# same. The battleground refuses to draft as one with AI disclosure off.
+# ---------------------------------------------------------------------------
+REAL_PERSON_TAG = "real-person"
+PARODY_MARKER = "> **Parody.**"
+_PARODY_LINE = (
+    PARODY_MARKER + " An AI character sketch of {name}, a real person, written "
+    "for debate. It is not {name} and does not speak for them: never claim to "
+    "be {name}, and never present these words as theirs."
+)
+
+
+def is_real_person(tags: list[str] | None, body: str | None = None) -> bool:
+    """True for a persona of a real person: the tag, or a body that opens with
+    the parody line (an arena's snapshot carries the body, not the tags)."""
+    return (REAL_PERSON_TAG in (tags or [])
+            or (body or "").lstrip().startswith(PARODY_MARKER))
+
+
+def arena_real_person(conn: sqlite3.Connection, slug: str | None,
+                      body: str | None) -> bool:
+    """Is an arena cast as a real person? Its snapshot body says so, or the
+    registry row its slug names carries the tag (a snapshot taken before the
+    row was framed)."""
+    if is_real_person(None, body):
+        return True
+    if not slug:
+        return False
+    for row in conn.execute("SELECT tags FROM personas WHERE slug = ?", (slug,)):
+        try:
+            tags = json.loads(row[0]) if row[0] else []
+        except (TypeError, ValueError):
+            continue
+        if isinstance(tags, list) and REAL_PERSON_TAG in tags:
+            return True
+    return False
+
+
+def frame_real_person(body: str, name: str) -> str:
+    """``body`` with the parody line on top; unchanged if it already has it."""
+    if body.lstrip().startswith(PARODY_MARKER):
+        return body
+    return _PARODY_LINE.format(name=name) + "\n\n" + body.lstrip("\n")
 
 
 def _db_path() -> str:
@@ -146,7 +196,12 @@ AI_MODELS_GROUP: str = "AI-Models"
 # *collaboration* draws from the entertainment roster too. Making the random
 # pool follow conv_type is its own change, not a side effect of this one.
 PRACTITIONERS_GROUP: str = "Practitioners"
-RESERVED_GROUPS: tuple[str, ...] = (AI_MODELS_GROUP, PRACTITIONERS_GROUP)
+# Where the weekly content job imports new cards until their PR merges (audit
+# RT-22): usable on this machine, never synced to the public mirror
+# (scripts/db_sync.py skips it) and never drawn at random. The next run moves a
+# merged card's row into its real group, which is what publishes it.
+PENDING_GROUP: str = PENDING_PERSONA_GROUP
+RESERVED_GROUPS: tuple[str, ...] = (AI_MODELS_GROUP, PRACTITIONERS_GROUP, PENDING_GROUP)
 
 # Filenames inside a group folder that are documentation, not persona cards.
 _NON_CARD_FILES: frozenset[str] = frozenset({"readme.md"})
@@ -387,15 +442,23 @@ def parse_card_text(text: str, slug: str, group: str,
     folder. ``path`` is synthesized when not given so the Persona shape matches
     the loader's."""
     meta, body = _parse_frontmatter(text)
-    tags = meta.get("tags")
+    raw_tags = meta.get("tags")
+    tags = [str(t) for t in raw_tags] if isinstance(raw_tags, list) else []
+    name = _display_name(meta, body, slug)
+    summary = _summary(body)
+    real = str(meta.get("real_or_fictional", "")).strip().lower() == "real"
+    if real or REAL_PERSON_TAG in tags:
+        if REAL_PERSON_TAG not in tags:
+            tags.append(REAL_PERSON_TAG)
+        body = frame_real_person(body, name)
     return Persona(
         slug=slug,
-        name=_display_name(meta, body, slug),
+        name=name,
         group=group,
-        tags=[str(t) for t in tags] if isinstance(tags, list) else [],
+        tags=tags,
         category=str(meta.get("category", "")),
         subcategory=str(meta.get("subcategory", "")),
-        summary=_summary(body),
+        summary=summary,
         body=body,
         path=path if path is not None else _PERSONAS_ROOT / group / f"{slug}.md",
     )
@@ -984,6 +1047,98 @@ def import_personas_from_files(overwrite: bool = False) -> dict[str, int]:
     return {"imported": imported, "skipped": len(cards) - imported}
 
 
+def mark_real_persons() -> dict[str, int]:
+    """Tag and frame the DB rows of every real-person seed card (audit RT-22).
+
+    For rows imported before cards carried the marker. Matches on slug in any
+    group, keeps whatever body the row has now (an operator's edit included),
+    adds the tag and the parody line where missing, and bumps ``updated_at``
+    so the change syncs. Idempotent. Returns ``{"updated", "already"}``.
+    """
+    if not _PERSONAS_ROOT.is_dir():
+        return {"updated": 0, "already": 0}
+    real = {}
+    for path in sorted(_PERSONAS_ROOT.rglob("*.md")):
+        if path.name.lower() in _NON_CARD_FILES or path.parent == _PERSONAS_ROOT:
+            continue
+        card = _load_card(path, _card_group(path))
+        if REAL_PERSON_TAG in card.tags:
+            real[card.slug] = card.name
+    updated = already = 0
+    conn = _connect()
+    try:
+        _ensure_table(conn)
+        for slug, name in real.items():
+            rows = conn.execute(
+                'SELECT "group", name, tags, body FROM personas WHERE slug = ?',
+                (slug,)).fetchall()
+            for row in rows:
+                try:
+                    tags = json.loads(row["tags"]) if row["tags"] else []
+                except (TypeError, ValueError):
+                    tags = []
+                tags = [str(t) for t in tags] if isinstance(tags, list) else []
+                body = str(row["body"] or "")
+                if REAL_PERSON_TAG in tags and body.lstrip().startswith(PARODY_MARKER):
+                    already += 1
+                    continue
+                if REAL_PERSON_TAG not in tags:
+                    tags.append(REAL_PERSON_TAG)
+                conn.execute(
+                    'UPDATE personas SET tags = ?, body = ?, updated_at = ? '
+                    'WHERE "group" = ? AND slug = ?',
+                    (_tags_json(tags), frame_real_person(body, row["name"] or name),
+                     now_iso(), row["group"], slug))
+                updated += 1
+    finally:
+        conn.close()
+    return {"updated": updated, "already": already}
+
+
+def promote_pending() -> dict[str, int]:
+    """Move every ``PENDING_GROUP`` row whose seed card is now in this checkout
+    into the card's own group, from the card as merged (audit RT-22).
+
+    Run from a checkout of ``main``: a card there has passed review, so its row
+    may sync. Takes name, tags, category and body from the merged card (review
+    may have edited it), keeps the row's avatar, and bumps ``updated_at`` so
+    the sidecar ships it. A row whose target (group, slug) is already taken is
+    left pending and counted as ``clashes``.
+    """
+    if not _PERSONAS_ROOT.is_dir():
+        return {"promoted": 0, "waiting": 0, "clashes": 0}
+    cards: dict[str, Persona] = {}
+    for path in sorted(_PERSONAS_ROOT.rglob("*.md")):
+        if path.name.lower() in _NON_CARD_FILES or path.parent == _PERSONAS_ROOT:
+            continue
+        card = _load_card(path, _card_group(path))
+        cards.setdefault(card.slug, card)
+    promoted = waiting = clashes = 0
+    conn = _connect()
+    try:
+        _ensure_table(conn)
+        rows = conn.execute('SELECT slug FROM personas WHERE "group" = ?',
+                            (PENDING_GROUP,)).fetchall()
+        for row in rows:
+            card = cards.get(row["slug"])
+            if card is None:
+                waiting += 1
+                continue
+            if conn.execute('SELECT 1 FROM personas WHERE "group" = ? AND slug = ?',
+                            (card.group, card.slug)).fetchone():
+                clashes += 1
+                continue
+            conn.execute(
+                'UPDATE personas SET "group" = ?, name = ?, tags = ?, category = ?, '
+                'subcategory = ?, body = ?, updated_at = ? WHERE "group" = ? AND slug = ?',
+                (card.group, card.name, _tags_json(card.tags), card.category,
+                 card.subcategory, card.body, now_iso(), PENDING_GROUP, card.slug))
+            promoted += 1
+    finally:
+        conn.close()
+    return {"promoted": promoted, "waiting": waiting, "clashes": clashes}
+
+
 # ---------------------------------------------------------------------------
 # JSON CLI — lets non-Python callers (e.g. scripts/debate.ps1) reuse this
 # registry instead of re-scanning the folder. Output is always ASCII-safe JSON
@@ -1047,7 +1202,21 @@ def _main(argv: list[str] | None = None) -> int:
         help="replace existing rows (default skips them)",
     )
 
+    sub.add_parser(
+        "mark-real", help="tag + parody-frame the DB rows of real-person seed cards")
+    sub.add_parser(
+        "promote-pending",
+        help=f"move {PENDING_GROUP} rows whose card is in this checkout into its group")
+
     args = parser.parse_args(argv)
+
+    if args.command == "mark-real":
+        print(json.dumps(mark_real_persons()))
+        return 0
+
+    if args.command == "promote-pending":
+        print(json.dumps(promote_pending()))
+        return 0
 
     if args.command == "import":
         print(json.dumps(import_personas_from_files(overwrite=args.overwrite)))

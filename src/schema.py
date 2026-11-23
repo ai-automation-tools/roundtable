@@ -137,6 +137,7 @@ CREATE TABLE IF NOT EXISTS battleground_arenas (
     persona_slug  TEXT,
     persona_name  TEXT,
     persona_body  TEXT,                   -- snapshot of the card at capture time
+    disclosure    TEXT,                   -- the AI-disclosure line the panel appends; '' or NULL = off (audit RT-22)
     status        TEXT NOT NULL,          -- 'open' | 'closed'
     created_at    TEXT NOT NULL,
     updated_at    TEXT NOT NULL
@@ -182,6 +183,7 @@ MIGRATIONS = (
     ("conversations", "publish",
      "ALTER TABLE conversations ADD COLUMN publish INTEGER NOT NULL DEFAULT 1"),
     ("battleground_arenas", "reply_to", "ALTER TABLE battleground_arenas ADD COLUMN reply_to TEXT"),
+    ("battleground_arenas", "disclosure", "ALTER TABLE battleground_arenas ADD COLUMN disclosure TEXT"),
     ("personas", "avatar_mime", "ALTER TABLE personas ADD COLUMN avatar_mime TEXT"),
     ("personas", "avatar_data", "ALTER TABLE personas ADD COLUMN avatar_data TEXT"),
 )
@@ -207,6 +209,9 @@ PERSONA_COLUMNS = (
     "group", "slug", "name", "tags", "category", "subcategory",
     "body", "avatar_mime", "avatar_data", "created_at", "updated_at",
 )
+# The weekly content job's holding group: its rows never sync (audit RT-22,
+# see orchestrator/personas.py PENDING_GROUP).
+PENDING_PERSONA_GROUP = "Pending-Review"
 PERSONA_COLS_SQL = ",".join(f'"{c}"' for c in PERSONA_COLUMNS)
 
 # messages.sender: an agent id (`codex`, `claude-code-2`) or `system`. The web
