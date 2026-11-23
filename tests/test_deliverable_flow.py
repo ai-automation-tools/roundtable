@@ -147,6 +147,29 @@ def test_transcript_headings_are_untouched() -> None:
     assert not any("superseded" in h for h in heads)
 
 
+def test_message_body_headings_never_become_turn_boundaries() -> None:
+    """RT-16 / BUG-08: a deliverable with ``## Risks`` sections used to add a
+    fake turn for every consumer that splits on ``## ``."""
+    body = "# Plan\n\n## Risks\nNone.\n\n```md\n## kept in a fence\n```"
+    msgs = [{"id": 1, "sender": "a", "content": body, "signal": "result", "created_at": _NOW},
+            {"id": 2, "sender": "b", "content": "Agreed.", "signal": None, "created_at": _NOW}]
+    data = {"conversation": {"id": 7, "topic": "t", "status": "complete",
+                             "mode": "turns", "max_turns": 8,
+                             "participants": ["a", "b"], "created_at": _NOW,
+                             "updated_at": _NOW},
+            "messages": msgs}
+    md = export.render_export_markdown(data)
+    outside, fence = [], False
+    for ln in md.split("\n"):
+        if ln.startswith("```"):
+            fence = not fence
+        elif not fence and ln.startswith("## "):
+            outside.append(ln)
+    assert len(outside) == 2, outside
+    assert "### Plan" in md and "#### Risks" in md
+    assert "## kept in a fence" in md
+
+
 def test_transcript_opens_with_topic_and_personas() -> None:
     """transcript.md carries topic.md + every persona doc above the messages,
     demoted so the message headings stay the only ``##`` lines."""
