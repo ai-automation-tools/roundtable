@@ -733,7 +733,9 @@ SHELL_JS = r"""
 
   function fetchConvs(force) {
     if (!force && cache.convs) return Promise.resolve(cache.convs);
-    return fetch('/api/conversations', { headers: { accept: 'application/json' } })
+    // Just the four fields used here; the full rows are ~13 KB each (RT-41).
+    return fetch('/api/conversations?fields=id,topic,status,participants',
+                 { headers: { accept: 'application/json' } })
       .then(function (r) { return r.ok ? r.json() : []; })
       .then(function (j) { cache.convs = Array.isArray(j) ? j : []; return cache.convs; })
       .catch(function () { return cache.convs || []; });
@@ -2197,10 +2199,42 @@ MARK_SVG = f'<svg viewBox="0 0 32 32" aria-hidden="true">{_MARK_ART}</svg>'
 # fences). `github-dark` matches the BASE_CSS dark palette closely enough
 # that the existing `pre` box styling stays usable; we override
 # `.hljs { background: transparent }` so the surrounding pre's background
-# wins. Single integrity-checked CDN load — no Python deps added.
+# wins.
+#
+# Loaded on demand, not in <head>: there it blocked first paint for ~1.2 s on a
+# phone (audit RT-41), on every transcript, code block or not. ``window.__hl``
+# fetches it (integrity-checked) the first time a code block is on the page.
 HIGHLIGHT_JS_HEAD = """\
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/styles/github-dark.min.css" />
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
+<script>
+window.__hl = (function () {
+  var base = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/', wait = null;
+  function tag(name, attrs) {
+    var el = document.createElement(name);
+    for (var k in attrs) el[k] = attrs[k];
+    el.crossOrigin = 'anonymous';
+    document.head.appendChild(el);
+    return el;
+  }
+  function load() {
+    if (!wait) {
+      tag('link', { rel: 'stylesheet', href: base + 'styles/github-dark.min.css',
+                    integrity: 'sha512-rO+olRTkcf304DQBxSWxln8JXCzTHlKnIdnMUwYvQa9/Jd4cQaNkItIUj6Z4nvW1dqK0SKXLbn9h4KwZTNtAyw==' });
+      wait = new Promise(function (ok, fail) {
+        var s = tag('script', { src: base + 'highlight.min.js', integrity: 'sha512-6yoqbrcLAHDWAdQmiRlHG4+m0g/CT/V9AGyxabG8j7Jk8j3r3K6due7oqpiRMZqcYe9WM2gPcaNNxnl2ux+3tA==' });
+        s.onload = ok; s.onerror = fail;
+      });
+    }
+    return wait;
+  }
+  return function (root) {
+    var codes = (root || document).querySelectorAll('pre code');
+    if (!codes.length) return;
+    load().then(function () {
+      codes.forEach(function (el) { window.hljs.highlightElement(el); });
+    }).catch(function () {});  // no CDN: code stays plain, still readable
+  };
+})();
+</script>
 <style>
   /* hljs ships its own background (#0d1117). Strip it so the BASE_CSS
      <pre> wrapper (#09090b + zinc-800/60 border) shows through. */

@@ -89,12 +89,20 @@ GITHUB_URL = "https://github.com/ai-automation-tools/roundtable"
 
 # Shared web fonts + preconnects. Identical on the _layout() shell and the
 # homepage; kept here so the two <head>s can't drift apart.
+_FONTS_CSS = (
+    "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700"
+    "&family=IBM+Plex+Mono:wght@400;500&family=JetBrains+Mono:wght@400;500;700;800"
+    "&display=swap"
+)
+# The font stylesheet no longer blocks first paint (audit RT-41): it is
+# preloaded and applied when it lands, and the system fallback in every
+# font-family stack shows until then. <noscript> keeps it for no-JS visitors.
 FONTS_HEAD = (
     '<link rel="preconnect" href="https://fonts.googleapis.com">'
     '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
-    '<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700'
-    "&family=IBM+Plex+Mono:wght@400;500&family=JetBrains+Mono:wght@400;500;700;800"
-    '&display=swap" rel="stylesheet">'
+    f'<link rel="preload" as="style" href="{_FONTS_CSS}" '
+    "onload=\"this.onload=null;this.rel='stylesheet'\">"
+    f'<noscript><link rel="stylesheet" href="{_FONTS_CSS}"></noscript>'
 )
 
 # Feather-style stroke icons for the nav row (MIT). Inline rather than a CDN
