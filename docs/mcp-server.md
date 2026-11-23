@@ -34,7 +34,9 @@ Conversation loop. The participation rules are in the [`agent-chat` skill](../sk
 |:---|:---|
 | `get_kickoff` | Fetch the kickoff for the newest conversation this agent is in: topic, role, cast, role brief and instructions. Call once at session start. **Binds the session** to that conversation: the other tools stay on it until `get_kickoff` is called again |
 | `wait_for_turn` | Block server-side until it's your turn, the conversation completes, or the timeout passes. The main loop tool |
-| `get_my_turn` | One-shot check of whose turn it is, with the conversation so far |
+| `get_my_turn` | One-shot check of whose turn it is, with the messages this session hasn't seen |
+
+Both take `history`: `delta` (default — the other participants' messages this session hasn't been shown; the server remembers per process and conversation, so a restarted server starts from the beginning), `full` (the whole transcript) or `none`, plus an optional `since_id`. A `timeout` carries no history and marks nothing as seen. Payloads include `last_message_id`. Before 2026-11-22 (audit RT-13) every call returned the full transcript, about 53k tokens per call by the end of a 28-message run.
 | `send_message` | Post a message on your turn; `signal` can be `done`, `blocked` or `result` |
 | `get_conversation_status` | Raw conversation state, for debugging |
 

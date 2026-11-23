@@ -333,7 +333,9 @@ Do this now, without asking the operator for anything:
    React specifically to what the others actually said rather than restating
    your own line.
 3. Then run the loop and keep running it: wait_for_turn() -> on "your_turn" read
-   the full history -> send_message() -> repeat until status is "complete".
+   the new messages in "history" -> send_message() -> repeat until status is
+   "complete". history holds only what you haven't seen; get_my_turn(history="full")
+   returns the whole transcript.
 4. Pace yourself with "turns_remaining" -- how many turns YOU have left. While it
    is high, keep opening new ground; do NOT deliver a wrap-up early and do NOT
    send signal='done' to end the conversation before its length is used up. Your

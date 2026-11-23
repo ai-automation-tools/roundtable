@@ -109,6 +109,28 @@ def test_two_servers_finish_a_seeded_conversation() -> None:
     assert senders[-2:] == ["codex", "claude-code"], senders
 
 
+def test_one_session_is_sent_each_message_once() -> None:
+    """The history delta (audit RT-13) lives in the server process, so it has to
+    hold across calls on one real stdio session, and 'full' still works."""
+    db = Path(tempfile.mkdtemp()) / "chat.db"
+    seeding.seed_conversation(
+        db_path=str(db), topic="delta over stdio", participants=["codex", "claude-code"],
+        mode="turns", max_turns=2, first="codex", initial_system_message="Kick off.",
+    )
+
+    async def go() -> tuple[list, list, list]:
+        async with Client(_params("codex", db)) as client:
+            first = (await _call(client, "get_my_turn"))["history"]
+            again = (await _call(client, "get_my_turn"))["history"]
+            full = (await _call(client, "get_my_turn", history="full"))["history"]
+            return first, again, full
+
+    first, again, full = anyio.run(go)
+    assert [m["sender"] for m in first] == ["system"]
+    assert again == []
+    assert [m["sender"] for m in full] == ["system"]
+
+
 # ---------------------------------------------------------------------------
 # Standalone runner (no pytest required)
 # ---------------------------------------------------------------------------
