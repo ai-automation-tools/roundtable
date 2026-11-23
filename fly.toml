@@ -43,6 +43,14 @@ primary_region = "iad"
   auto_start_machines = true
   min_machines_running = 0
 
+  # Each SSE reader holds a connection open; the app also caps streams at 100
+  # (10 per client). Past the hard limit Fly's proxy stops sending this
+  # machine new connections instead of letting a 256 MB VM run out (RT-17).
+  [http_service.concurrency]
+    type = "connections"
+    soft_limit = 150
+    hard_limit = 200
+
   # A deploy whose machine doesn't serve fails instead of going live. The Host
   # header must be on AGENT_CHAT_ALLOWED_HOSTS, or the check gets the
   # allowlist's 400.

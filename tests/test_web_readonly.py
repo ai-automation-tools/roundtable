@@ -581,6 +581,85 @@ def test_phones_get_the_transcript_before_the_list():
     assert ".cv-convo-box" in mobile and ".cv2.cv-reading .cv-read > * { order:2; }" in mobile
 
 
+def test_sse_stream_sends_the_final_message_before_complete():
+    """The stream read messages, then the status: a send landing between the
+    two reads closed the stream without its final message (audit RT-17).
+    Forced here by inserting the final turn inside the status read."""
+    import asyncio
+    import sqlite3
+
+    from orchestrator import seeding
+    from web.api import conversations as api
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
+        db = Path(tmp) / "chat.db"
+        cid = seeding.seed_conversation(
+            db_path=str(db), topic="sse", participants=["a", "b"],
+            mode="turns", max_turns=1).conversation_id
+        web_ui.set_db_path(str(db))
+        web_ui.db_init()
+        w = sqlite3.connect(db, isolation_level=None)
+        real, poll = api.conversation_turn_state, api.POLL_INTERVAL_SECONDS
+        calls = {"n": 0}
+
+        def racing_state(c):
+            calls["n"] += 1
+            if calls["n"] == 2:
+                w.execute("BEGIN IMMEDIATE")
+                w.execute("INSERT INTO messages (conversation_id, sender, content, created_at) "
+                          "VALUES (?, 'b', 'FINAL', '2026-01-01T00:00:00+00:00')", (cid,))
+                w.execute("UPDATE conversations SET status='complete', current_turn=NULL "
+                          "WHERE id=?", (cid,))
+                w.execute("COMMIT")
+            return real(c)
+
+        class Req:
+            path_params = {"cid": cid}
+            query_params = {"since": "0"}
+            headers: dict = {}
+            client = None
+
+            async def is_disconnected(self):
+                return False
+
+        async def collect():
+            resp = await api.api_stream(Req())
+            return [ev async for ev in resp.body_iterator]
+
+        api.conversation_turn_state, api.POLL_INTERVAL_SECONDS = racing_state, 0.01
+        try:
+            events = asyncio.run(collect())
+        finally:
+            api.conversation_turn_state, api.POLL_INTERVAL_SECONDS = real, poll
+            w.close()
+        kinds = [e["event"] for e in events]
+        assert kinds[-1] == "complete", kinds
+        assert any('"FINAL"' in e["data"] for e in events if e["event"] == "message"), kinds
+        assert api._streams == {}, api._streams   # the slot was given back
+
+
+def test_sse_stream_refuses_a_bad_since_and_too_many_streams():
+    from web.api import conversations as api
+    client = TestClient(web_ui.app, base_url=LOCAL)
+    r = client.get("/api/conversations/1/stream?since=abc")
+    assert r.status_code == 400, r.status_code
+    saved = dict(api._streams)
+    try:
+        api._streams.clear()
+        api._streams["testclient"] = api.MAX_STREAMS_PER_CLIENT
+        r = client.get("/api/conversations/1/stream")
+        assert r.status_code == 429 and r.headers["retry-after"], r.status_code
+        api._streams.clear()
+        api._streams["203.0.113.9"] = api.MAX_STREAMS
+        assert client.get("/api/conversations/1/stream").status_code == 429
+        # On the mirror every request comes from Fly's proxy; the cap is per
+        # Fly-Client-IP, not per proxy address.
+        assert api._stream_client(type("R", (), {
+            "headers": {"fly-client-ip": "198.51.100.7"}, "client": None})()) == "198.51.100.7"
+    finally:
+        api._streams.clear()
+        api._streams.update(saved)
+
+
 def test_notifications_page_is_local_only_when_readonly():
     """Hosted /notifications renders the explainer, not the form. The events it
     would notify about fire in whichever process drives the CLI windows, which
