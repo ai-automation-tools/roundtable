@@ -159,8 +159,8 @@ def sink_scope(sink: dict[str, Any]) -> str:
 # local JSON file next to the delivery config, not in a `conversations` column.
 #
 # That is a deliberate call, and the reasons are the same ones that keep the
-# battleground tables out of the sync: a column would have to be mirrored
-# across four SCHEMA copies, carried by `scripts/db_sync.py` and `/api/ingest`,
+# battleground tables out of the sync: a column would have to be added to
+# src/schema.py and its migrations, carried by `scripts/db_sync.py` and `/api/ingest`,
 # and would then travel to the hosted mirror — where `deliveries/` does not
 # exist and never will. Nothing about "save a copy on my D: drive" belongs in a
 # row that syncs to Fly.

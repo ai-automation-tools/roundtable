@@ -787,31 +787,19 @@ def test_cors_preflight_answered():
 
 
 # ---------------------------------------------------------------------------
-# 5. Schema parity — the four-site duplication footgun
+# 5. Schema — one declaration (src/schema.py), local-only tables
 # ---------------------------------------------------------------------------
 
-def test_every_schema_declaration_creates_the_battleground_tables():
-    """agent_chat_mcp / web.db / orchestrator.seeding each declare SCHEMA
-    independently. A DB booted by any one of them must be usable by the other
-    two, so all three have to know about these tables."""
-    import agent_chat_mcp
-    from orchestrator import seeding
+def test_the_schema_creates_the_battleground_tables():
+    """Every process boots the DB through schema.ensure_schema(), so whichever
+    one opens a fresh file first, the arena tables exist."""
+    import schema
 
-    wanted = {"battleground_arenas", "battleground_drafts"}
-    for label, schema in (
-        ("agent_chat_mcp", agent_chat_mcp.SCHEMA),
-        ("web.db", web_db.SCHEMA),
-        ("orchestrator.seeding", seeding.SCHEMA),
-    ):
-        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
-            conn = sqlite3.connect(str(Path(d) / "t.db"))
-            conn.executescript(schema)
-            names = {
-                r[0]
-                for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
-            }
-            conn.close()
-            assert wanted <= names, f"{label} SCHEMA is missing {wanted - names}"
+    conn = sqlite3.connect(":memory:")
+    schema.ensure_schema(conn)
+    names = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    conn.close()
+    assert {"battleground_arenas", "battleground_drafts"} <= names
 
 
 def test_battleground_tables_are_not_synced_to_the_mirror():
@@ -821,7 +809,9 @@ def test_battleground_tables_are_not_synced_to_the_mirror():
         web_db.since_payload("1970-01-01T00:00:00+00:00", []).keys()
     )
     assert not any("arena" in k or "battleground" in k for k in payload_keys)
-    for cols in (web_db._CONV_COLUMNS, web_db._MSG_COLUMNS, web_db._PERSONA_COLUMNS):
+    import schema
+
+    for cols in (schema.CONV_COLUMNS, schema.MSG_COLUMNS, schema.PERSONA_COLUMNS):
         assert not any("arena" in c for c in cols)
 
 

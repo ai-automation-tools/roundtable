@@ -7,9 +7,9 @@ Three things here are easy to break and expensive to notice:
    debate. A migration that lost the default would leave the column NULL and
    every old conversation would fall out of the Debates filter.
 2. **Column parity.** ``conv_type`` has to reach the Fly mirror, which means it
-   must appear in the table, in ``web.db._CONV_COLUMNS``, *and* in
-   ``scripts/db_sync.py:CONV_COLUMNS``. Miss the third and the column silently
-   never syncs; miss the first and ``/api/ingest`` 500s.
+   must appear in the table *and* in ``schema.CONV_COLUMNS`` (which both
+   ``/api/ingest`` and ``scripts/db_sync.py`` read). Miss the list and the
+   column silently never syncs.
 3. **Seat rules.** One host, at most five seats, guests within the type's
    bounds — enforced in ``seed_conversation`` so every caller inherits it.
 
@@ -233,58 +233,80 @@ def test_migration_backfills_existing_rows_as_debates():
         assert row["participant_roles"] is None
 
 
-def test_every_writer_declares_the_same_conversations_columns():
-    """The four SCHEMA mirrors must agree on the conversations table.
-
-    Compared by *creating* each one, so a typo in a column list is caught the
-    same way SQLite would catch it, not by diffing strings.
-    """
-    import agent_chat_mcp
-
-    sources = {
-        "agent_chat_mcp.SCHEMA": agent_chat_mcp.SCHEMA,
-        "web.db.SCHEMA": web_db.SCHEMA,
-        "orchestrator.seeding.SCHEMA": seeding.SCHEMA,
-    }
-    shapes: dict[str, list[tuple]] = {}
-    for name, schema in sources.items():
-        conn = sqlite3.connect(":memory:")
-        conn.executescript(schema)
-        shapes[name] = [
-            (r[1], r[2], r[3], r[4])  # name, type, notnull, default
-            for r in conn.execute("PRAGMA table_info(conversations)")
-        ]
-        conn.close()
-    first_name, first_shape = next(iter(shapes.items()))
-    for name, shape in shapes.items():
-        assert shape == first_shape, f"{name} disagrees with {first_name}"
-
-    migrations = {
-        "agent_chat_mcp": agent_chat_mcp._MIGRATIONS,
-        "web.db": web_db._MIGRATIONS,
-        "orchestrator.seeding": seeding._MIGRATIONS,
-    }
-    first_name, first_mig = next(iter(migrations.items()))
-    for name, mig in migrations.items():
-        assert mig == first_mig, f"{name}._MIGRATIONS disagrees with {first_name}"
+def test_the_schema_is_declared_once():
+    """src/schema.py is the only DDL. A second ``CREATE TABLE`` anywhere in src/
+    or scripts/ is a copy that will drift, which is the bug this module ended."""
+    copies = [
+        str(p.relative_to(_ROOT))
+        for d in ("src", "scripts")
+        for p in (_ROOT / d).rglob("*.py")
+        if p.name != "schema.py" and "CREATE TABLE" in p.read_text(encoding="utf-8")
+    ]
+    assert not copies, f"schema declared outside src/schema.py: {copies}"
 
 
-def test_sync_carries_every_conversation_column():
-    """web.db, db_sync.py, and the actual table must list the same columns.
-
-    A column missing from ``scripts/db_sync.py`` never reaches the Fly mirror
-    and nothing fails loudly — this is the check that notices.
-    """
-    db_sync = _load_db_sync()
-    assert tuple(web_db._CONV_COLUMNS) == tuple(db_sync.CONV_COLUMNS), \
-        "web.db._CONV_COLUMNS and scripts/db_sync.py:CONV_COLUMNS have drifted"
+def test_a_migrated_db_matches_a_fresh_one():
+    """Every migration column is also in the fresh DDL, so a DB's shape doesn't
+    depend on whether it was created today or upgraded from an old build."""
+    import schema
 
     conn = sqlite3.connect(":memory:")
-    conn.executescript(web_db.SCHEMA)
-    actual = [r[1] for r in conn.execute("PRAGMA table_info(conversations)")]
+    schema.ensure_schema(conn)
+    for table, column, _ddl in schema.MIGRATIONS:
+        cols = {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
+        assert column in cols, f"{table}.{column} is a migration but not in SCHEMA"
+    schema.ensure_schema(conn)  # idempotent on an up-to-date file
     conn.close()
-    assert sorted(actual) == sorted(web_db._CONV_COLUMNS), \
-        f"table has {sorted(actual)}, sync list has {sorted(web_db._CONV_COLUMNS)}"
+
+
+def test_sync_lists_match_the_tables():
+    """conversations, messages and personas: the synced columns are exactly the
+    table's, in table order. A column missing from the list never reaches the Fly
+    mirror and nothing fails loudly; one the table lacks 500s /api/ingest."""
+    import schema
+
+    conn = sqlite3.connect(":memory:")
+    schema.ensure_schema(conn)
+    for table, cols in (
+        ("conversations", schema.CONV_COLUMNS),
+        ("messages", schema.MSG_COLUMNS),
+        ("personas", schema.PERSONA_COLUMNS),
+    ):
+        actual = tuple(r[1] for r in conn.execute(f"PRAGMA table_info({table})"))
+        assert actual == cols, f"{table}: table has {actual}, sync list has {cols}"
+    conn.close()
+
+    # Both ends of the sync read the same tuples.
+    db_sync = _load_db_sync()
+    assert db_sync.CONV_COLUMNS is schema.CONV_COLUMNS
+    assert db_sync.MSG_COLUMNS is schema.MSG_COLUMNS
+    assert db_sync.PERSONA_COLUMNS is schema.PERSONA_COLUMNS
+    assert web_db.CONV_COLUMNS is schema.CONV_COLUMNS
+
+
+def test_every_insert_names_real_columns():
+    """Parity for the tables the sync lists don't cover (battleground_*): every
+    ``INSERT INTO <table> (cols)`` in src/ names columns the table has."""
+    import re
+
+    import schema
+
+    conn = sqlite3.connect(":memory:")
+    schema.ensure_schema(conn)
+    tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    seen = set()
+    pat = re.compile(r"INSERT INTO\s+(\w+)[\s'\"]*\(([^)]*)\)", re.S)
+    for p in (_ROOT / "src").rglob("*.py"):
+        for table, cols in pat.findall(p.read_text(encoding="utf-8")):
+            if table not in tables or "{" in cols:
+                continue  # generated column lists come from schema.*_COLUMNS
+            have = {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
+            # Lists span adjacent Python string literals, so drop quotes + space.
+            named = {re.sub(r"[\s'\"]", "", c) for c in cols.split(",")} - {""}
+            assert named <= have, f"{p.name}: INSERT INTO {table} names {named - have}"
+            seen.add(table)
+    conn.close()
+    assert {"battleground_arenas", "battleground_drafts", "messages"} <= seen
 
 
 # ---------------------------------------------------------------------------

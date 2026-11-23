@@ -393,10 +393,10 @@ CREATE TABLE personas (
 );
 ```
 
-(`group` is a SQL reserved word, so every query double-quotes it.) The schema is
-duplicated in the `SCHEMA` constants of `agent_chat_mcp.py`, `web_ui.py`, and
-`orchestrator/seeding.py`, plus a standalone `_PERSONA_DDL` in `personas.py` so
-the registry works against a fresh DB before any server has booted.
+(`group` is a SQL reserved word, so every query double-quotes it.) The table is
+declared in `src/schema.py` with the rest of the schema; `personas.py` calls
+`schema.ensure_schema()` itself so the registry works against a fresh DB before
+any server has booted.
 
 Because the table is in `chat.db`, the optional db-sync sidecar pushes it to
 the mirror like conversations — the only structural difference is that personas
@@ -409,10 +409,9 @@ token, never reaches a local agent. The watermark mechanics live in
 `scripts/db_sync.py`.
 
 > [!IMPORTANT]
-> The sidecar's `PERSONA_COLUMNS` (in `scripts/db_sync.py`) must match
-> `_PERSONA_COLUMNS` in `src/web/db.py` — **a column the sidecar doesn't carry
-> never reaches the mirror.** `tests/test_persona_avatars.py` pins the two lists
-> together. And because the mirror's `INSERT` names every column, a sync that
+> `PERSONA_COLUMNS` in `src/schema.py` is what the sidecar and `/api/ingest`
+> both use — **a column missing from it never reaches the mirror.**
+> `tests/test_conv_types.py` pins it against the real table. And because the mirror's `INSERT` names every column, a sync that
 > includes a new one **fails until the mirror is redeployed** — deploy the web app
 > before (or with) the sidecar restart.
 

@@ -1618,13 +1618,11 @@ A public read-only mirror runs with `AGENT_CHAT_INGEST_TOKEN` set (ingest on),
 
 ## Schema sync
 
-`SCHEMA` is duplicated from `src/agent_chat_mcp.py` rather than imported —
-the web UI's copy lives in `src/web/db.py` (moved there by the 2026-07-10
-split). Reason: keeping the web UI lightweight (no MCP SDK on
-startup) and letting it boot against an empty Fly volume on first request
-via `db_init()`. **When the schema changes, both files must be updated in
-the same PR**, plus a CHANGELOG entry. The duplication is annotated with a
-`sync-required` note on each side.
+The web UI imports the schema from `src/schema.py` (stdlib only, so no MCP SDK
+on startup) and `db_init()` calls `schema.ensure_schema()`, which lets it boot
+against an empty Fly volume on first request. Until 2026-11-22 (audit RT-27)
+the DDL was copied into four modules; now there is one, and a test fails on a
+`CREATE TABLE` anywhere else.
 
 ---
 

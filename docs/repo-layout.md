@@ -15,13 +15,14 @@ roundtable/
 ├── CLAUDE.md                     # `@AGENTS.md` + Claude Code-only notes
 ├── src/
 │   ├── README.md ★               # Source index — entrypoints, packages, invariants
-│   ├── agent_chat_mcp.py         # The MCP server (MCPServer + sqlite3) — canonical SCHEMA
+│   ├── agent_chat_mcp.py         # The MCP server (MCPServer + sqlite3)
+│   ├── schema.py                 # THE schema: DDL + migrations + synced column lists (stdlib only)
 │   ├── start_conversation.py     # Seed a conversation row (CLI — thin wrapper over seeding)
 │   ├── inspect_conversations.py  # CLI: list / show / tail / stop
 │   ├── presets.py                # Named conversation presets (debate / code-review / …)
 │   ├── web_ui.py                 # Web-UI ENTRYPOINT only: page routes + route table + main()
 │   ├── web/                      # Web-UI implementation package (split out of web_ui.py 2026-07-10)
-│   │   ├── db.py                 #   connection + SCHEMA/migrations + SQL helpers + set_db_path()
+│   │   ├── db.py                 #   connection + db_init() + SQL helpers + set_db_path()
 │   │   ├── security.py           #   BasicAuth / ReadOnly middleware + _build_middleware()
 │   │   ├── assets.py             #   CSS/JS/SVG constants (BASE_CSS, HOME_CSS, _CONV_CSS, …)
 │   │   ├── avatars.py            #   persona avatar resolution (DB upload → PNG/SVG; GET /avatars/{slug})

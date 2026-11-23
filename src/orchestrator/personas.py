@@ -59,6 +59,7 @@ import json
 import os
 import re
 import sqlite3
+import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -68,39 +69,11 @@ from pathlib import Path
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _PERSONAS_ROOT = _REPO_ROOT / "agents" / "Debate-Agents"
 
-
-# --- SQLite layer ----------------------------------------------------------
-# "group" is a SQL reserved word → always quoted in DDL/DML. This DDL mirrors
-# the personas block in the SCHEMA constants of agent_chat_mcp.py / web_ui.py /
-# orchestrator/seeding.py; it's duplicated here (same rationale as seeding
-# duplicating SCHEMA) so the registry works against a fresh DB even when neither
-# the MCP server nor the web UI has booted to create the table.
-_PERSONA_DDL = """
-CREATE TABLE IF NOT EXISTS personas (
-    "group"      TEXT NOT NULL,
-    slug         TEXT NOT NULL,
-    name         TEXT NOT NULL,
-    tags         TEXT,
-    category     TEXT,
-    subcategory  TEXT,
-    body         TEXT NOT NULL,
-    avatar_mime  TEXT,
-    avatar_data  TEXT,
-    created_at   TEXT NOT NULL,
-    updated_at   TEXT NOT NULL,
-    PRIMARY KEY ("group", slug)
-);
-CREATE INDEX IF NOT EXISTS idx_personas_updated ON personas(updated_at);
-"""
-
-# Columns added to `personas` after its initial shape. Mirrors the personas rows
-# of _MIGRATIONS in agent_chat_mcp.py / web/db.py / seeding.py — applied here too
-# because this module is reachable without any of them booting first (the MCP
-# tools, the JSON CLI that debate.ps1 calls).
-_PERSONA_MIGRATIONS = (
-    ("avatar_mime", "ALTER TABLE personas ADD COLUMN avatar_mime TEXT"),
-    ("avatar_data", "ALTER TABLE personas ADD COLUMN avatar_data TEXT"),
-)
+# debate.ps1 runs this file as a script, which puts src/orchestrator/ (not src/)
+# on sys.path; src/schema.py is stdlib-only, so the import graph stays light.
+if str(_REPO_ROOT / "src") not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT / "src"))
+from schema import ensure_schema  # noqa: E402
 
 
 def _db_path() -> str:
@@ -130,16 +103,9 @@ def _connect() -> sqlite3.Connection:
 
 
 def _ensure_table(conn: sqlite3.Connection) -> None:
-    """Create the personas table if a fresh DB hasn't been booted by the server
-    or web UI yet, then apply additive column migrations to an older one.
-
-    Both halves are idempotent — ``IF NOT EXISTS`` for the table, and each
-    migration gated on ``PRAGMA table_info`` not already listing the column."""
-    conn.executescript(_PERSONA_DDL)
-    cols = {r["name"] for r in conn.execute("PRAGMA table_info(personas)")}
-    for column, ddl in _PERSONA_MIGRATIONS:
-        if column not in cols:
-            conn.execute(ddl)
+    """Create the schema if a fresh DB hasn't been booted by the server or web
+    UI yet, and migrate an older one. Idempotent (see ``schema.ensure_schema``)."""
+    ensure_schema(conn)
 
 # Persona group folders live under agents/Debate-Agents/. "Unique-Personas" is
 # the debater roster; "Debate-Hosts" holds the personalities that RUN a room —

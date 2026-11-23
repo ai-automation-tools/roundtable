@@ -147,8 +147,8 @@ which appends the id to **`config/delivery-optin.json`**:
 
 That is deliberately **not** a `conversations` column. Which conversations get
 copied to a folder is a fact about *this machine's filesystem*, not about the
-conversation — and a column would have to be mirrored across four `SCHEMA`
-copies, carried by `scripts/db_sync.py` and `/api/ingest`, and would then
+conversation — and a column would have to be added to the schema and its
+migrations, carried by `scripts/db_sync.py` and `/api/ingest`, and would then
 travel to the hosted mirror, where `deliveries/` does not exist and never will.
 It is the same reasoning that keeps the battleground tables out of the sync.
 A test pins that the column never appears.
