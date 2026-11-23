@@ -381,7 +381,8 @@ def test_a_tailnet_host_needs_a_password():
         assert security.exposure_error() is None
         os.environ["AGENT_CHAT_ALLOWED_HOSTS"] = "localhost,box.tailnet.ts.net"
         err = security.exposure_error()
-        assert err and "box.tailnet.ts.net" in err and "AGENT_CHAT_BASIC_AUTH_PASSWORD" in err
+        assert err.split(", which")[0] == "AGENT_CHAT_ALLOWED_HOSTS names box.tailnet.ts.net", err
+        assert "AGENT_CHAT_BASIC_AUTH_PASSWORD" in err
         sys.argv = ["web_ui.py"]
         try:
             web_ui.main()
