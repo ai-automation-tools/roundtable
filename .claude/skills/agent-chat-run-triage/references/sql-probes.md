@@ -9,7 +9,7 @@ Read-only. Run them against the DB the **agents** are writing, not necessarily `
 
 Or open a shell if `sqlite3.exe` is on PATH: `sqlite3 db/chat.db` (add `.mode line`).
 
-The columns referenced below are the canonical `SCHEMA` in `src/agent_chat_mcp.py`.
+The columns referenced below are the canonical `SCHEMA` in `src/schema.py`.
 
 ---
 

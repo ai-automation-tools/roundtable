@@ -1,0 +1,5 @@
+source: ai-automation-tools/agent-skills
+path: skills/projects/roundtable/agent-chat-run-triage
+ref: origin/main
+commit: bced28601da6c1d897bfb6ec73ee9f25dc997776
+installed: 2026-11-23T19:49:57Z
