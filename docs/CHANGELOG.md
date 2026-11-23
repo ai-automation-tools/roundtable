@@ -13,6 +13,19 @@ Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changel
 - The weekly content job's new cards wait in a local-only `Pending-Review` group until their PR merges (`personas.py promote-pending`), so nothing reaches the public registry before review. A never-list for cards is in `docs/guides/add-a-persona.md`.
 - Audit item RT-22.
 
+### Changed — publishing to the public mirror is opt-in
+
+- **A new conversation stays on this machine** unless you publish it: the *Publish to the public mirror* box on `/orchestrate`, `debate.ps1 -Publish`, or `start_conversation.py --publish`. `inspect_conversations publish <id>` publishes one later; `--off` takes it back down from the mirror.
+- Every conversation already on the mirror stays there (the new `publish` column is backfilled to 1), and `config/sync-exclude.json` still keeps a published one local.
+- The flag itself never syncs. **Restart the sidecar** after updating, or the old one keeps mirroring every new run.
+- Audit item RT-07.
+
+### Added — a weekly backup copy on another disk
+
+- `maintain-app.ps1 -OffDiskDir <folder>` copies that night's verified backup to another disk once a week, checks the hash, and keeps the newest 8. A missing or full disk fails the run (exit 1 and one alert), like a failed backup. Register it with `register-app-tasks.ps1 -OffDiskDir`.
+- `scripts/run-hidden.vbs` now quotes extra arguments that contain a space.
+- Audit item RT-12.
+
 ### Added — extension releases
 
 - **`extension-v0.2.0`** is the first GitHub release: the AgentBattleground extension as a Chrome zip and a Firefox zip, for loading without a clone. `.github/workflows/extension-release.yml` publishes the next one when the version in both manifests changes on `main`.

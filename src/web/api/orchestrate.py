@@ -405,6 +405,7 @@ def api_orchestrate(request: Request) -> Response:
             conv_type=conv_type,
             participant_roles=participant_roles,
             max_minutes=max_minutes,
+            publish=payload.get("publish") is True,
         )
     except orch_seeding.SeedError as e:
         return JSONResponse({"ok": False, "kind": "seed_error",
@@ -440,6 +441,7 @@ def api_orchestrate(request: Request) -> Response:
         "conversation_id": seed.conversation_id,
         "spawn": spawn,
         "deliver_locally": delivered,
+        "publish": payload.get("publish") is True,
     })
 
 

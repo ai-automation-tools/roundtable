@@ -41,6 +41,7 @@ One command picks a topic, **casts random personas, seeds the conversation, and 
 | "surprise me" / no topic given | omit `-Topic` (random unused topic from the library) |
 | "start a **podcast** on X" / "interview…" | `-Format podcast -Topic "X"` (see below) |
 | "…hosted by **persona-h**" | `-Format podcast -HostPersona persona-h` |
+| "publish it" / "put it on the mirror" / "make it public" | `-Publish` (off by default: a debate stays on this machine unless asked) |
 | "use **sonnet** for Claude" / "run codex on **gpt-5.4-mini**" | `-Model claude-code=sonnet,codex=gpt-5.4-mini` (a bare CLI name covers its seats; `claude-code-2=…` targets one seat) |
 
 ### A podcast instead of a debate: `-Format podcast`

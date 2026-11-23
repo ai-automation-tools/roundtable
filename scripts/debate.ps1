@@ -134,6 +134,11 @@ launched with --model <name>.
 .PARAMETER ForceSidecar
   Forwarded to start.ps1 as -Force (kill + relaunch the DB-sync sidecar).
 
+.PARAMETER Publish
+  Let the sync sidecar copy this debate to the public mirror. Without it the
+  debate stays on this machine (audit RT-07). Change it later with
+  inspect_conversations publish <id> [--off].
+
 .EXAMPLE
   .\scripts\debate.ps1 -DryRun
   # See exactly what it would pick + launch, without opening any windows.
@@ -172,7 +177,8 @@ param(
     [string[]] $Model,
     [switch]   $SkipPermissions,
     [switch]   $DryRun,
-    [switch]   $ForceSidecar
+    [switch]   $ForceSidecar,
+    [switch]   $Publish
 )
 
 $ErrorActionPreference = 'Stop'
@@ -472,6 +478,7 @@ $seedArgs += @('--preset', $seedPreset, '--topic', $Topic, '--participants', $pa
 if ($IsPodcast) { $seedArgs += @('--type', 'podcast', '--host', $first) }
 if ($IsCollab)  { $seedArgs += @('--type', 'collaborate') }
 if ($MaxTurns) { $seedArgs += @('--max-turns', $MaxTurns) }
+if ($Publish)  { $seedArgs += '--publish' }
 $HasPersonas = $personaMap.Count -gt 0
 if ($HasPersonas) { $seedArgs += @('--participant-personas-file', $personasFile) }
 
