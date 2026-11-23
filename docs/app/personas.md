@@ -7,8 +7,9 @@ read-only MCP tools, so an agent can browse the cast and adopt a character
 > [!IMPORTANT]
 > **Storage moved to the database.** Personas now live in a `personas` table
 > inside the shared SQLite DB (`db/chat.db`), and the optional mirror sidecar
-> (`scripts/db_sync.py`) syncs that table bidirectionally — so add/edit/delete
-> works and persists on both the local box **and** a self-hosted mirror.
+> (`scripts/db_sync.py`) pushes that table to a self-hosted mirror. Since
+> 2026-11-22 it flows **one way only**, local → mirror: a persona body is an
+> agent's instructions, and the public mirror must not be able to change them.
 > The Markdown cards under [`agents/Debate-Agents/`](../../agents/Debate-Agents/)
 > are now a **one-time import seed** only (they stay in git as the original
 > snapshot). There is no DB→files export — the DB is the runtime source of truth.
@@ -397,13 +398,14 @@ duplicated in the `SCHEMA` constants of `agent_chat_mcp.py`, `web_ui.py`, and
 `orchestrator/seeding.py`, plus a standalone `_PERSONA_DDL` in `personas.py` so
 the registry works against a fresh DB before any server has booted.
 
-Because the table is in `chat.db`, the optional db-sync sidecar mirrors
-it **bidirectionally**, exactly like conversations — the only structural
-difference is that personas key on a composite `(group, slug)` instead of an int
-`id`. On the wire the key is serialized as `group␟slug` (using ASCII Unit
-Separator `0x1F`, absent from group names and `[a-z0-9-]` slugs). Edits made on
-the hosted UI flow back to your local DB; edits made locally push up. Conflict
-resolution is last-write-wins by `updated_at`; the watermark mechanics live in
+Because the table is in `chat.db`, the optional db-sync sidecar pushes it to
+the mirror like conversations — the only structural difference is that personas
+key on a composite `(group, slug)` instead of an int `id`. On the wire the key
+is serialized as `group␟slug` (using ASCII Unit Separator `0x1F`, absent from
+group names and `[a-z0-9-]` slugs). **Edits flow local → mirror only** (since
+2026-11-22, audit RT-04): the sidecar ignores persona rows and persona deletions
+in the pull, so a body planted on the mirror, or by anyone holding the sync
+token, never reaches a local agent. The watermark mechanics live in
 `scripts/db_sync.py`.
 
 > [!IMPORTANT]

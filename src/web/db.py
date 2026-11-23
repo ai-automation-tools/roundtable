@@ -423,9 +423,9 @@ def ingest_payload(
 
     Single transaction. Idempotent — re-posting the same payload is a no-op.
 
-    - Conversations are upserted by ``id`` via ``INSERT OR REPLACE`` so
-      ``current_turn`` / ``status`` / ``end_reason`` / ``updated_at`` flips
-      propagate.
+    - Conversations are upserted by ``id``, last write wins by
+      ``updated_at``, so ``current_turn`` / ``status`` / ``end_reason`` flips
+      propagate and an older batch never rolls a row back.
     - Messages use ``INSERT OR IGNORE`` so re-shipping the same id is safe.
     - Deletions run first and remove the conversation rows plus their
       messages (manual cascade — SQLite FK enforcement is off by default in
@@ -458,10 +458,18 @@ def ingest_payload(
                     tuple(c.get(col) for col in _CONV_COLUMNS)
                     for c in conversations
                 ]
+                # Last write wins by updated_at: a batch that arrives out of
+                # order (a retry, an overlapping sidecar) must not roll a row
+                # back. `>=` keeps a re-ship of the same row idempotent.
+                updates = ",".join(
+                    f"{c} = excluded.{c}" for c in _CONV_COLUMNS if c != "id"
+                )
                 conn.executemany(
-                    f"INSERT OR REPLACE INTO conversations "
+                    f"INSERT INTO conversations "
                     f"({','.join(_CONV_COLUMNS)}) VALUES "
-                    f"({','.join('?' * len(_CONV_COLUMNS))})",
+                    f"({','.join('?' * len(_CONV_COLUMNS))}) "
+                    f"ON CONFLICT(id) DO UPDATE SET {updates} "
+                    f"WHERE excluded.updated_at >= conversations.updated_at",
                     conv_rows,
                 )
                 upserted = len(conv_rows)
