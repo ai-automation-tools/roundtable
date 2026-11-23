@@ -160,7 +160,7 @@ from web.security import (  # noqa: E402,F401
 # Page routes
 # ---------------------------------------------------------------------------
 
-async def homepage(request: Request) -> Response:
+def homepage(request: Request) -> Response:
     """Public landing page. Shows the marketing/intro shell plus live
     counters and the 5 most recent conversations on this deploy.
     """
@@ -168,11 +168,11 @@ async def homepage(request: Request) -> Response:
     return HTMLResponse(_render_homepage(list_stats(), convs[:5]))
 
 
-async def index(request: Request) -> Response:
+def index(request: Request) -> Response:
     return HTMLResponse(_render_index(list_conversations()))
 
 
-async def conversation_view(request: Request) -> Response:
+def conversation_view(request: Request) -> Response:
     cid = int(request.path_params["cid"])
     data = get_conversation(cid)
     if not data:
@@ -191,7 +191,7 @@ async def conversation_view(request: Request) -> Response:
     )
 
 
-async def orchestrate(request: Request) -> Response:
+def orchestrate(request: Request) -> Response:
     """GET /orchestrate — local: seed-conversation form with page-load preflight;
     hosted (read-only): a local-only explainer (the mirror can't spawn CLIs).
 
@@ -230,12 +230,12 @@ async def orchestrate(request: Request) -> Response:
     ))
 
 
-async def personas_page(request: Request) -> Response:
+def personas_page(request: Request) -> Response:
     """GET /personas — the read-only persona explorer (the cast grid)."""
     return HTMLResponse(render_explorer(dict(request.query_params)))
 
 
-async def persona_detail_page(request: Request) -> Response:
+def persona_detail_page(request: Request) -> Response:
     """GET /personas/{slug} — one persona: cover, card, downloads."""
     p = find_persona(request.path_params["slug"], request.query_params.get("group", ""))
     if p is None:
@@ -243,12 +243,12 @@ async def persona_detail_page(request: Request) -> Response:
     return HTMLResponse(render_persona_detail(p))
 
 
-async def personas_manage_page(request: Request) -> Response:
+def personas_manage_page(request: Request) -> Response:
     """GET /personas/manage — the persona-management console (CRUD/import)."""
     return HTMLResponse(_render_personas_page())
 
 
-async def settings_page(request: Request) -> Response:
+def settings_page(request: Request) -> Response:
     """GET /settings — the three per-machine config files, one tab each.
 
     Local only in substance: every tab edits something under `config/`, which
@@ -275,7 +275,7 @@ async def settings_page(request: Request) -> Response:
         SETUP_TAB_CSS))
 
 
-async def legacy_settings_redirect(request: Request) -> Response:
+def legacy_settings_redirect(request: Request) -> Response:
     """`/setup` and `/notifications` → the tab that replaced them.
 
     They were their own pages for months and are linked from the README, the
@@ -286,7 +286,7 @@ async def legacy_settings_redirect(request: Request) -> Response:
     return RedirectResponse(f"/settings?tab={tab}", status_code=302)
 
 
-async def extension_page(request: Request) -> Response:
+def extension_page(request: Request) -> Response:
     """GET /extension — what AgentBattleground is and how to install it.
 
     Renders on both deploys: it's an explainer, not a control surface. The only
@@ -296,7 +296,7 @@ async def extension_page(request: Request) -> Response:
     return HTMLResponse(_render_extension_page())
 
 
-async def battleground_page(request: Request) -> Response:
+def battleground_page(request: Request) -> Response:
     """GET /battleground — the arena console: every captured arena, its thread,
     and every draft with its verdict.
 
@@ -318,7 +318,7 @@ async def battleground_page(request: Request) -> Response:
     )
 
 
-async def battleground_arena_page(request: Request) -> Response:
+def battleground_arena_page(request: Request) -> Response:
     """GET /battleground/{aid} — one arena, its captured thread, and its drafts.
 
     The verdict buttons POST to the same bridge endpoints the extension's side
@@ -333,7 +333,7 @@ async def battleground_arena_page(request: Request) -> Response:
     return HTMLResponse(_render_battleground_arena(data))
 
 
-async def favicon(request: Request) -> Response:
+def favicon(request: Request) -> Response:
     return Response(
         FAVICON_SVG,
         media_type="image/svg+xml",
@@ -341,13 +341,13 @@ async def favicon(request: Request) -> Response:
     )
 
 
-async def avatars(request: Request) -> Response:
+def avatars(request: Request) -> Response:
     """GET /avatars/{slug} — persona avatar PNG, or a default silhouette when
     the persona has no image (AI-Models cards, personas without art)."""
     return avatar_response(request.path_params.get("slug", ""))
 
 
-async def not_found(request: Request, exc: Exception) -> Response:
+def not_found(request: Request, exc: Exception) -> Response:
     """Branded 404 for unmatched routes (typos, ``/conversations/abc``, etc.).
 
     Handlers that return their own 404 Response (missing conversation/persona)

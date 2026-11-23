@@ -35,6 +35,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 from orchestrator import delivery
+from web.api import request_json
 
 #: Per-service shape. ``build`` turns the operator's one input (a topic, a
 #: webhook URL) into the sink fields ``delivery.post_webhook`` reads.
@@ -239,7 +240,7 @@ def _state(cfg: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-async def api_notifications(request: Request) -> Response:
+def api_notifications(request: Request) -> Response:
     """GET /api/notifications — the current notification sink, if any."""
     return JSONResponse(_state(_read_config()))
 
@@ -267,7 +268,8 @@ def _parse(payload: Any) -> tuple[str, str, str, list[str], bool]:
     return service, target, server, events, bool(payload.get("enabled", True))
 
 
-async def api_notifications_save(request: Request) -> Response:
+@delivery.config_locked
+def api_notifications_save(request: Request) -> Response:
     """POST /api/notifications — write the notification sink into the config.
 
     Merges: the sink carrying ``NOTIFY_SINK_ID`` is replaced, everything else
@@ -277,7 +279,7 @@ async def api_notifications_save(request: Request) -> Response:
     possible outcomes.
     """
     try:
-        payload = await request.json()
+        payload = request_json(request)
     except (json.JSONDecodeError, ValueError):
         return JSONResponse({"ok": False, "error": "request body must be JSON"},
                             status_code=400)
@@ -306,7 +308,7 @@ async def api_notifications_save(request: Request) -> Response:
     return JSONResponse({"ok": True, **_state(_read_config())})
 
 
-async def api_notifications_test(request: Request) -> Response:
+def api_notifications_test(request: Request) -> Response:
     """POST /api/notifications/test — send one notification with stand-in facts.
 
     Tests what is in the **form**, not what is on disk, so the button answers
@@ -315,7 +317,7 @@ async def api_notifications_test(request: Request) -> Response:
     real event uses; a test with its own code path would prove nothing.
     """
     try:
-        payload = await request.json()
+        payload = request_json(request)
     except (json.JSONDecodeError, ValueError):
         return JSONResponse({"ok": False, "error": "request body must be JSON"},
                             status_code=400)
