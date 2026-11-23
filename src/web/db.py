@@ -14,6 +14,10 @@ from pathlib import Path
 from typing import Any
 
 from orchestrator import delivery
+from schema import (  # noqa: F401 — the ARENA_/DRAFT_ names are re-exported to web_ui and web.api/render
+    ARENA_CLOSED, ARENA_OPEN, CONV_COLUMNS, DRAFT_APPROVED, DRAFT_PENDING, DRAFT_POSTED,
+    DRAFT_REJECTED, DRAFT_VERDICTS, MSG_COLUMNS, PERSONA_COLS_SQL, PERSONA_COLUMNS, ensure_schema,
+)
 
 DB_PATH: str = ""
 
@@ -55,107 +59,6 @@ def set_db_path(path: str) -> None:
     os.environ["AGENT_CHAT_DB"] = DB_PATH
 
 
-# Mirrors the SCHEMA in src/agent_chat_mcp.py. Both must stay in sync —
-# schema changes require updating both files plus a CHANGELOG entry. Kept
-# duplicated rather than imported so web_ui.py doesn't drag in the MCP
-# server module's heavy imports at startup.
-SCHEMA = """
-CREATE TABLE IF NOT EXISTS conversations (
-    id                INTEGER PRIMARY KEY AUTOINCREMENT,
-    topic             TEXT NOT NULL,
-    participants      TEXT NOT NULL,
-    mode              TEXT NOT NULL,
-    max_turns         INTEGER NOT NULL,
-    current_turn      TEXT,
-    status            TEXT NOT NULL,
-    end_reason        TEXT,
-    created_at        TEXT NOT NULL,
-    updated_at        TEXT NOT NULL,
-    preset            TEXT,
-    kickoff_template  TEXT,
-    participant_personas TEXT,
-    conv_type         TEXT NOT NULL DEFAULT 'debate',
-    participant_roles TEXT
-);
-
-CREATE TABLE IF NOT EXISTS messages (
-    id               INTEGER PRIMARY KEY AUTOINCREMENT,
-    conversation_id  INTEGER NOT NULL REFERENCES conversations(id),
-    sender           TEXT NOT NULL,
-    content          TEXT NOT NULL,
-    signal           TEXT,
-    created_at       TEXT NOT NULL
-);
-
-CREATE INDEX IF NOT EXISTS idx_messages_conv ON messages(conversation_id, id);
-
-CREATE TABLE IF NOT EXISTS personas (
-    "group"      TEXT NOT NULL,
-    slug         TEXT NOT NULL,
-    name         TEXT NOT NULL,
-    tags         TEXT,
-    category     TEXT,
-    subcategory  TEXT,
-    body         TEXT NOT NULL,
-    avatar_mime  TEXT,
-    avatar_data  TEXT,
-    created_at   TEXT NOT NULL,
-    updated_at   TEXT NOT NULL,
-    PRIMARY KEY ("group", slug)
-);
-
-CREATE INDEX IF NOT EXISTS idx_personas_updated ON personas(updated_at);
-
-CREATE TABLE IF NOT EXISTS battleground_arenas (
-    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    url           TEXT NOT NULL,
-    site          TEXT NOT NULL,
-    title         TEXT NOT NULL,
-    thread        TEXT NOT NULL,
-    stance        TEXT,
-    reply_to      TEXT,
-    agent_id      TEXT,
-    persona_slug  TEXT,
-    persona_name  TEXT,
-    persona_body  TEXT,
-    status        TEXT NOT NULL,
-    created_at    TEXT NOT NULL,
-    updated_at    TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS battleground_drafts (
-    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    arena_id      INTEGER NOT NULL REFERENCES battleground_arenas(id),
-    agent_id      TEXT NOT NULL,
-    reply_to      TEXT,
-    content       TEXT NOT NULL,
-    rationale     TEXT,
-    status        TEXT NOT NULL,
-    verdict_note  TEXT,
-    posted_text   TEXT,
-    created_at    TEXT NOT NULL,
-    updated_at    TEXT NOT NULL
-);
-
-CREATE INDEX IF NOT EXISTS idx_bg_arenas_status ON battleground_arenas(status, id);
-CREATE INDEX IF NOT EXISTS idx_bg_drafts_arena ON battleground_drafts(arena_id, id);
-"""
-
-# Columns added after the initial schema. Mirrors _MIGRATIONS in
-# src/agent_chat_mcp.py — keep both lists in sync when adding new columns.
-_MIGRATIONS = (
-    ("conversations", "preset",           "ALTER TABLE conversations ADD COLUMN preset TEXT"),
-    ("conversations", "kickoff_template", "ALTER TABLE conversations ADD COLUMN kickoff_template TEXT"),
-    ("conversations", "participant_personas", "ALTER TABLE conversations ADD COLUMN participant_personas TEXT"),
-    ("conversations", "conv_type",
-     "ALTER TABLE conversations ADD COLUMN conv_type TEXT NOT NULL DEFAULT 'debate'"),
-    ("conversations", "participant_roles",
-     "ALTER TABLE conversations ADD COLUMN participant_roles TEXT"),
-    ("battleground_arenas", "reply_to", "ALTER TABLE battleground_arenas ADD COLUMN reply_to TEXT"),
-    ("personas", "avatar_mime", "ALTER TABLE personas ADD COLUMN avatar_mime TEXT"),
-    ("personas", "avatar_data", "ALTER TABLE personas ADD COLUMN avatar_data TEXT"),
-)
-
 # ---------------------------------------------------------------------------
 # DB helpers
 # ---------------------------------------------------------------------------
@@ -186,11 +89,7 @@ def db_init() -> None:
     """
     Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
     with _connect() as conn:
-        conn.executescript(SCHEMA)
-        for table, column, ddl in _MIGRATIONS:
-            cols = {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}
-            if column not in cols:
-                conn.execute(ddl)
+        ensure_schema(conn)
 
 
 def list_stats() -> dict[str, int]:
@@ -380,27 +279,6 @@ def stop_conversation(cid: int) -> dict[str, Any] | None:
     }
 
 
-# Conversation columns the ingest endpoint accepts. Order matters — both the
-# INSERT statement and the per-row tuple build follow this list. If schema
-# changes, update SCHEMA above and this tuple in lockstep.
-_CONV_COLUMNS = (
-    "id", "topic", "participants", "mode", "max_turns",
-    "current_turn", "status", "end_reason", "created_at", "updated_at",
-    "preset", "kickoff_template", "participant_personas",
-    "conv_type", "participant_roles",
-)
-_MSG_COLUMNS = (
-    "id", "conversation_id", "sender", "content", "signal", "created_at",
-)
-# Personas key on a composite (group, slug). "group" is a SQL reserved word, so
-# every identifier is double-quoted in generated SQL via _PERSONA_COLS_SQL — a
-# bare ",".join would emit `group` unquoted and fail to parse. Mirrors
-# PERSONA_COLUMNS in scripts/db_sync.py; keep both in lockstep.
-_PERSONA_COLUMNS = (
-    "group", "slug", "name", "tags", "category", "subcategory",
-    "body", "avatar_mime", "avatar_data", "created_at", "updated_at",
-)
-_PERSONA_COLS_SQL = ",".join(f'"{c}"' for c in _PERSONA_COLUMNS)
 
 # Composite-key wire format: group + Unit-Separator (0x1F) + slug. 0x1F is absent
 # from group names and [a-z0-9-] slugs, and urlencodes cleanly. Used identically
@@ -455,19 +333,19 @@ def ingest_payload(
                 deleted = cur.rowcount or 0
             if conversations:
                 conv_rows = [
-                    tuple(c.get(col) for col in _CONV_COLUMNS)
+                    tuple(c.get(col) for col in CONV_COLUMNS)
                     for c in conversations
                 ]
                 # Last write wins by updated_at: a batch that arrives out of
                 # order (a retry, an overlapping sidecar) must not roll a row
                 # back. `>=` keeps a re-ship of the same row idempotent.
                 updates = ",".join(
-                    f"{c} = excluded.{c}" for c in _CONV_COLUMNS if c != "id"
+                    f"{c} = excluded.{c}" for c in CONV_COLUMNS if c != "id"
                 )
                 conn.executemany(
                     f"INSERT INTO conversations "
-                    f"({','.join(_CONV_COLUMNS)}) VALUES "
-                    f"({','.join('?' * len(_CONV_COLUMNS))}) "
+                    f"({','.join(CONV_COLUMNS)}) VALUES "
+                    f"({','.join('?' * len(CONV_COLUMNS))}) "
                     f"ON CONFLICT(id) DO UPDATE SET {updates} "
                     f"WHERE excluded.updated_at >= conversations.updated_at",
                     conv_rows,
@@ -475,13 +353,13 @@ def ingest_payload(
                 upserted = len(conv_rows)
             if messages:
                 msg_rows = [
-                    tuple(m.get(col) for col in _MSG_COLUMNS)
+                    tuple(m.get(col) for col in MSG_COLUMNS)
                     for m in messages
                 ]
                 conn.executemany(
                     f"INSERT OR IGNORE INTO messages "
-                    f"({','.join(_MSG_COLUMNS)}) VALUES "
-                    f"({','.join('?' * len(_MSG_COLUMNS))})",
+                    f"({','.join(MSG_COLUMNS)}) VALUES "
+                    f"({','.join('?' * len(MSG_COLUMNS))})",
                     msg_rows,
                 )
                 # executemany's rowcount is unreliable across SQLite
@@ -502,13 +380,13 @@ def ingest_payload(
                 personas_deleted = len(split_keys)
             if personas:
                 persona_rows = [
-                    tuple(p.get(col) for col in _PERSONA_COLUMNS)
+                    tuple(p.get(col) for col in PERSONA_COLUMNS)
                     for p in personas
                 ]
                 conn.executemany(
                     f"INSERT OR REPLACE INTO personas "
-                    f"({_PERSONA_COLS_SQL}) VALUES "
-                    f"({','.join('?' * len(_PERSONA_COLUMNS))})",
+                    f"({PERSONA_COLS_SQL}) VALUES "
+                    f"({','.join('?' * len(PERSONA_COLUMNS))})",
                     persona_rows,
                 )
                 personas_upserted = len(persona_rows)
@@ -562,23 +440,11 @@ def delete_conversation(cid: int) -> dict[str, Any] | None:
 # ---------------------------------------------------------------------------
 # AgentBattleground — arenas captured from real web pages
 #
-# Local-only by design: these two tables are absent from _CONV_COLUMNS /
-# _MSG_COLUMNS / _PERSONA_COLUMNS above, so the sidecar never ships them to the
+# Local-only by design: these two tables are absent from CONV_COLUMNS /
+# MSG_COLUMNS / PERSONA_COLUMNS above, so the sidecar never ships them to the
 # Fly mirror. Captured third-party page content stays on this machine.
 # ---------------------------------------------------------------------------
 
-ARENA_OPEN = "open"
-ARENA_CLOSED = "closed"
-
-DRAFT_PENDING = "pending"
-DRAFT_APPROVED = "approved"
-DRAFT_REJECTED = "rejected"
-DRAFT_POSTED = "posted"
-
-# Verdicts the operator can hand down on a draft. 'rejected' means "not this
-# one" (with an optional note the agent reads as a revision brief); 'posted'
-# means the text made it onto the page.
-DRAFT_VERDICTS = (DRAFT_APPROVED, DRAFT_REJECTED, DRAFT_POSTED)
 
 
 def _now() -> str:
@@ -915,7 +781,7 @@ def since_payload(
     locally; bidirectional sync covers conversation-row mutations
     (status, topic, end_reason, deletion). Client: ``scripts/db_sync.py``.
     """
-    cols = ",".join(_CONV_COLUMNS)
+    cols = ",".join(CONV_COLUMNS)
     server_time = datetime.now(timezone.utc).isoformat()
     persona_rows: list[dict[str, Any]] = []
     deleted_persona_keys: list[str] = []
@@ -931,7 +797,7 @@ def since_payload(
         }
         if personas_updated_after is not None:
             prows = conn.execute(
-                f"SELECT {_PERSONA_COLS_SQL} FROM personas "
+                f"SELECT {PERSONA_COLS_SQL} FROM personas "
                 f"WHERE updated_at > ? ORDER BY updated_at ASC",
                 (personas_updated_after,),
             ).fetchall()

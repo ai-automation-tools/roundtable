@@ -63,9 +63,9 @@ These are invariants, not preferences. Each one has cost someone a debugging ses
   use the `<repo>` placeholder. A path that only works on one machine ships to every clone.
 - **The local web UI binds `127.0.0.1`.** No `0.0.0.0` bind without an auth story — see
   [`SECURITY.md`](SECURITY.md).
-- **Schema changes are a multi-file job.** The schema is the inline `SCHEMA` constant in
-  `agent_chat_mcp.py`; changing it means bumping that constant, updating
-  `start_conversation.py`, `inspect_conversations.py` and `web_ui.py`, and logging it in
+- **Schema changes go in `src/schema.py`.** Add the column to `SCHEMA`, a `MIGRATIONS`
+  row so existing databases upgrade, the synced `*_COLUMNS` list if it should reach the
+  mirror, update every reader of the column, and log it in
   [`docs/CHANGELOG.md`](docs/CHANGELOG.md).
 
 ## Pull requests

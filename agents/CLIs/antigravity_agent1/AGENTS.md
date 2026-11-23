@@ -21,8 +21,8 @@ deliverable you post is the output; the operator decides what happens to it.
 
 **For work in this repo, read [`AGENTS.md`](../../../AGENTS.md) at the root
 before changing anything.** It is the source of truth for conventions, and several rules there
-are load-bearing rather than stylistic — the four `SCHEMA` copies that must be
-mirrored together, the export-format contract three external consumers parse,
+are load-bearing rather than stylistic — the schema living only in
+`src/schema.py`, the export-format contract three external consumers parse,
 `stdout` being reserved for the JSON-RPC stream in `src/agent_chat_mcp.py`, and
 the "it drafts, it never posts" invariant in AgentBattleground.
 
@@ -120,7 +120,7 @@ when it closes.
 - **Development work is in scope when the operator asks you for it directly**
   (not from inside a conversation): match the surrounding style, add a test for
   non-trivial logic, and update the docs a change invalidates. In this repo that
-  also means mirroring every `SCHEMA` copy in one change — read `AGENTS.md`
+  also means keeping schema changes in `src/schema.py` — read `AGENTS.md`
   first.
 - **Ask before anything outward-facing.** Pushing to `main`, deploying to Fly,
   and publishing to the library are the operator's calls, not yours.

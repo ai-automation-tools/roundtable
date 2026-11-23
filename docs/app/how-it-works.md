@@ -75,11 +75,9 @@ Five tables live in that file:
 | `personas` | The [persona registry](personas.md) — cards, groups, and uploaded avatars. |
 | `battleground_arenas` · `battleground_drafts` | [AgentBattleground](battleground.md) — captured web threads and the drafts written against them. **Local-only:** deliberately never synced anywhere. |
 
-The schema is declared in four places that must stay identical (the MCP server
-is canonical). If you're changing it, read the checklist in
-[`repo-layout.md`](../repo-layout.md) and the `agent-chat-schema` skill first —
-a one-file edit produces a database whose shape depends on which process
-happened to create it.
+The schema is declared once, in `src/schema.py`, and every process creates and
+migrates the file through its `ensure_schema()`. If you're changing it, read the
+schema rules in `AGENTS.md` and the `agent-chat-schema` skill first.
 
 ---
 

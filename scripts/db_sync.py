@@ -57,26 +57,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+# The synced column lists live in src/schema.py (stdlib only), shared with
+# /api/ingest so the two ends can't drift.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+from schema import CONV_COLUMNS, MSG_COLUMNS, PERSONA_COLS_SQL, PERSONA_COLUMNS  # noqa: E402,F401
 
-# Mirrors the column lists in src/web_ui.py:ingest_payload. If the schema
-# grows a column, update both this file and web_ui.py in the same PR.
-CONV_COLUMNS = (
-    "id", "topic", "participants", "mode", "max_turns",
-    "current_turn", "status", "end_reason", "created_at", "updated_at",
-    "preset", "kickoff_template", "participant_personas",
-    "conv_type", "participant_roles",
-)
-MSG_COLUMNS = (
-    "id", "conversation_id", "sender", "content", "signal", "created_at",
-)
-# Personas key on a composite (group, slug). "group" is a SQL reserved word, so
-# generated SQL double-quotes every identifier via PERSONA_COLS_SQL. Mirrors
-# _PERSONA_COLUMNS in src/web_ui.py; keep both in lockstep.
-PERSONA_COLUMNS = (
-    "group", "slug", "name", "tags", "category", "subcategory",
-    "body", "avatar_mime", "avatar_data", "created_at", "updated_at",
-)
-PERSONA_COLS_SQL = ",".join(f'"{c}"' for c in PERSONA_COLUMNS)
+
 
 # Composite-key wire format: group + Unit-Separator (0x1F) + slug. 0x1F is absent
 # from group names and [a-z0-9-] slugs, and urlencodes cleanly. Same format the

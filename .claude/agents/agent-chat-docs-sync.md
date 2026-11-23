@@ -56,9 +56,8 @@ because agent CLIs read these at runtime:
 - New project docs go under `docs/`; don't invent new top-level docs.
 
 **Code-adjacent invariants worth flagging when a diff breaks them:**
-- Schema changes must mirror across all four declaration sites (`SCHEMA` in
-  `agent_chat_mcp.py`, `web/db.py`, `orchestrator/seeding.py`; `_PERSONA_DDL` in
-  `orchestrator/personas.py`) plus every `_MIGRATIONS` copy.
+- Schema changes live in `src/schema.py` only (`SCHEMA`, `MIGRATIONS`, the
+  synced `*_COLUMNS` lists); DDL anywhere else is drift.
 - `web_ui.py`'s re-exports must keep working — `tests/test_web_readonly.py`
   imports them by name.
 - No **new** hardcoded absolute paths. Existing ones live in the README, the
