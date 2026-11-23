@@ -12,6 +12,11 @@ Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changel
 - The seat role docs' tool table said `wait_for_turn(timeout_seconds=60)`, contradicting the 180 s default two sections up; regenerated.
 - Audit item RT-35.
 
+### Changed — one copy of the process-flow diagram
+
+- The generated diagram is committed once, in `docs/diagrams/`. The *Homepage* workflow copies it into the published site at deploy time and now also runs when the diagram changes. `build_diagram.py` no longer writes `homepage/diagram/`, and `--check` no longer compares a second copy (which, lacking `-text`, read as drift on a CRLF checkout).
+- Audit item RT-33.
+
 ### Fixed — the hosted mirror stops describing its own container
 
 - **Reads about the local machine are `404` on the mirror:** `/api/setup` (it listed container paths and `/root/.claude.json`), `/api/settings/*` and `/api/notifications`. Writes there are still the read-only `403`.

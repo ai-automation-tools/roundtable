@@ -47,7 +47,7 @@ From a full audit of `4f71561` (kept outside the repo). One item per PR, titled 
 - [ ] **RT-30** Docs accuracy sweep
 - [x] **RT-31** Hosted mirror: refuse local-only routes; truthful startup log — 🔒 Needs owner — done 2026-11-22: on the mirror, a GET to `/api/setup`, `/api/settings/*`, or `/api/notifications` is `404` (it showed the container's paths); writes still `403`. The startup log already printed the real basic-auth state and now prints read-only mode too
 - [ ] **RT-32** Repo housekeeping: merged branches, release tags (owner settings) — 🔒 Needs owner
-- [ ] **RT-33** One copy of the generated diagram; EOL rule
+- [x] **RT-33** One copy of the generated diagram; EOL rule — done 2026-11-22: the diagram is committed once, in `docs/diagrams/`; the Pages workflow copies the HTML and PNG into the published `homepage/diagram/` (backup of the removed copies: `_maintenance/backups/2026-11-22-roundtable-homepage-diagram-copies`). The CRLF-checkout drift came from the second copy lacking `-text`; with one copy under `docs/diagrams/process-flow.* -text` it can't recur
 - [ ] **RT-34** Move inline CSS/JS into static files; nonce CSP
 - [x] **RT-35** Align `wait_for_turn` default with client tool timeouts — done 2026-11-22: client limits checked against each CLI's source: Codex 300 s default (`tool_timeout_sec`), OpenCode v2 12 h, Claude Code no short limit, so the 180 s default fits all; only a 300 s wait on Codex was tight, so every Codex config snippet now sets `tool_timeout_sec = 330`. The seat docs' tool table said `timeout_seconds=60`; regenerated with 180. Not verified in a live 4-CLI run
 - [ ] **RT-36** Per-seat model choice
