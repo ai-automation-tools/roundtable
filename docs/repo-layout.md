@@ -82,7 +82,7 @@ roundtable/
 │   ├── stop-app.ps1              # Stop web UI + sidecar (this clone's venv only)
 │   ├── restart-app.ps1           # Stop + start — needed after any src/ change
 │   ├── healthcheck-app.ps1       # HTTP-probe + repair; scheduled hourly
-│   ├── maintain-app.ps1          # Nightly SQLite-API backup, prune, log trim
+│   ├── maintain-app.ps1          # Nightly SQLite-API backup, prune, log trim, weekly off-disk copy
 │   ├── lib/spawn-agents.ps1      # Shared CLI registry + prompt-file/spawn helpers
 │   └── setup/                    # setup-skill-links · register-startup-task · register-app-tasks
 │                                 #   · add_agent_seat · gen_agent_role_docs (per-seat role docs)
@@ -156,6 +156,7 @@ roundtable/
 │   ├── OPEN-QUESTIONS.md         # Decisions the scheduled roadmap runs need from the maintainer
 │   └── ROADMAP.md                # Priorities: checkbox items, High / Medium / Low
 ├── .github/workflows/ci.yml      # CI on push/PR: deps · import/compile · validate configs · tests
+├── .github/workflows/extension-release.yml  # extension-v<version> release + zips on a manifest bump
 ├── .claude/                      # Claude Code config (agents/ + commands/ + skills/ tracked)
 ├── requirements.txt              # Pinned: mcp, pydantic, starlette, markdown-it-py, …
 ├── requirements-dev.txt          # CI-only test pins on top: Playwright for the browser suite

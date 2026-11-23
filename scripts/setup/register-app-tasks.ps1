@@ -46,8 +46,16 @@
 .PARAMETER MaintenanceTime
   Daily maintenance time, HH:mm (default 03:30).
 
+.PARAMETER OffDiskDir
+  A folder on a different physical disk from the repo. The maintenance task gets
+  -OffDiskDir on its command line and copies a backup there once a week
+  (see maintain-app.ps1). Leave it out for no off-disk copy.
+
 .EXAMPLE
   .\scripts\setup\register-app-tasks.ps1
+
+.EXAMPLE
+  .\scripts\setup\register-app-tasks.ps1 -OffDiskDir 'E:\Backups\Roundtable'
 
 .EXAMPLE
   .\scripts\setup\register-app-tasks.ps1 -HealthcheckMinutes 5
@@ -57,7 +65,8 @@
 param(
     [switch] $Unregister,
     [int]    $HealthcheckMinutes = 60,
-    [string] $MaintenanceTime = '03:30'
+    [string] $MaintenanceTime = '03:30',
+    [string] $OffDiskDir
 )
 
 $ErrorActionPreference = 'Stop'
@@ -80,7 +89,7 @@ $Tasks = @(
        Desc = 'Probe http://127.0.0.1:8765/ and the sidecar process; restart whatever is down. See scripts/healthcheck-app.ps1.' }
     @{ Name = 'Maintain-Roundtable-App'
        Script = 'scripts\maintain-app.ps1'
-       Desc = 'Nightly: consistent SQLite backup of db/chat.db, prune old backups, trim db/*.log. See scripts/maintain-app.ps1.' }
+       Desc = 'Nightly: consistent SQLite backup of db/chat.db with an integrity check (exit 1 and one alert on failure), prune only nightly chat-YYYYMMDD-* copies, trim db/*.log. See scripts/maintain-app.ps1.' }
 )
 
 # ---------------------------------------------------------------- unregister
@@ -119,8 +128,12 @@ $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries `
 foreach ($t in $Tasks) {
     $script = Join-Path $ProjectRoot $t.Script
     # wscript, not pwsh -- see the note at the top about the conhost flash.
+    $argline = "`"$RunHidden`" `"$script`""
+    if ($t.Name -eq 'Maintain-Roundtable-App' -and $OffDiskDir) {
+        $argline += " -OffDiskDir `"$OffDiskDir`""
+    }
     $action = New-ScheduledTaskAction -Execute $Wscript `
-        -Argument "`"$RunHidden`" `"$script`"" `
+        -Argument $argline `
         -WorkingDirectory $ProjectRoot
 
     $triggers = @()

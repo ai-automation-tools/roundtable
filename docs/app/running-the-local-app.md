@@ -60,6 +60,7 @@ that file ASCII with no BOM.
 # The other four
 .\scripts\setup\register-app-tasks.ps1
 .\scripts\setup\register-app-tasks.ps1 -HealthcheckMinutes 5
+.\scripts\setup\register-app-tasks.ps1 -OffDiskDir 'E:\Backups\Roundtable'   # weekly copy on another disk
 .\scripts\setup\register-app-tasks.ps1 -Unregister
 ```
 
@@ -190,6 +191,13 @@ must not age out every good copy), exits **1** so Task Scheduler shows it, and
 sends one alert through the Settings → Notifications sink if one is armed. The
 prune touches only the task's own `chat-YYYYMMDD-HHMMSS.db` files; a snapshot you
 took by hand under another `chat-*.db` name is kept.
+
+**A weekly copy goes to another disk** when the task runs with `-OffDiskDir`
+(since 2026-11-23, audit RT-12; set it with `register-app-tasks.ps1 -OffDiskDir`).
+Once the newest copy there is 7 days old, that night's verified backup is copied
+over and hash-checked, and the newest 8 copies are kept. A disk that's missing or
+won't take the copy fails the run the same loud way. `db/backups/` sits on the
+same drive as the database, so without this a dead drive takes both.
 
 **The backup uses SQLite's `Connection.backup()` API, never a file copy.**
 `chat.db` runs in WAL mode with several concurrent writers — the web UI, the

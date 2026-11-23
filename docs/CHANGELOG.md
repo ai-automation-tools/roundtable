@@ -13,6 +13,18 @@ Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changel
 - The flag itself never syncs. **Restart the sidecar** after updating, or the old one keeps mirroring every new run.
 - Audit item RT-07.
 
+### Added — a weekly backup copy on another disk
+
+- `maintain-app.ps1 -OffDiskDir <folder>` copies that night's verified backup to another disk once a week, checks the hash, and keeps the newest 8. A missing or full disk fails the run (exit 1 and one alert), like a failed backup. Register it with `register-app-tasks.ps1 -OffDiskDir`.
+- `scripts/run-hidden.vbs` now quotes extra arguments that contain a space.
+- Audit item RT-12.
+
+### Added — extension releases
+
+- **`extension-v0.2.0`** is the first GitHub release: the AgentBattleground extension as a Chrome zip and a Firefox zip, for loading without a clone. `.github/workflows/extension-release.yml` publishes the next one when the version in both manifests changes on `main`.
+- The logon task (`register-startup-task.ps1`) now starts through `scripts/run-hidden.vbs`, like the other app tasks, so no console flashes at sign-in. Re-run the script to pick it up.
+- Audit item RT-32.
+
 ### Changed — CI must pass before a merge into `main`
 
 - A repo ruleset (**Require CI**) makes `test`, `test-linux` and `lint` required checks on `main`; a PR with failing CI can't be merged.
