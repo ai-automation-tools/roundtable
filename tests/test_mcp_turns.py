@@ -420,6 +420,7 @@ def _stop_during_send(db: str, cid: int, agent: str) -> tuple[dict, list, dict]:
     finally:
         mcp.count_messages_by_sender = real_count
         from orchestrator import delivery
+        delivery.wait_idle()
         delivery.deliver = original
     return sent, calls, stop_result
 
@@ -450,6 +451,38 @@ def test_a_send_that_ends_the_run_races_a_stop_and_delivers_once() -> None:
         assert calls.count((cid, "complete")) == 1, calls
 
 
+def test_a_slow_sink_does_not_hold_up_the_send() -> None:
+    """A webhook takes up to its timeout and a command sink up to two minutes;
+    run inline they froze the MCP server's event loop and the agent's
+    send_message with it (audit RT-14). The fan-out now runs on a thread."""
+    import time
+
+    from orchestrator import delivery
+
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
+        db, cid = _seed(Path(td), ["a", "b"], max_turns=1)
+        calls: list[tuple[int, str]] = []
+        original = delivery.deliver
+
+        def slow(c, event, *a, **k):
+            time.sleep(3)
+            calls.append((c, event))
+            return []
+
+        delivery.deliver = slow
+        try:
+            _send("a", "first")
+            t0 = time.monotonic()
+            _send("b", "last")                    # closes the run -> complete
+            took = time.monotonic() - t0
+            assert took < 1.0, f"send_message waited {took:.2f}s on a 3 s sink"
+            assert calls == []                    # still running in the background
+            assert delivery.wait_idle(10)
+        finally:
+            delivery.deliver = original
+        assert calls == [(cid, "complete")], calls
+
+
 def test_cli_stop_closes_once() -> None:
     import inspect_conversations as ic
 
@@ -466,6 +499,7 @@ def test_cli_stop_closes_once() -> None:
             conn.close()
         finally:
             from orchestrator import delivery
+            delivery.wait_idle()
             delivery.deliver = original
         assert tuple(_row(db, cid)) == first
         assert calls == [(cid, "complete")]

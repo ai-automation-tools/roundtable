@@ -794,6 +794,23 @@ def test_stall_notifies_once_and_rearms_on_a_new_message() -> None:
         assert len(sent) == 2
 
 
+def test_a_failed_stall_notice_is_retried() -> None:
+    """A dead endpoint's "webhook: ERROR ..." line reached nobody, so it must
+    not mark the stall notified and silence it for good (audit RT-14)."""
+    from orchestrator import delivery, watchdog
+    cfg = _webhook_config(["stalled"])
+    cfg["sinks"][0].update(url="http://127.0.0.1:9/dead", timeout=1)
+    with _env(cfg) as (root, _db, _cid):
+        db, _ = _stalled_db(root, [1, 1, 1], quiet_min=25)
+        first = watchdog.check(db)[0]
+        assert "ERROR" in first["delivered"][0] and first["notified"] is False, first
+        again = watchdog.check(db)[0]
+        assert again["delivered"], "the stall was not retried"
+    assert delivery.reached("webhook: POST http://x -> 200 (2 bytes)")
+    assert not delivery.reached("webhook: ERROR URLError: refused")
+    assert not delivery.reached("ERROR: no such conversation")
+
+
 def test_stall_payload_carries_what_the_operator_needs() -> None:
     from orchestrator import watchdog
     with _env(_webhook_config(["stalled"])) as (root, _db, _cid):
@@ -897,9 +914,13 @@ def test_completion_paths_all_call_deliver() -> None:
     """Three places end a conversation. All three must fan out, or stopping one
     from the Web UI would deliver while stopping it from the CLI would not."""
     src = Path(__file__).resolve().parent.parent / "src"
-    for rel in ("agent_chat_mcp.py", "web/db.py", "inspect_conversations.py"):
+    # The two on an event loop hand off to a thread (audit RT-14); the CLI
+    # stays inline so it can print what each sink did.
+    for rel, call in (("agent_chat_mcp.py", "delivery.deliver_later("),
+                      ("web/db.py", "delivery.deliver_later("),
+                      ("inspect_conversations.py", "delivery.deliver(")):
         text = (src / rel).read_text(encoding="utf-8")
-        assert "delivery.deliver(" in text, f"{rel} never calls delivery.deliver()"
+        assert call in text, f"{rel} never calls {call})"
 
 
 def test_mcp_result_signal_matches_delivery_constant() -> None:

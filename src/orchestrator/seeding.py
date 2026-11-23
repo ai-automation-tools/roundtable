@@ -348,8 +348,10 @@ def seed_conversation(
     # the three completion call sites follow. deliver() never raises, so a
     # notification sink cannot fail a seed; at worst it logs. Nothing is
     # delivered unless a sink lists "started" in its events, which the default
-    # list does not: at this point the bundle has no messages in it.
-    delivery.deliver(int(conv_id), "started", db_path)
+    # list does not: at this point the bundle has no messages in it. On a
+    # background thread, because /api/orchestrate calls this from the web UI's
+    # event loop (audit RT-14).
+    delivery.deliver_later(int(conv_id), ["started"], db_path)
 
     return SeedResult(
         conversation_id=int(conv_id),

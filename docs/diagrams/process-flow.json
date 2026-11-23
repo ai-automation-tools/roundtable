@@ -164,8 +164,8 @@
       "sources": [
         {
           "path": "src/agent_chat_mcp.py",
-          "line": 980,
-          "end_line": 1022
+          "line": 983,
+          "end_line": 1025
         }
       ]
     },
@@ -260,6 +260,11 @@
           "path": "src/orchestrator/delivery.py",
           "line": 1,
           "end_line": 56
+        },
+        {
+          "path": "src/orchestrator/delivery.py",
+          "line": 631,
+          "end_line": 656
         }
       ]
     }
@@ -332,7 +337,7 @@
       "id": "edge_send_delivery",
       "from": "mcp_send",
       "to": "delivery_exec",
-      "label": "complete/result",
+      "label": "complete/result (thread)",
       "variant": "emphasis"
     },
     {

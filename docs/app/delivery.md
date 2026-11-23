@@ -237,7 +237,11 @@ nothing is listening, so the unarmed state is visible rather than silent.
 > run is reported on every tick and the state file is left untouched — so
 > arming a webhook later still catches a conversation that is *already* stuck.
 > Recording an undelivered stall would mean the first thing you ever configure
-> stays silent about the very run that made you configure it.
+> stays silent about the very run that made you configure it. The same goes for
+> a sink that **failed**: a stall counts as notified only when at least one
+> line `deliver()` returned is not an `ERROR` (`delivery.reached()`), so a dead
+> endpoint is retried on the next tick instead of burning the alarm (since
+> 2026-11-22, audit RT-14).
 
 ### What counts as stalled
 
@@ -412,6 +416,16 @@ Two deliberate choices there:
 - **Delivery runs outside the write transaction.** A sink can be an HTTP POST
   or a subprocess; neither belongs inside a `BEGIN` on a database three other
   processes are waiting on.
+- **And off the event loop.** `send_message()`, the web UI's Stop and seeding
+  (which `/api/orchestrate` calls) hand the fan-out to
+  `delivery.deliver_later()`, a background thread that runs the events in order
+  (`result` before `complete`). A webhook can take its whole timeout and a
+  command sink up to two minutes; inline, either froze the MCP server's event
+  loop, so the agent's `send_message` and every other request waited on it
+  (since 2026-11-22, audit RT-14). The thread is not a daemon, so a short-lived
+  process such as `start_conversation.py` finishes the delivery before it
+  exits. `inspect_conversations stop` / `deliver` stay inline, because they
+  print what each sink did. Tests call `delivery.wait_idle()` before asserting.
 
 ---
 

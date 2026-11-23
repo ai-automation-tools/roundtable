@@ -192,7 +192,9 @@ def check(db_path: str | None = None, notify: bool = True,
             # tick would record the stall, and arming a webhook later would
             # then stay silent about the run already in progress. Nothing was
             # told; nothing is remembered.
-            if not lines:
+            # A line per sink ATTEMPT: a dead endpoint's "webhook: ERROR ..."
+            # reached nobody, so it must not burn the alarm either (RT-14).
+            if not any(delivery.reached(line) for line in lines):
                 continue
             s["notified"] = True
             state[key] = s["last_message_id"]
