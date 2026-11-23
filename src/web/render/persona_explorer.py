@@ -177,7 +177,8 @@ def render_explorer(params: dict[str, str]) -> str:
         if tag:
             bits.append(f'tag <a class="px-tag on" href="{_e(_href(state, tag=""))}" '
                         f'title="Remove tag filter">{html.escape(tag)} &times;</a>')
-        active = (f'<p class="px-count" role="status">{" · ".join(bits)} &middot; '
+        active = (f'<p class="px-count" role="status" tabindex="-1" id="px-count">'
+                  f'{" · ".join(bits)} &middot; '
                   '<a href="/personas">clear filters</a></p>')
     else:
         active = f'<p class="px-count" role="status"><strong>{len(everyone)}</strong> personas</p>'
@@ -209,7 +210,14 @@ def render_explorer(params: dict[str, str]) -> str:
         f'{controls}<nav class="px-cloud" aria-label="Tags">{cloud}</nav>{active}{grid}'
         '</div>'
     )
-    return _registry_layout("Browse", "", body, head_extras=EXPLORER_CSS)
+    filtered = bool(q or group or cat or tag)
+    if filtered:
+        # A search is a full page load: focus landed on <body> and the count
+        # was never announced (audit RT-42). Move focus to it; the title says it too.
+        body += ("<script>document.getElementById('px-count')"
+                 "?.focus({preventScroll:true});</script>")
+    title = f"{len(shown)} of {len(everyone)} — Browse" if filtered else "Browse"
+    return _registry_layout(title, "", body, head_extras=EXPLORER_CSS)
 
 
 def find_persona(slug: str, group: str = "") -> Persona | None:
