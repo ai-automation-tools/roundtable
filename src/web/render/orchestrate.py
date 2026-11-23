@@ -763,6 +763,13 @@ def _render_orchestrate(
         card is seated. Its text reaches the agent as instructions &mdash; read it before you
         let that agent act without asking.</p>
       {delivery_toggle_html}
+      <!-- Publishing is opt-in (audit RT-07): unticked, the sync sidecar never
+           copies this conversation to the public mirror. -->
+      <label class="orch-toggle" id="orch-publish-toggle">
+        <input type="checkbox" name="publish" />
+        <span>Publish to the public mirror &mdash; unticked, it stays on this machine
+          (change it later with <code>inspect_conversations publish &lt;id&gt;</code>)</span>
+      </label>
     </section>
 
     <div id="orch-error" class="orch-error hidden"></div>
@@ -948,6 +955,7 @@ def _render_orchestrate(
   const spawnToggle = form.querySelector('input[name=spawn]');
   const skipToggle = form.querySelector('input[name=skip_permissions]');
   const deliverToggle = form.querySelector('input[name=deliver_locally]');
+  const publishToggle = form.querySelector('input[name=publish]');
   const modEnable = form.querySelector('input[name=mod_enable]');
   const modFields = document.getElementById('orch-mod-fields');
   const modCli = form.querySelector('select[name=mod_cli]');
@@ -1624,6 +1632,7 @@ def _render_orchestrate(
       // Absent (delivery off) or disabled (scope: all) both send false;
       // the server ignores it in the second case anyway.
       deliver_locally: !!(deliverToggle && !deliverToggle.disabled && deliverToggle.checked),
+      publish: !!(publishToggle && publishToggle.checked),
       moderator: (moderatorOn() && room.host)
         ? {{ cli: room.host, persona: (modPersona ? modPersona.value : '__none__') }}
         : null,
