@@ -3556,6 +3556,12 @@ EXPLORER_CSS = """\
      repeated in .px-count, so trimming here never hides the filter in use. */
   .px-cloud .px-tag:nth-child(n+9) { display:none; }
 }
+/* Three selects in one row truncated their labels on a phone (RT-42). */
+@media (max-width: 420px) {
+  .px-controls > label:not(.px-search) { flex:1 1 100%; }
+}
+.px-count:focus { outline:none; }
+.px-count:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
 </style>
 """
 

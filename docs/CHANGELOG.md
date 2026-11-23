@@ -12,6 +12,14 @@ Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changel
 - A model name may only contain the characters model ids use; anything else is refused before seeding.
 - Audit item RT-36.
 
+### Changed — the mirror and the persona registry say what they do
+
+- **Hosted mirror:** the home page's launch buttons read *Run a debate locally* (and podcast, collaboration), since they open the run-it-yourself explainer, and *+ New conversation* is gone.
+- **Persona explorer:** after a search the page title reads *N of M — Browse* and focus moves to the result count, so a screen reader announces it; on a phone the three filters stack instead of truncating.
+- **Registry:** the rail's *Persona registry* entry has its own icon (it shared *Personas*'), and the registry's header link is *← Roundtable*, same tab, back to the demo.
+- **Homepage:** 76 seed personas, not 62 — the number a fresh clone imports, now checked by a test.
+- Audit item RT-42.
+
 ### Fixed — database handles are closed; a path with an apostrophe launches
 
 - **`with connect() as conn:` now closes the connection.** sqlite3's own `with` only commits, so every request, tool call and sync pass left a handle for the garbage collector. Python 3.13+ warns about each one; the suite produced 881 warnings and now produces none.

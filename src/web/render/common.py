@@ -155,6 +155,13 @@ _NAV_ICONS = {
         '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>'
         '<polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>'
     ),
+    # Card with a portrait — the persona registry (a separate site), so it
+    # doesn't share the people icon with this app's own Personas page.
+    "idcard": (
+        '<rect x="2.5" y="4.5" width="19" height="15" rx="2"/><circle cx="8.5" cy="11" r="2.3"/>'
+        '<path d="M5 16.5c.6-1.7 2-2.6 3.5-2.6s2.9.9 3.5 2.6"/>'
+        '<line x1="14.5" y1="10" x2="18.5" y2="10"/><line x1="14.5" y1="13.5" x2="18.5" y2="13.5"/>'
+    ),
     "home": (
         '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'
         '<polyline points="9 22 9 12 15 12 15 22"/>'
@@ -228,7 +235,7 @@ _NAV_ITEMS: tuple[tuple[str, str, str, str, str, bool], ...] = (
 # in-page anchor it scrolled to nothing from every page but the homepage, which
 # is why it used to be passed in through `extra_nav`.
 _RESOURCE_NAV_ITEMS: tuple[tuple[str, str, str, str, str, bool], ...] = (
-    ("registry", "Persona registry", PUBLIC_REGISTRY_URL, "pers", "btn-preg", True),
+    ("registry", "Persona registry", PUBLIC_REGISTRY_URL, "idcard", "btn-preg", True),
     ("resources", "Resources", "/#resources", "res", "btn-res", False),
 )
 
@@ -543,7 +550,7 @@ def _registry_layout(title: str, crumbs_html: str, body_html: str, head_extras: 
   <a class="reg-brand" href="/personas">{MARK_SVG}<span>Agent Personas</span></a>
   <span class="crumb">{crumbs_html}</span>
   <div class="topbar-right">
-    <a class="reg-out" href="{PRODUCT_URL}" target="_blank" rel="noopener">Roundtable &#8599;</a>
+    <a class="reg-out" href="{DEMO_URL if _is_public_readonly() else '/'}">&larr; Roundtable</a>
     {_THEME_TOGGLE}
   </div>
 </div></div>
