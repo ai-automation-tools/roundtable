@@ -179,6 +179,7 @@ topic: Has social media made people less happy overall?
 | `-MaxTurns N` | Per-agent message cap. Default: the preset's — `8` for `debate`, `10` for `podcast`. |
 | `-TopicsGlob <glob>` | Topic-library file(s), relative to repo root. Default `docs/chat-topics/Debate-Topics.md`, `docs/chat-topics/Podcast-Topics.md` with `-Format podcast`, or `docs/chat-topics/Collaboration-Topics.md` with `-Format collaborate`. |
 | `-ForceSidecar` | Forwarded to `start.ps1` as `-Force` (kill + relaunch the DB-sync sidecar). |
+| `-Publish` | Let the sync sidecar copy the debate to the public mirror. Without it the debate stays on this machine (opt-in since 2026-11-23, audit RT-07). Change it later with `inspect_conversations publish <id> [--off]`. |
 
 ### Examples
 
