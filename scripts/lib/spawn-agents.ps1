@@ -377,6 +377,10 @@ function ConvertTo-PsLiteral([string] $Text) { "'" + $Text.Replace("'", "''") + 
 # In -DryRun the prompt files are NOT written (the command still references the
 # path so the operator can see what would run).
 # --------------------------------------------------------------------------
+# A model name for --model. It reaches a command line, and one source is a web
+# form, so only the characters model ids actually use get through (RT-36).
+$ModelNamePattern = '^[A-Za-z0-9][A-Za-z0-9._:/@#\[\]-]{0,99}$'
+
 function New-AgentLaunchPlan {
     param(
         [Parameter(Mandatory)] $Assignments,
@@ -395,6 +399,10 @@ function New-AgentLaunchPlan {
         # a bare CLI name; Resolve-AgentSeat throws on anything unrecognised.
         $spec = Resolve-AgentSeat -AgentId ([string]$a.Cli) -RepoRoot $RepoRoot
         $role = if ($a.PSObject.Properties['Role'] -and $a.Role) { [string]$a.Role } else { 'debater' }
+        # Every supported CLI takes --model; none given keeps the CLI's own default.
+        $model = if ($a.PSObject.Properties['Model'] -and $a.Model) { [string]$a.Model } else { '' }
+        if ($model -and $model -notmatch $ModelNamePattern) { throw "invalid model name for $($a.Cli): '$model'" }
+        $modelArg = if ($model) { " --model '$model'" } else { '' }
         $promptFile = Join-Path $LaunchDir ("conv{0}-{1}.txt" -f $ConvId, $a.Cli)
         if (-not $DryRun) {
             New-AgentPrompt -Cli $a.Cli -PersonaBody ([string]$a.PersonaBody) `
@@ -427,7 +435,7 @@ function New-AgentLaunchPlan {
         # UI's "close windows" can end exactly this process tree (audit RT-21).
         $pidFile = Join-Path $LaunchDir ("conv{0}-{1}.pid" -f $ConvId, $a.Cli)
         $record  = "Set-Content -LiteralPath $(ConvertTo-PsLiteral $pidFile) -Value " + '("$PID " + (Get-Process -Id $PID).StartTime.ToFileTimeUtc()); '
-        $cmd     = $record + "Set-Location -LiteralPath $(ConvertTo-PsLiteral $dir); $scrub$($spec.EnvPrefix)$($spec.Pre)$($spec.Exe) $argPart$deny$allow"
+        $cmd     = $record + "Set-Location -LiteralPath $(ConvertTo-PsLiteral $dir); $scrub$($spec.EnvPrefix)$($spec.Pre)$($spec.Exe)$modelArg $argPart$deny$allow"
 
         [pscustomobject]@{ Cli = $a.Cli; PromptFile = $promptFile; LaunchDir = $dir; Command = $cmd }
     }

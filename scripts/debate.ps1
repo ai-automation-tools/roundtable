@@ -112,6 +112,12 @@
   for a podcast. (Topics are "N. Title" lines, each optionally followed by a
   "- Debaters: N" line, or "- Guests: N" for a podcast.)
 
+.PARAMETER Model
+Model per seat, as agent-id=model pairs: -Model claude-code=sonnet,codex=gpt-5.4-mini.
+A bare CLI name covers all of that CLI's seats; an exact seat id (claude-code-2)
+wins over it. Seats not named keep the CLI's own default model. Each CLI is
+launched with --model <name>.
+
 .PARAMETER SkipPermissions
   Let each seat use the roundtable MCP tools without asking. Only Claude Code
   has an allowlist flag (--allowedTools mcp__roundtable, plus --add-dir for the
@@ -163,6 +169,7 @@ param(
     [string]   $HostPersona,
     [int]      $MaxTurns,
     [string]   $TopicsGlob,
+    [string[]] $Model,
     [switch]   $SkipPermissions,
     [switch]   $DryRun,
     [switch]   $ForceSidecar
@@ -504,8 +511,18 @@ if ($DryRun) {
 # 6. Write per-agent prompt files + build the launch plan (shared helpers from
 #    lib/spawn-agents.ps1). Assignments carry the persona body pulled from the DB.
 # --------------------------------------------------------------------------
+# -Model claude-code=sonnet,codex-2=gpt-5.4 -> per-seat model (RT-36).
+$modelFor = @{}
+foreach ($pair in $Model) {
+    $k, $v = $pair -split '=', 2
+    if (-not $k -or -not $v) { throw "-Model takes agent-id=model pairs; got '$pair'" }
+    $modelFor[$k.Trim()] = $v.Trim()
+}
 $spawnAssignments = foreach ($a in $assign) {
+    $baseCli = ([string]$a.Cli) -replace '-\d+$', ''
     [pscustomobject]@{
+        Model       = if ($modelFor.Contains([string]$a.Cli)) { $modelFor[[string]$a.Cli] }
+                      elseif ($modelFor.Contains($baseCli)) { $modelFor[$baseCli] } else { '' }
         Cli         = $a.Cli
         PersonaName = if ($a.PersonaSlug) { $a.PersonaName } else { '' }
         PersonaBody = if ($personaMap.Contains($a.Cli)) { $personaMap[$a.Cli].persona_body } else { '' }

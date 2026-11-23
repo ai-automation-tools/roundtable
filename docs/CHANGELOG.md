@@ -6,6 +6,12 @@ Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changel
 
 ## 2026-11-22 (latest)
 
+### Added — choose the model for each seat
+
+- **`/orchestrate`** has a *model* box under each chair; **`debate.ps1`** takes `-Model claude-code=sonnet,codex=gpt-5.4-mini` (a bare CLI name covers its seats, `claude-code-2=…` one seat). The seat launches with `--model <name>`. Blank keeps the CLI's default.
+- A model name may only contain the characters model ids use; anything else is refused before seeding.
+- Audit item RT-36.
+
 ### Fixed — docs that named a dead host, wrong counts and one machine's paths
 
 - `/deploy-fly` and the bug template point at `roundtable-demo.ai-automation-tools.dev`; the old `agent-chat-demo` host answers 400.
