@@ -161,7 +161,16 @@ sixth service never needs code.
    running — the watchdog rides it rather than adding a sixth scheduled job.
 4. **Send test notification.** It goes through the same `post_webhook()` a real
    event uses. If the test lands and the event doesn't, the problem is the
-   event, not the service.
+   event, not the service. A refusal reports the HTTP status only, never the
+   body the service sent back.
+
+Every URL the form takes (the ntfy or Gotify server, a Discord, Slack or raw
+webhook URL) is parsed and must be `http://` or `https://` with a host;
+Discord and Slack must be `https://`. `post_webhook()` itself refuses any other
+scheme, so a hand-edited `config/delivery.json` can't point a webhook at
+`file://` either. When a stored sink has no `service`, the page reads it from
+the URL's **host** (`hooks.slack.com`, `discord.com`), not from a substring of
+the whole URL. Since 2026-11-22, audit RT-19.
 
 ---
 
