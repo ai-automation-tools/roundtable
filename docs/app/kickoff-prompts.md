@@ -69,7 +69,8 @@ After:
        |                       |  get_kickoff() MCP tool     |
        |                       |  - reads kickoff_template   |
        |                       |    column for AGENT_ID's    |
-       |                       |    latest conversation      |
+       |                       |    latest conversation (and |
+       |                       |    binds the session to it) |
        |                       |  - falls back to a generic  |
        +-----------------------+    "follow prompts/         |
                                |    kickoff.md" string when  |

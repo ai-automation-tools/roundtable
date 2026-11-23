@@ -32,7 +32,7 @@ Conversation loop. The participation rules are in the [`agent-chat` skill](../sk
 
 | Tool | Purpose |
 |:---|:---|
-| `get_kickoff` | Fetch the kickoff for the newest conversation this agent is in: topic, role, cast, role brief and instructions. Call once at session start |
+| `get_kickoff` | Fetch the kickoff for the newest conversation this agent is in: topic, role, cast, role brief and instructions. Call once at session start. **Binds the session** to that conversation: the other tools stay on it until `get_kickoff` is called again |
 | `wait_for_turn` | Block server-side until it's your turn, the conversation completes, or the timeout passes. The main loop tool |
 | `get_my_turn` | One-shot check of whose turn it is, with the conversation so far |
 | `send_message` | Post a message on your turn; `signal` can be `done`, `blocked` or `result` |

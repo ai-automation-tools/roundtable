@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Optional
 
 from presets import deliverable_for
-from schema import ensure_schema
+from schema import ensure_schema, write_txn
 from . import delivery
 from .conv_types import (
     DEFAULT_CONV_TYPE,
@@ -141,6 +141,46 @@ def deliverable_clause(conv_type: str, preset: Optional[str]) -> str:
 class SeedError(ValueError):
     """Raised on invalid seed_conversation() arguments. Caller renders the
     .args[0] string back to the operator (CLI: stderr; Web UI: form error)."""
+
+
+def _busy(conn: sqlite3.Connection, participants: list[str]) -> dict[str, int]:
+    """{seat: active conversation id} for each seat already in an active run."""
+    busy: dict[str, int] = {}
+    for row in conn.execute(
+        "SELECT id, participants FROM conversations WHERE status = 'active' ORDER BY id"
+    ):
+        for seat in json.loads(row[1]):
+            if seat in participants:
+                busy.setdefault(seat, row[0])
+    return busy
+
+
+def busy_message(busy: dict[str, int]) -> str:
+    """The operator-facing refusal for a seat that is already in a run."""
+    parts = ", ".join(f"'{s}' (conversation #{cid})" for s, cid in busy.items())
+    verb = "is" if len(busy) == 1 else "are"
+    first = next(iter(busy.values()))
+    return (
+        f"seat busy: {parts} {verb} already in an active conversation. A seat can "
+        "take part in one active conversation at a time, or its agent posts into "
+        "the wrong one. "
+        f"Stop that run first (Stop on its page, or "
+        f"`inspect_conversations.py stop {first}`), or pick another seat."
+    )
+
+
+def busy_seats(db_path: str, participants: list[str]) -> dict[str, int]:
+    """Which of ``participants`` are already in an active conversation. Lets
+    ``POST /api/orchestrate`` refuse before spending preflight on a launch that
+    seed_conversation() would refuse anyway. A missing DB has no busy seats."""
+    if not os.path.exists(db_path):
+        return {}
+    conn = sqlite3.connect(db_path, timeout=10.0, isolation_level=None)
+    try:
+        ensure_schema(conn)
+        return _busy(conn, participants)
+    finally:
+        conn.close()
 
 
 # A topic longer than this is a brief, not a title. It would render as a
@@ -272,30 +312,35 @@ def seed_conversation(
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA foreign_keys=ON")
         ensure_schema(conn)
+        with write_txn(conn):
+            # Under the write lock, so two launches can't both find a seat free.
+            busy = _busy(conn, participants)
+            if busy:
+                raise SeedError(busy_message(busy))
 
-        current_turn = first_speaker if mode == "turns" else None
-        ts = now_iso()
-        personas_json = json.dumps(participant_personas) if participant_personas else None
-        cur = conn.execute(
-            """
-            INSERT INTO conversations
-                (topic, participants, mode, max_turns, current_turn, status,
-                 end_reason, created_at, updated_at, preset, kickoff_template,
-                 participant_personas, conv_type, participant_roles)
-            VALUES (?, ?, ?, ?, ?, 'active', NULL, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (topic, json.dumps(participants), mode, max_turns,
-             current_turn, ts, ts, preset, kickoff_rendered, personas_json,
-             resolved_type, json.dumps(resolved_roles)),
-        )
-        conv_id = cur.lastrowid
-
-        if initial_system_message:
-            conn.execute(
-                "INSERT INTO messages (conversation_id, sender, content, signal, created_at) "
-                "VALUES (?, 'system', ?, NULL, ?)",
-                (conv_id, initial_system_message, ts),
+            current_turn = first_speaker if mode == "turns" else None
+            ts = now_iso()
+            personas_json = json.dumps(participant_personas) if participant_personas else None
+            cur = conn.execute(
+                """
+                INSERT INTO conversations
+                    (topic, participants, mode, max_turns, current_turn, status,
+                     end_reason, created_at, updated_at, preset, kickoff_template,
+                     participant_personas, conv_type, participant_roles)
+                VALUES (?, ?, ?, ?, ?, 'active', NULL, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (topic, json.dumps(participants), mode, max_turns,
+                 current_turn, ts, ts, preset, kickoff_rendered, personas_json,
+                 resolved_type, json.dumps(resolved_roles)),
             )
+            conv_id = cur.lastrowid
+
+            if initial_system_message:
+                conn.execute(
+                    "INSERT INTO messages (conversation_id, sender, content, signal, created_at) "
+                    "VALUES (?, 'system', ?, NULL, ?)",
+                    (conv_id, initial_system_message, ts),
+                )
     finally:
         conn.close()
 

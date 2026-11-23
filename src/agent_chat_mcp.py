@@ -123,6 +123,33 @@ def get_latest_conversation(conn: sqlite3.Connection, agent_id: str) -> Optional
     return None
 
 
+# The conversation this server process joined, per (DB_PATH, AGENT_ID). A real
+# server has one AGENT_ID; the key also keeps tests that switch AGENT_ID in one
+# process honest. "Newest conversation containing me" alone let a second run on
+# the same seat hijack the first: the first run's agent posted into the second,
+# and the first sat on its turn forever (audit RT-08).
+_BOUND: dict[tuple[str, str], int] = {}
+
+
+def my_conversation(conn: sqlite3.Connection, rebind: bool = False) -> Optional[sqlite3.Row]:
+    """The conversation this session is bound to; binds to the newest one that
+    includes AGENT_ID when unbound. ``get_kickoff`` passes ``rebind=True``: it is
+    how an agent joins a conversation, so it always moves to the newest. Every
+    other tool stays on the bound one, finished or not."""
+    key = (DB_PATH, AGENT_ID)
+    cid = None if rebind else _BOUND.get(key)
+    if cid is not None:
+        row = conn.execute("SELECT * FROM conversations WHERE id = ?", (cid,)).fetchone()
+        if row is not None and AGENT_ID in json.loads(row["participants"]):
+            return row
+    row = get_latest_conversation(conn, AGENT_ID)
+    if row is None:
+        _BOUND.pop(key, None)
+    else:
+        _BOUND[key] = row["id"]
+    return row
+
+
 def count_messages_by_sender(conn: sqlite3.Connection, conv_id: int, sender: str) -> int:
     cur = conn.execute(
         "SELECT COUNT(*) AS n FROM messages WHERE conversation_id = ? AND sender = ?",
@@ -550,7 +577,7 @@ def _compute_turn_state() -> dict[str, Any]:
     max-turns or sent a stop signal.
     """
     with db_connect() as conn:
-        conv = get_latest_conversation(conn, AGENT_ID)
+        conv = my_conversation(conn)
         if conv is None:
             return {
                 "status": "no_conversation",
@@ -604,11 +631,22 @@ def _compute_turn_state() -> dict[str, Any]:
             )
 
         if conv["status"] == "complete":
-            return {
+            out = {
                 "status": "complete",
                 "end_reason": conv["end_reason"] or end_reason,
                 **base,
             }
+            # This session stays on the run it joined; a newer one is joined
+            # explicitly, with get_kickoff(). Say so, or a long-lived session
+            # never notices it was seated somewhere new.
+            newest = get_latest_conversation(conn, AGENT_ID)
+            if newest is not None and newest["id"] != conv["id"]:
+                out["newer_conversation_id"] = newest["id"]
+                out["message"] = (
+                    f"Conversation {conv['id']} is over. You are also seated in "
+                    f"conversation {newest['id']}; call get_kickoff() to join it."
+                )
+            return out
 
         if conv["mode"] == "turns" and conv["current_turn"] != AGENT_ID:
             out = {
@@ -758,7 +796,7 @@ async def send_message(params: SendMessageInput) -> str:
     # `complete` twice (audit RT-09).
     closed: Optional[str] = None
     with db_connect() as conn, write_txn(conn):
-        conv = get_latest_conversation(conn, AGENT_ID)
+        conv = my_conversation(conn)
         if conv is None:
             return json.dumps({
                 "status": "error",
@@ -908,7 +946,7 @@ async def get_conversation_status(params: GetStatusInput) -> str:
     triggering any state evaluation logic in your prompt.
     """
     with db_connect() as conn:
-        conv = get_latest_conversation(conn, AGENT_ID)
+        conv = my_conversation(conn)
         if conv is None:
             return json.dumps({"status": "no_conversation"}, indent=2)
 
@@ -1002,7 +1040,7 @@ async def get_kickoff(params: GetKickoffInput) -> str:
          "instructions": "<generic fallback string referencing kickoff.md>"}
     """
     with db_connect() as conn:
-        conv = get_latest_conversation(conn, AGENT_ID)
+        conv = my_conversation(conn, rebind=True)
         if conv is None:
             return json.dumps({
                 "status": "no_conversation",
