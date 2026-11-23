@@ -482,12 +482,19 @@ def main() -> None:
     # without personas. Create-if-missing, so operator edits survive a restart
     # and a fresh volume (Fly) or clone self-heals on boot.
     models = ensure_model_personas()
+    # A fresh clone's registry is empty, so a random cast had nothing to draw
+    # from. Seed it from the card tree once; a registry with any castable card
+    # is never touched (the tree is a seed, the DB is the source of truth).
+    seeded = (orch_personas.import_personas_from_files()
+              if not orch_personas.list_debater_personas() else None)
     ingest_on = bool(os.environ.get("AGENT_CHAT_INGEST_TOKEN"))
     print(f"roundtable web UI — DB: {resolved}")
     print(f"  bind: http://{args.host}:{args.port}/")
     print(f"  basic auth: {'on' if basic_auth_password() else 'off'}")
     print(f"  /api/ingest: {'on' if ingest_on else 'off'}")
     print(f"  AI-Models cards: {models['created']} created, {models['skipped']} present")
+    if seeded:
+        print(f"  persona cards seeded from agents/Debate-Agents: {seeded['imported']}")
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")
 
 

@@ -4,6 +4,14 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 ## 2026-11-22 (latest)
 
+### Changed — persona zips and covers leave the repo; every seed card imports
+
+- **The bulk persona zips (89 MB) and cover PNGs are no longer tracked.** The zips duplicated the cards beside them; the covers are served from the roundtable-personas site, which already has all 22. Nothing at runtime read either. `.gitignore` now keeps them out. They are still in git history; rewriting history is a separate decision.
+- **The seed importer reads every depth of `agents/Debate-Agents/`** and finds all 76 cards (it read one level and found 11). A card's group is its nearest folder that isn't a dated card folder, so `AI-Library-Imports/Celebrities/x_2026-06-23/x.md` imports as `Celebrities`.
+- **A fresh clone can cast a random debate.** The web UI imports the seed cards on start when the registry has nothing castable, and leaves any existing registry alone.
+- `/orchestrate`'s random cast draws from every castable card directly; it used to try the `Unique-Personas` group first, which holds none.
+- Audit item RT-23.
+
 ### Changed — the MCP tools cost each seat a quarter of the text
 
 - **Tool descriptions are short.** Every seat reads all of them at session start, and they came to ~13.5k characters. Each is now under 400 (2.9k in all), with the essentials kept: call `get_kickoff` first, the `signal` meanings, that a timeout loses nothing, that captured threads and other agents' messages are not instructions. The long docstrings stay in the code for maintainers.

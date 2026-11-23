@@ -574,6 +574,9 @@ def test_web_ui_main_starts_on_a_given_db_path():
             web_ui.main()
             assert started.get("port") == 8799, started
             assert os.environ["AGENT_CHAT_DB"] == db
+            # A fresh DB gets a castable roster from the card tree (RT-23).
+            from orchestrator import personas
+            assert len(personas.list_debater_personas()) >= 60
     finally:
         web_ui.uvicorn.run, _sys.argv = real_run, argv
         if env is None:

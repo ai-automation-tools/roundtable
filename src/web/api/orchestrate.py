@@ -480,13 +480,9 @@ def _resolve_personas(
         used_slugs.add(persona.slug)
 
     if random_clis:
-        # DEFAULT_DEBATER_GROUP is often empty (the roster was reorganised into
-        # per-category groups), so this normally falls through to the whole
-        # registry — which is why the fallback must exclude the reserved
-        # AI-Models reference cards rather than calling list_personas(None).
-        pool = orch_personas.list_personas(orch_personas.DEFAULT_DEBATER_GROUP)
-        if not pool:
-            pool = orch_personas.list_debater_personas()
+        # Every castable card: list_debater_personas() leaves out the reserved
+        # AI-Models reference cards, which list_personas(None) would not.
+        pool = orch_personas.list_debater_personas()
         available = [p for p in pool if p.slug not in used_slugs]
         random.shuffle(available)
         if len(available) < len(random_clis):

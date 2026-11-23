@@ -163,6 +163,47 @@ def test_a_group_readme_is_documentation_not_a_persona() -> None:
     assert slugs == ["full-stack-developer"], slugs
 
 
+def test_the_importer_reads_every_depth_of_the_card_tree() -> None:
+    """Cards sit one, two and three folders down; reading one level found 11
+    of 76 (audit RT-23). A dated card folder is not the card's group."""
+    _fresh_db()
+    import tempfile as _tf
+    from pathlib import Path as _P
+    from orchestrator import personas
+
+    root = _P(_tf.mkdtemp(prefix="agentchat-cards-")) / "Debate-Agents"
+    card = '---\ntitle: "{0}"\n---\n\n# {0}\n\nBody.\n'
+    for rel, name in (("Practitioners/critic.md", "Critic"),
+                      ("Weekly-Additions/Athletes/sprinter.md", "Sprinter"),
+                      ("AI-Library-Imports/Celebrities/chef_2026-06-22/chef.md", "Chef")):
+        (root / rel).parent.mkdir(parents=True, exist_ok=True)
+        (root / rel).write_text(card.format(name), encoding="utf-8")
+    original = personas._PERSONAS_ROOT
+    personas._PERSONAS_ROOT = root
+    try:
+        assert personas.import_personas_from_files()["imported"] == 3
+    finally:
+        personas._PERSONAS_ROOT = original
+    got = {p.slug: p.group for p in personas.list_personas(None)
+           if p.group != personas.AI_MODELS_GROUP}
+    assert got == {"critic": "Practitioners", "sprinter": "Athletes", "chef": "Celebrities"}, got
+
+
+def test_no_zip_or_cover_art_is_tracked_under_the_card_tree() -> None:
+    """89 MB of zips duplicated the cards beside them, and the covers are served
+    from the roundtable-personas site; neither is read at runtime (RT-23)."""
+    import subprocess
+    root = Path(__file__).resolve().parent.parent
+    try:
+        out = subprocess.run(["git", "ls-files", "agents/Debate-Agents"], cwd=root,
+                             capture_output=True, text=True, check=True).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return  # not a git checkout (an sdist, an image): nothing to check
+    bad = [f for f in out.splitlines()
+           if f.lower().endswith(".zip") or Path(f).name.startswith("cover-image.")]
+    assert bad == [], bad
+
+
 def test_castable_cli_flag_excludes_reserved_groups() -> None:
     """debate.ps1 draws its roster through `list --castable`."""
     _fresh_db()

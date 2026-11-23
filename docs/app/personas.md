@@ -336,12 +336,15 @@ The on-disk seed cards are loaded into the DB once via the importer (idempotent 
 `INSERT OR IGNORE`, or `--overwrite` to replace + bump `updated_at`):
 
 ```powershell
-python src/orchestrator/personas.py import            # {"imported": 29, "skipped": 0}
+python src/orchestrator/personas.py import            # {"imported": 76, "skipped": 0}
 python src/orchestrator/personas.py import --overwrite # re-seed from the cards
 ```
 
 It's a no-op where the `agents/` tree isn't present (the hosted deploy seeds via
-sync instead). `import_personas_from_files()` is the Python entry point.
+sync instead). `import_personas_from_files()` is the Python entry point. It walks
+**every depth** of the tree; a card's group is its nearest folder that isn't a
+dated card folder (`<slug>_<YYYY-MM-DD>`). The web UI runs it on start when the
+registry has no castable card (a fresh clone), and never otherwise.
 
 > [!WARNING]
 > Re-running `import` reads the **current** folder names. Because the debater
@@ -589,7 +592,7 @@ rather than relying on the name to carry it.
 | You want… | Look at |
 |:---|:---|
 | The live persona data | the `personas` table in `db/chat.db` |
-| The seed cards (one-time import + git snapshot) | `agents/Debate-Agents/{Unique-Personas,Debate-Hosts}/*.md` |
+| The seed cards (one-time import + git snapshot) | `agents/Debate-Agents/**/*.md` |
 | The registry / write layer / importer | `src/orchestrator/personas.py` |
 | The single-card import helper | `import_persona_card()` / `parse_card_text()` in `src/orchestrator/personas.py` |
 | The MCP tool definitions | `list_personas` / `get_persona` in `src/agent_chat_mcp.py` |
