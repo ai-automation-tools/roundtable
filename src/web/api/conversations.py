@@ -10,6 +10,7 @@ from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
+from orchestrator import killswitch
 from orchestrator.export import (
     export_filename as _export_filename,
     export_zip_filename as _export_zip_filename,
@@ -150,7 +151,18 @@ def api_stop(request: Request) -> Response:
     result = stop_conversation(cid)
     if result is None:
         return JSONResponse({"error": "not found"}, status_code=404)
-    return JSONResponse(result)
+    # How many seat windows this app opened for it, so the page can offer to
+    # close them (audit RT-21).
+    return JSONResponse({**result, "seat_windows": len(killswitch.pid_files(cid))})
+
+
+def api_close_windows(request: Request) -> Response:
+    """End the process tree of each seat window recorded for this
+    conversation. Stopping a run only reaches an agent at its next MCP call;
+    this ends one mid-tool-call. Only a window whose PID still has its
+    recorded start time is touched."""
+    cid = int(request.path_params["cid"])
+    return JSONResponse({"closed": killswitch.close_seat_windows(cid)})
 
 
 def api_delete(request: Request) -> Response:

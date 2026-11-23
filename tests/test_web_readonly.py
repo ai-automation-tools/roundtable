@@ -745,6 +745,32 @@ def test_form_fields_have_names():
         assert needle in dl, needle
 
 
+def test_no_spawn_refuses_an_orchestrated_spawn_before_seeding():
+    """Audit RT-21: config/NO_SPAWN is a global kill switch."""
+    from orchestrator import killswitch
+    from web.security import WRITE_HEADER, write_secret
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
+        web_ui.set_db_path(str(Path(tmp) / "chat.db"))
+        web_ui.db_init()
+        flag = Path(tmp) / "NO_SPAWN"
+        flag.write_text("", encoding="utf-8")
+        real = killswitch.NO_SPAWN_FILE
+        killswitch.NO_SPAWN_FILE = flag
+        try:
+            c = TestClient(web_ui.app, base_url=LOCAL)
+            r = c.post("/api/orchestrate", headers={WRITE_HEADER: write_secret()},
+                       json={"topic": "t", "participants": ["codex", "claude-code"], "spawn": True})
+        finally:
+            killswitch.NO_SPAWN_FILE = real
+        assert r.status_code == 409 and r.json()["kind"] == "spawn_disabled", r.text
+        assert c.get("/api/conversations").json() == []
+
+
+def test_close_windows_is_a_local_write():
+    c = _hosted_stack_client("127.0.0.1:8765")
+    assert c.post("/api/conversations/1/close-windows").status_code == 401  # no write secret
+
+
 def test_sse_stream_sends_the_final_message_before_complete():
     """The stream read messages, then the status: a send landing between the
     two reads closed the stream without its final message (audit RT-17).

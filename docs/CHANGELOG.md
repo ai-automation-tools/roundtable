@@ -4,6 +4,13 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 ## 2026-11-22 (latest)
 
+### Added — a hard stop: close the seat windows, a time limit, a kill switch
+
+- **Stop can close the windows.** Each seat window `/orchestrate` or `debate.ps1` opens records its PID and start time when it starts. After **Stop**, the page offers to close those windows; only a process with that PID *and* that start time is ended, so a reused PID is never touched. Stopping alone only reaches an agent at its next MCP call.
+- **Time limit.** `--max-minutes N` on `start_conversation.py`, or *Time limit* on `/orchestrate`, ends the run with `time limit (N min)` on the first agent call after N minutes. **Schema:** new nullable `conversations.max_minutes` (migrated in place, synced to the mirror; deploy the web app before restarting the sidecar, which the merge does).
+- **Kill switch.** While `config/NO_SPAWN` exists, nothing spawns: `/orchestrate` refuses an auto-spawn launch before seeding, and the PowerShell launchers refuse before opening a window.
+- Audit item RT-21.
+
 ### Fixed — page structure a screen reader can navigate
 
 - **One `h1` per page and no skipped heading levels.** The persona explorer, persona manager, orchestrate, settings, battleground and extension pages and both 404s had no `h1`; a conversation had one per cast card; the home page jumped from `h2` to `h4`.
