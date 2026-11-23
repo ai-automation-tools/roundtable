@@ -2,9 +2,10 @@
 db_sync.py — bidirectional mirror between the local DB and Fly.
 
 Each tick:
-  1. **Pull** conversation deltas from the remote ``GET /api/since`` —
-     status flips, topic edits, force-stops, deletions originated on the
-     hosted UI flow back to the local DB.
+  1. **Pull** from the remote ``GET /api/since`` — but apply only deletions
+     and stops (a newer ``complete`` closes an ``active`` local row). Topics,
+     kickoffs, personas and the turn pointer never come back from the public
+     mirror: see ``apply_pull``.
   2. **Push** local deltas (new messages, changed/created conversations,
      deleted conversations) to the remote ``POST /api/ingest``.
 
@@ -15,8 +16,9 @@ same token for both pull and push — opt-in via env var on the server).
 The pull payload covers conversation rows and deletions only; messages
 never come back from the mirror. See the module docstring below for the why.
 
-Conflict resolution is last-write-wins by ``updated_at``. Hosted-side
-deletes are authoritative — applied locally on the next pull.
+A pulled stop is last-write-wins by ``updated_at``. Hosted-side deletes are
+authoritative — applied locally on the next pull. The remote URL must be
+https (loopback excepted): the token rides in a header.
 
 Stdlib only — no extra deps. Designed to run as a long-lived daemon in a
 PowerShell window or as a Windows Scheduled Task; ``--once`` makes it a
@@ -508,88 +510,65 @@ def apply_pull(
     personas: list[dict[str, Any]] | None = None,
     deleted_persona_keys: list[str] | None = None,
 ) -> dict[str, int]:
-    """Apply a pull payload to the local DB.
+    """Apply a pull payload to the local DB — narrowly.
 
-    Conversations: ``INSERT OR REPLACE`` so hosted-side mutations
-    overwrite local state for those rows. Deletions: cascade-delete
-    messages first, then the conversation row. Personas: upsert by
-    composite ``(group, slug)`` and delete by split key, same as the
-    server's ``ingest_payload``. Single transaction.
+    The mirror is public and read-only, so it has no legitimate reason to
+    change what local agents are told. Anyone holding the sync token (or the
+    Fly account) could otherwise plant a persona body, a topic or a kickoff
+    that the next run hands to an agent (audit 2026-11-22, RT-04). So:
 
-    Returns a counters dict for logging.
+    - **Conversations:** only a stop is honoured — a row the mirror reports
+      ``complete`` closes an ``active`` local row whose ``updated_at`` is
+      older (last write wins). Topic, participants, kickoff, personas, roles
+      and the turn pointer are never taken from the mirror, and a row that
+      only exists remotely is never inserted.
+    - **Deletions:** cascade-delete messages, then the conversation row.
+    - **Personas:** ignored. Persona rows flow local → mirror only.
+
+    ``personas`` / ``deleted_persona_keys`` stay in the signature so an older
+    server's payload still parses. Single transaction; returns counters.
     """
-    personas = personas or []
-    deleted_persona_keys = deleted_persona_keys or []
     upserted = deleted = cascaded = 0
-    personas_upserted = personas_deleted = 0
-    if not (conversations or deleted_ids or personas or deleted_persona_keys):
-        return {
-            "conversations_upserted": 0,
-            "conversations_deleted": 0,
-            "messages_deleted_cascade": 0,
-            "personas_upserted": 0,
-            "personas_deleted": 0,
-        }
-    with sqlite3.connect(str(db_path), timeout=10.0) as conn:
-        try:
-            conn.execute("BEGIN")
-            if deleted_ids:
-                placeholders = ",".join("?" for _ in deleted_ids)
-                cur = conn.execute(
-                    f"DELETE FROM messages WHERE conversation_id IN ({placeholders})",
-                    deleted_ids,
-                )
-                cascaded = cur.rowcount or 0
-                cur = conn.execute(
-                    f"DELETE FROM conversations WHERE id IN ({placeholders})",
-                    deleted_ids,
-                )
-                deleted = cur.rowcount or 0
-            if conversations:
-                conv_rows = [
-                    tuple(c.get(col) for col in CONV_COLUMNS)
-                    for c in conversations
-                ]
-                conn.executemany(
-                    f"INSERT OR REPLACE INTO conversations "
-                    f"({','.join(CONV_COLUMNS)}) VALUES "
-                    f"({','.join('?' * len(CONV_COLUMNS))})",
-                    conv_rows,
-                )
-                upserted = len(conv_rows)
-            if deleted_persona_keys:
-                split_keys = [
-                    k.split(PERSONA_KEY_SEP, 1)
-                    for k in deleted_persona_keys
-                    if PERSONA_KEY_SEP in k
-                ]
-                conn.executemany(
-                    'DELETE FROM personas WHERE "group" = ? AND slug = ?',
-                    split_keys,
-                )
-                personas_deleted = len(split_keys)
-            if personas:
-                persona_rows = [
-                    tuple(p.get(col) for col in PERSONA_COLUMNS)
-                    for p in personas
-                ]
-                conn.executemany(
-                    f"INSERT OR REPLACE INTO personas "
-                    f"({PERSONA_COLS_SQL}) VALUES "
-                    f"({','.join('?' * len(PERSONA_COLUMNS))})",
-                    persona_rows,
-                )
-                personas_upserted = len(persona_rows)
-            conn.execute("COMMIT")
-        except Exception:
-            conn.execute("ROLLBACK")
-            raise
+    stops = [
+        (c.get("end_reason") or "stopped on the mirror", c["updated_at"],
+         int(c["id"]), c["updated_at"])
+        for c in conversations
+        if c.get("status") == "complete" and c.get("updated_at") and c.get("id") is not None
+    ]
+    if deleted_ids or stops:
+        with sqlite3.connect(str(db_path), timeout=10.0) as conn:
+            try:
+                conn.execute("BEGIN")
+                if deleted_ids:
+                    placeholders = ",".join("?" for _ in deleted_ids)
+                    cur = conn.execute(
+                        f"DELETE FROM messages WHERE conversation_id IN ({placeholders})",
+                        deleted_ids,
+                    )
+                    cascaded = cur.rowcount or 0
+                    cur = conn.execute(
+                        f"DELETE FROM conversations WHERE id IN ({placeholders})",
+                        deleted_ids,
+                    )
+                    deleted = cur.rowcount or 0
+                for row in stops:
+                    cur = conn.execute(
+                        "UPDATE conversations SET status = 'complete', "
+                        "end_reason = ?, current_turn = NULL, updated_at = ? "
+                        "WHERE id = ? AND status = 'active' AND updated_at < ?",
+                        row,
+                    )
+                    upserted += cur.rowcount or 0
+                conn.execute("COMMIT")
+            except Exception:
+                conn.execute("ROLLBACK")
+                raise
     return {
         "conversations_upserted": upserted,
         "conversations_deleted": deleted,
         "messages_deleted_cascade": cascaded,
-        "personas_upserted": personas_upserted,
-        "personas_deleted": personas_deleted,
+        "personas_upserted": 0,
+        "personas_deleted": 0,
     }
 
 
@@ -892,6 +871,10 @@ def main() -> None:
         parser.error("--remote-url is required (or set AGENT_CHAT_REMOTE_URL).")
     if not args.token:
         parser.error("--token is required (or set AGENT_CHAT_INGEST_TOKEN).")
+    remote = urllib.parse.urlsplit(args.remote_url)
+    if remote.scheme != "https" and remote.hostname not in ("127.0.0.1", "localhost", "::1"):
+        parser.error("--remote-url must be https:// (the sync token rides in a header); "
+                     "plain http is allowed only for a loopback test server.")
 
     log_kwargs: dict[str, Any] = {
         "level": logging.DEBUG if args.verbose else logging.INFO,

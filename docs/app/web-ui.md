@@ -1465,7 +1465,8 @@ Writes go through the registry write layer in `src/orchestrator/personas.py`
 which write the `personas` table and locate rows across **all** groups via
 `_find_persona_any_group`). Personas live in the shared DB (`db/chat.db`), so —
 unlike before — this **works on both local and the hosted mirror**: the
-optional db-sync sidecar mirrors the `personas` table bidirectionally.
+optional db-sync sidecar pushes the `personas` table to the mirror (one way,
+local → mirror, since 2026-11-22).
 The page and its `POST /api/personas*` endpoints stay gated on
 `personas.root_exists()`, which now just confirms the DB is reachable (it returns
 `404` / an "unavailable" notice only if the database can't be opened at all).
