@@ -14,6 +14,12 @@ Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changel
 - `tests/README.md` lists every suite; the setup log uses `<repo>` instead of an absolute path; a private file reference left `AGENTS.md`.
 - Audit item RT-30.
 
+### Fixed — database handles are closed; a path with an apostrophe launches
+
+- **`with connect() as conn:` now closes the connection.** sqlite3's own `with` only commits, so every request, tool call and sync pass left a handle for the garbage collector. Python 3.13+ warns about each one; the suite produced 881 warnings and now produces none.
+- **Seat windows launch from a folder named like `Mike's Projects`.** The launch command wrapped paths in `'…'` without escaping the apostrophe, so the command line broke.
+- Audit item RT-37.
+
 ### Fixed — `wait_for_turn` fits inside every CLI's tool timeout
 
 - The Codex config snippets set `tool_timeout_sec = 330`. `wait_for_turn` may block for 300 s and Codex abandons an MCP call at 300 s by default, so the longest wait could surface as a tool error. **If you registered Codex before this change, add that line to `[mcp_servers.roundtable]` in `~/.codex/config.toml`.** OpenCode v2 (12 h) and Claude Code have no short limit; the 180 s default fits all of them.

@@ -17,7 +17,7 @@ from orchestrator import delivery, personas
 from schema import (  # noqa: F401 — the ARENA_/DRAFT_ names are re-exported to web_ui and web.api/render
     ARENA_CLOSED, ARENA_OPEN, CONV_COLUMNS, DRAFT_APPROVED, DRAFT_PENDING, DRAFT_POSTED,
     DRAFT_REJECTED, DRAFT_VERDICTS, MSG_COLUMNS, PERSONA_COLS_SQL, PERSONA_COLUMNS,
-    complete_conversation, ensure_schema, write_txn,
+    ClosingConnection, complete_conversation, ensure_schema, write_txn,
 )
 
 DB_PATH: str = ""
@@ -71,7 +71,8 @@ def _connect() -> sqlite3.Connection:
     # sqlite3 opens an implicit transaction on the first write and holds it until
     # an explicit commit, which is exactly how a second process gets "database is
     # locked" on a shared WAL file.
-    conn = sqlite3.connect(DB_PATH, timeout=10.0, isolation_level=None)
+    conn = sqlite3.connect(DB_PATH, timeout=10.0, isolation_level=None,
+                           factory=ClosingConnection)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     return conn

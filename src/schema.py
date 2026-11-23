@@ -238,6 +238,22 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
                 raise
 
 
+class ClosingConnection(sqlite3.Connection):
+    """A connection that ``with conn:`` also closes.
+
+    sqlite3's own ``__exit__`` commits or rolls back and leaves the connection
+    open, so every ``with connect() as conn:`` in this app leaked a handle
+    until the garbage collector found it — a ``ResourceWarning`` from Python
+    3.13 on (audit RT-37). Pass ``factory=ClosingConnection`` to
+    ``sqlite3.connect``."""
+
+    def __exit__(self, *exc):
+        try:
+            return super().__exit__(*exc)
+        finally:
+            self.close()
+
+
 @contextmanager
 def write_txn(conn: sqlite3.Connection) -> Iterator[sqlite3.Connection]:
     """``BEGIN IMMEDIATE`` … ``COMMIT`` (``ROLLBACK`` on an exception).
