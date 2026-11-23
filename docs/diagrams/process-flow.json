@@ -7,7 +7,7 @@
     "output": "docs/diagrams/process-flow.html",
     "repository": {
       "url": "https://github.com/ai-automation-tools/roundtable.git",
-      "revision": "a83bcee755893a9ba372f241ba3562c6540c65d9"
+      "revision": "6e47ad9696891805c049dd65e94939fde0bc0240"
     }
   },
   "lanes": [

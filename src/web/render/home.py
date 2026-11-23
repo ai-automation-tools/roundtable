@@ -325,7 +325,7 @@ def _render_homepage_how_steps() -> str:
     return r"""<li class="step">
   <div class="step-n">1</div>
   <div class="step-body">
-    <h4>Clone &amp; install</h4>
+    <h3>Clone &amp; install</h3>
     <p>Pinned deps in <code class="step-code-inline">requirements.txt</code> — venv keeps system Python clean.</p>
   </div>
   <pre class="step-code"><span class="cmt"># venv + pinned deps</span>
@@ -338,7 +338,7 @@ python -m venv .venv
 <li class="step">
   <div class="step-n">2</div>
   <div class="step-body">
-    <h4>Register the MCP server</h4>
+    <h3>Register the MCP server</h3>
     <p>Every CLI registers the same launcher, <code class="step-code-inline">scripts/run-mcp-server.ps1</code> — the only difference is the <code class="step-code-inline">--agent-id</code> it passes. Per-CLI config lives in <code class="step-code-inline">docs/cli-mcp-config/</code>.</p>
   </div>
   <pre class="step-code"><span class="cmt"># claude code · per-folder .mcp.json</span>
@@ -357,7 +357,7 @@ python -m venv .venv
 <li class="step">
   <div class="step-n">3</div>
   <div class="step-body">
-    <h4>Seed a conversation</h4>
+    <h3>Seed a conversation</h3>
     <p>One command — seeds the row, ensures the DB-sync sidecar is up, forwards args to <code class="step-code-inline">start_conversation.py</code>. Presets set tone, mode and turn count.</p>
   </div>
   <pre class="step-code">.\scripts\start.ps1 --preset <span class="em">debate</span> `
@@ -369,7 +369,7 @@ python -m venv .venv
 <li class="step">
   <div class="step-n">4</div>
   <div class="step-body">
-    <h4>Point each agent at the kickoff</h4>
+    <h3>Point each agent at the kickoff</h3>
     <p>Seeding renders the full brief onto the conversation row, so the per-CLI prompt is two lines — the agent fetches the rest itself. The template is <code class="step-code-inline">prompts/Kickoff/kickoff.md</code>.</p>
   </div>
   <pre class="step-code"><span class="cmt"># paste into each agent; the --first agent first.</span>
@@ -381,7 +381,7 @@ it returns.</pre>
 <li class="step">
   <div class="step-n">5</div>
   <div class="step-body">
-    <h4>Watch live</h4>
+    <h3>Watch live</h3>
     <p>SSE auto-update, Markdown rendering, force-stop, Markdown export. Click <a href="/conversations">Conversations</a> for the index, or load the deep-link directly.</p>
   </div>
   <pre class="step-code"><span class="cmt"># local viewer (zero replication lag)</span>
@@ -442,7 +442,7 @@ def _res_tile(title: str, items: list[str]) -> str:
     """Wrap link rows in the standard Resources card — a spotlight surface."""
     return (
         '<div class="res-tile spot">'
-        f'<h4 class="tile-k">{html.escape(title)}</h4>'
+        f'<h3 class="tile-k">{html.escape(title)}</h3>'
         f'<ul class="res-list">{"".join(items)}</ul></div>'
     )
 
@@ -691,7 +691,7 @@ def _render_homepage_featured(featured: list[dict[str, Any]], total: int = 0) ->
         rows.append(
             f'<a href="/conversations/{cid}" class="feat-row">'
             '<div class="feat-top">'
-            f'<h3>{topic}</h3>'
+            f'<h2>{topic}</h2>'
             f'<span class="feat-n mono">{n} msgs</span>'
             "</div>"
             f'<p class="feat-teaser">{teaser}</p>'
@@ -792,7 +792,7 @@ def _render_cast_tiles(grouped: list[tuple[str, list[Any]]]) -> str:
         tiles.append(
             '<div class="tile spot">'
             '<div class="tile-head">'
-            f'<h4 class="tile-k">{html.escape(group)}</h4>'
+            f'<h3 class="tile-k">{html.escape(group)}</h3>'
             f'<span class="tile-n mono">{len(members)}</span>'
             "</div>"
             f'<ul class="tile-list">{names}</ul>'
@@ -863,7 +863,7 @@ def _render_homepage_personas() -> str:
             f'<img src="{html.escape(avatar_url(p.slug), quote=True)}" alt="" loading="lazy" '
             "onerror=\"this.style.display='none'\">"
             f'{html.escape(initials)}</span>'
-            f'<h4>{html.escape(p.name)}</h4></div>'
+            f'<h3>{html.escape(p.name)}</h3></div>'
             '<p class="clamp2">'
             f'{html.escape(_strip_md(p.summary or ""))}</p>'
             + (f'<div class="tags">{tags}</div>' if tags else "")

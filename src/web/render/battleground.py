@@ -159,7 +159,7 @@ def _arena_card(arena: dict[str, Any]) -> str:
     <article class="bgc-card spot">
       <div class="bgc-card-top">
         <span class="bgc-site">{_e(_site_label(str(arena.get("site") or "")))}</span>
-        <h3><a href="/battleground/{aid}">{_e(arena.get("title") or arena.get("url"))}</a></h3>
+        <h2><a href="/battleground/{aid}">{_e(arena.get("title") or arena.get("url"))}</a></h2>
         {pending_pill}
         {_status_pill(str(arena.get("status") or ""))}
       </div>
@@ -216,7 +216,7 @@ def _render_battleground_index(
     body = f"""
 <div class="orch-shell bgc">
   <header class="orch-head">
-    <h2>Battleground console</h2>
+    <h1>Battleground console</h1>
     <p>Every arena captured on this machine &mdash; across tabs, and after the tab is
        closed. Review a draft, hand down a verdict, and read a debate&rsquo;s whole
        draft history without the original page open.</p>
@@ -393,7 +393,7 @@ def _render_battleground_arena(data: dict[str, Any]) -> str:
     body = f"""
 <div class="orch-shell bgc" data-arena="{aid}">
   <header class="orch-head">
-    <h2>{_e(arena.get("title") or url)}</h2>
+    <h1>{_e(arena.get("title") or url)}</h1>
     <p class="bgc-head-meta">
       <span class="bgc-site">{_e(_site_label(str(arena.get("site") or "")))}</span>
       {_status_pill(status)}
@@ -414,12 +414,12 @@ def _render_battleground_arena(data: dict[str, Any]) -> str:
   <p class="bgc-msg" id="bgc-msg"></p>
 
   <section class="bgc-sec">
-    <h3>Drafts ({len(drafts)})</h3>
+    <h2>Drafts ({len(drafts)})</h2>
     {drafts_html}
   </section>
 
   <section class="bgc-sec">
-    <h3>Captured thread ({len(thread)} posts)</h3>
+    <h2>Captured thread ({len(thread)} posts)</h2>
     <p>What the agent reads. Re-capturing a live page merges new replies in by post
        id &mdash; that happens in the extension, on the tab.</p>
     {posts_html}
@@ -506,7 +506,7 @@ def _render_battleground_not_found(aid: int) -> str:
     body = f"""
 <div class="orch-shell bgc">
   <header class="orch-head">
-    <h2>No arena #{aid}</h2>
+    <h1>No arena #{aid}</h1>
     <p>It was deleted, or it never existed on this machine. Arenas are local &mdash;
        they don&rsquo;t sync, so an id from another install won&rsquo;t resolve here.</p>
   </header>
@@ -539,7 +539,7 @@ def _render_battleground_readonly() -> str:
     body = f"""
 <div class="orch-shell bgc">
   <header class="orch-head">
-    <h2>Arenas stay on the machine that captured them</h2>
+    <h1>Arenas stay on the machine that captured them</h1>
     <p>This hosted site is a <strong>read-only demo</strong>. It has no arenas to show
        you &mdash; and that isn&rsquo;t an empty database. The two AgentBattleground
        tables are deliberately excluded from the sync that fills this mirror, so a

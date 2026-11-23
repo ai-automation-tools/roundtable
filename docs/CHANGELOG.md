@@ -11,6 +11,14 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 - **The 30-second poll is ~2% of its old size.** The chrome asks `/api/conversations` for just the four fields it shows, and an unchanged answer comes back as a `304`.
 - Audit item RT-41.
 
+### Fixed — page structure a screen reader can navigate
+
+- **One `h1` per page and no skipped heading levels.** The persona explorer, persona manager, orchestrate, settings, battleground and extension pages and both 404s had no `h1`; a conversation had one per cast card; the home page jumped from `h2` to `h4`.
+- **Messages and persona cards nest their headings under the page's.** A message's `# Heading` now renders beneath its speaker, a card's beneath its section, at the same visual size as before.
+- **The transcript is a live log.** Each message is an `article` named by its speaker, and messages that arrive over the stream are announced.
+- **Form fields have names.** The orchestrate title and brief, the format and sub-type choices, and the notification and delivery settings fields are labelled. Lighthouse accessibility is 100 on the home page, `/orchestrate`, the notifications tab and a long transcript.
+- Audit item RT-40.
+
 ### Fixed — the AgentBattleground side panel works with a screen reader
 
 - Status lines (capture, arena, hand-off, auto re-capture, settings) are announced as they change. The bridge indicator says *Connected* or *Offline* in words, not only in colour, and the settings toggle has a name and reports whether it's open.
