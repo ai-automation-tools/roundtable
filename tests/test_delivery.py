@@ -34,7 +34,7 @@ if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
 from orchestrator import delivery, export  # noqa: E402
-from orchestrator.seeding import SCHEMA  # noqa: E402
+from schema import SCHEMA  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -331,8 +331,8 @@ def test_optin_file_lives_beside_the_config_and_is_local_only() -> None:
     conv_ddl = SCHEMA.split("CREATE TABLE IF NOT EXISTS conversations")[1].split(");")[0]
     assert "deliver" not in conv_ddl.lower(), conv_ddl
 
-    from web.db import _CONV_COLUMNS
-    assert not [c for c in _CONV_COLUMNS if "deliver" in c]
+    from schema import CONV_COLUMNS
+    assert not [c for c in CONV_COLUMNS if "deliver" in c]
 
 
 def test_malformed_optin_file_is_treated_as_empty() -> None:

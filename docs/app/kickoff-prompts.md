@@ -348,16 +348,10 @@ kickoff_template  TEXT  -- rendered template body, or NULL
 The migration is **idempotent**: `db_init()` checks
 `PRAGMA table_info(conversations)` and `ALTER TABLE` ADDs each
 missing column. Safe on fresh DBs (no-op past `executescript`) and on
-existing DBs from older builds. Mirrored in several places — keep in
-sync when adding columns:
-
-- `src/agent_chat_mcp.py` — `_MIGRATIONS` constant + `db_init()`.
-- `src/web_ui.py` — `_MIGRATIONS` constant + `db_init()`. Also
-  `_CONV_COLUMNS` (ingest/since endpoints).
-- `src/orchestrator/seeding.py` — `_MIGRATIONS` constant + the migration
-  block in `seed_conversation()` (`start_conversation.py` is a thin
-  wrapper that delegates here).
-- `scripts/db_sync.py` — `CONV_COLUMNS` (sidecar push column list).
+existing DBs from older builds. It lives in `src/schema.py` (`MIGRATIONS`,
+applied by `ensure_schema()`), which every process calls; the synced column
+list `CONV_COLUMNS` is there too, shared by `/api/ingest` and
+`scripts/db_sync.py`.
 
 Pre-existing rows have NULL in both columns. `get_kickoff()`'s
 `fallback` branch is exactly the "row exists, kickoff_template is
@@ -391,4 +385,4 @@ NULL" case.
 | Change the default template path | `_DEFAULT_TEMPLATE_PATH` constant in [`src/orchestrator/seeding.py`](../../src/orchestrator/seeding.py). |
 | Change the `get_kickoff()` response shape | Tool body in [`src/agent_chat_mcp.py`](../../src/agent_chat_mcp.py); update the response-shape examples in this doc. |
 | Change the fallback string | `_FALLBACK_KICKOFF` constant in [`src/agent_chat_mcp.py`](../../src/agent_chat_mcp.py). |
-| Add a new schema column | `SCHEMA` + `_MIGRATIONS` in `agent_chat_mcp.py`, `web_ui.py`, and `orchestrator/seeding.py` **plus** `_CONV_COLUMNS` (web_ui.py) and `CONV_COLUMNS` (db_sync.py). Per-feature doc update goes here. |
+| Add a new schema column | `SCHEMA` + `MIGRATIONS` (+ `CONV_COLUMNS` if it syncs) in `src/schema.py`. Per-feature doc update goes here. |

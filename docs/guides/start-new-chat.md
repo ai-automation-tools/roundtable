@@ -401,7 +401,7 @@ token or changed `AGENT_CHAT_REMOTE_URL` and need the new value loaded.
 > [!TIP]
 > If you run a mirror **and** you've changed the schema, ship the new code to
 > the mirror *before* restarting the sidecar. In the other order the sidecar
-> pushes against the old schema, `_CONV_COLUMNS` silently drops the new fields,
+> pushes against the old schema, the mirror's ingest silently drops the new fields,
 > and the rows won't re-sync on their own — the watermark has already moved past
 > them. Repair it with one `--force-push` run rather than deleting
 > `db\.sync-state.json`:

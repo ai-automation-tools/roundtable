@@ -100,8 +100,8 @@
       "sources": [
         {
           "path": "src/orchestrator/seeding.py",
-          "line": 249,
-          "end_line": 344
+          "line": 153,
+          "end_line": 248
         }
       ]
     },
@@ -132,8 +132,8 @@
       "sources": [
         {
           "path": "src/orchestrator/seeding.py",
-          "line": 365,
-          "end_line": 400
+          "line": 269,
+          "end_line": 300
         }
       ]
     },
@@ -148,8 +148,8 @@
       "sources": [
         {
           "path": "src/agent_chat_mcp.py",
-          "line": 651,
-          "end_line": 704
+          "line": 545,
+          "end_line": 598
         }
       ]
     },
@@ -164,8 +164,8 @@
       "sources": [
         {
           "path": "src/agent_chat_mcp.py",
-          "line": 945,
-          "end_line": 980
+          "line": 839,
+          "end_line": 874
         }
       ]
     },
@@ -205,8 +205,8 @@
       "sources": [
         {
           "path": "src/agent_chat_mcp.py",
-          "line": 800,
-          "end_line": 864
+          "line": 694,
+          "end_line": 758
         }
       ]
     },
@@ -221,8 +221,8 @@
       "sources": [
         {
           "path": "src/agent_chat_mcp.py",
-          "line": 886,
-          "end_line": 905
+          "line": 780,
+          "end_line": 799
         }
       ]
     },

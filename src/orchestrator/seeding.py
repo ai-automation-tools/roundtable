@@ -6,10 +6,8 @@ The CLI argparse layer (in ``start_conversation.py``) parses flags, applies
 preset defaults, and then calls ``seed_conversation()``. The Web UI handler
 parses form fields, runs preflight, and then calls the same function.
 
-Schema and migration logic mirror ``src/agent_chat_mcp.py`` and ``src/web_ui.py``;
-the constants below intentionally duplicate the SCHEMA / _MIGRATIONS strings so
-this module can run against a fresh-clone DB without a prior connection from
-either of those modules.
+The schema comes from ``src/schema.py``, so this module can seed a fresh-clone
+DB without the MCP server or the web UI having opened it first.
 """
 
 from __future__ import annotations
@@ -24,6 +22,7 @@ from pathlib import Path
 from typing import Optional
 
 from presets import deliverable_for
+from schema import ensure_schema
 from . import delivery
 from .conv_types import (
     DEFAULT_CONV_TYPE,
@@ -47,101 +46,6 @@ _TEMPLATE_MARKER = "{{TOPIC}}"
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 _DEFAULT_TEMPLATE_PATH = _REPO_ROOT / "prompts" / "Kickoff" / "kickoff.md"
 
-
-SCHEMA = """
-CREATE TABLE IF NOT EXISTS conversations (
-    id                INTEGER PRIMARY KEY AUTOINCREMENT,
-    topic             TEXT NOT NULL,
-    participants      TEXT NOT NULL,
-    mode              TEXT NOT NULL,
-    max_turns         INTEGER NOT NULL,
-    current_turn      TEXT,
-    status            TEXT NOT NULL,
-    end_reason        TEXT,
-    created_at        TEXT NOT NULL,
-    updated_at        TEXT NOT NULL,
-    preset            TEXT,
-    kickoff_template  TEXT,
-    participant_personas TEXT,
-    conv_type         TEXT NOT NULL DEFAULT 'debate',
-    participant_roles TEXT
-);
-
-CREATE TABLE IF NOT EXISTS messages (
-    id               INTEGER PRIMARY KEY AUTOINCREMENT,
-    conversation_id  INTEGER NOT NULL REFERENCES conversations(id),
-    sender           TEXT NOT NULL,
-    content          TEXT NOT NULL,
-    signal           TEXT,
-    created_at       TEXT NOT NULL
-);
-
-CREATE INDEX IF NOT EXISTS idx_messages_conv ON messages(conversation_id, id);
-
-CREATE TABLE IF NOT EXISTS personas (
-    "group"      TEXT NOT NULL,
-    slug         TEXT NOT NULL,
-    name         TEXT NOT NULL,
-    tags         TEXT,
-    category     TEXT,
-    subcategory  TEXT,
-    body         TEXT NOT NULL,
-    avatar_mime  TEXT,
-    avatar_data  TEXT,
-    created_at   TEXT NOT NULL,
-    updated_at   TEXT NOT NULL,
-    PRIMARY KEY ("group", slug)
-);
-
-CREATE INDEX IF NOT EXISTS idx_personas_updated ON personas(updated_at);
-
-CREATE TABLE IF NOT EXISTS battleground_arenas (
-    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    url           TEXT NOT NULL,
-    site          TEXT NOT NULL,
-    title         TEXT NOT NULL,
-    thread        TEXT NOT NULL,
-    stance        TEXT,
-    reply_to      TEXT,
-    agent_id      TEXT,
-    persona_slug  TEXT,
-    persona_name  TEXT,
-    persona_body  TEXT,
-    status        TEXT NOT NULL,
-    created_at    TEXT NOT NULL,
-    updated_at    TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS battleground_drafts (
-    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    arena_id      INTEGER NOT NULL REFERENCES battleground_arenas(id),
-    agent_id      TEXT NOT NULL,
-    reply_to      TEXT,
-    content       TEXT NOT NULL,
-    rationale     TEXT,
-    status        TEXT NOT NULL,
-    verdict_note  TEXT,
-    posted_text   TEXT,
-    created_at    TEXT NOT NULL,
-    updated_at    TEXT NOT NULL
-);
-
-CREATE INDEX IF NOT EXISTS idx_bg_arenas_status ON battleground_arenas(status, id);
-CREATE INDEX IF NOT EXISTS idx_bg_drafts_arena ON battleground_drafts(arena_id, id);
-"""
-
-_MIGRATIONS = (
-    ("conversations", "preset",           "ALTER TABLE conversations ADD COLUMN preset TEXT"),
-    ("conversations", "kickoff_template", "ALTER TABLE conversations ADD COLUMN kickoff_template TEXT"),
-    ("conversations", "participant_personas", "ALTER TABLE conversations ADD COLUMN participant_personas TEXT"),
-    ("conversations", "conv_type",
-     "ALTER TABLE conversations ADD COLUMN conv_type TEXT NOT NULL DEFAULT 'debate'"),
-    ("conversations", "participant_roles",
-     "ALTER TABLE conversations ADD COLUMN participant_roles TEXT"),
-    ("battleground_arenas", "reply_to", "ALTER TABLE battleground_arenas ADD COLUMN reply_to TEXT"),
-    ("personas", "avatar_mime", "ALTER TABLE personas ADD COLUMN avatar_mime TEXT"),
-    ("personas", "avatar_data", "ALTER TABLE personas ADD COLUMN avatar_data TEXT"),
-)
 
 
 @dataclass
@@ -367,11 +271,7 @@ def seed_conversation(
     try:
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA foreign_keys=ON")
-        conn.executescript(SCHEMA)
-        for table, column, ddl in _MIGRATIONS:
-            cols = {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
-            if column not in cols:
-                conn.execute(ddl)
+        ensure_schema(conn)
 
         current_turn = first_speaker if mode == "turns" else None
         ts = now_iso()

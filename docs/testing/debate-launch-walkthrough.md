@@ -123,8 +123,8 @@ start.ps1 --preset debate --topic "<topic>" --participants claude-code,antigravi
 - Opens `db/chat.db` with `PRAGMA journal_mode=WAL`, `foreign_keys=ON`,
   `isolation_level=None`, `timeout=10.0` — the same connection contract the MCP
   server and web UI use.
-- Runs the idempotent `SCHEMA` + additive `_MIGRATIONS` (adds `preset` /
-  `kickoff_template` columns if missing).
+- Runs `schema.ensure_schema()`: the idempotent `SCHEMA` + additive `MIGRATIONS`
+  (adds `preset` / `kickoff_template` columns if missing).
 - Renders the **kickoff template** once: reads `prompts/Kickoff/kickoff.md`, extracts the
   ` ```text ` block containing `{{TOPIC}}`, substitutes `{{TOPIC}}` and
   `{{TONE_INSTRUCTION}}`, and (for ≥3 agents) rewrites "another AI agent" →

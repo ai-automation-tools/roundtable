@@ -23,7 +23,8 @@ notes). These override generic guidance.
 
 ```
 src/
-├── agent_chat_mcp.py        # The MCP server (MCPServer + sqlite3) — canonical SCHEMA
+├── agent_chat_mcp.py        # The MCP server (MCPServer + sqlite3)
+├── schema.py                # THE schema: DDL, migrations, synced column lists, arena/draft statuses
 ├── start_conversation.py    # argparse wrapper around orchestrator.seeding
 ├── inspect_conversations.py # CLI: list / show / tail / stop
 ├── presets.py               # Named kickoff presets (tone + mode + max_turns)
@@ -83,18 +84,9 @@ When you add a new top-level concern, update this map (here in `AGENTS.md`), `do
 > [!TIP]
 > The `agent-chat-schema` skill carries this checklist plus current table shapes; it auto-loads when you touch a schema file.
 
-The DB is the **contract** between processes. The canonical schema is `SCHEMA` in `agent_chat_mcp.py`, but it is copy-pasted across four sites — mirror all of them in the same change:
+The DB is the **contract** between processes, and it is declared **once**, in `src/schema.py` (stdlib only, since 2026-11-22): `SCHEMA` (all five tables + indexes), `MIGRATIONS` (`(table, column, ddl)` triples), the synced column lists `CONV_COLUMNS` / `MSG_COLUMNS` / `PERSONA_COLUMNS` (read by both `/api/ingest` and `scripts/db_sync.py`), and the `ARENA_*` / `DRAFT_*` status values. Every process boots a file through `schema.ensure_schema(conn)`, which is idempotent and tolerates two processes migrating at once. **Never declare DDL anywhere else** — `tests/test_conv_types.py` fails on a `CREATE TABLE` outside `schema.py`, and pins the column lists and every `INSERT`'s column names against the real tables.
 
-| File | Constant | Scope |
-|:---|:---|:---|
-| `src/agent_chat_mcp.py` | `SCHEMA` | canonical — all 3 tables + 2 indexes |
-| `src/web/db.py` | `SCHEMA` | full mirror |
-| `src/orchestrator/seeding.py` | `SCHEMA` | full mirror |
-| `src/orchestrator/personas.py` | `_PERSONA_DDL` | `personas` table only |
-
-`_MIGRATIONS` — `(table, column, ddl)` triples applied by `db_init()`, gated on `PRAGMA table_info` so they stay idempotent — is duplicated in the first three.
-
-Any schema change requires: additive columns (renames/drops need a migration plan) · a `_MIGRATIONS` row per copy so existing `db/chat.db` files upgrade in place · updating every **reader** of a changed column — `inspect_conversations.py`, the `web/db.py` helpers, `orchestrator/export.py`, the SSE payload, and the `/api/ingest` + `/api/since` sync path (a column the sidecar doesn't carry never reaches the Fly mirror) · a CHANGELOG note. `start_conversation.py` and `inspect_conversations.py` declare no schema.
+Any schema change requires: additive columns (renames/drops need a migration plan) · a `MIGRATIONS` row so existing `db/chat.db` files upgrade in place · the column in the matching `*_COLUMNS` tuple if it should reach the mirror · updating every **reader** of a changed column — `inspect_conversations.py`, the `web/db.py` helpers, `orchestrator/export.py`, the SSE payload, and the `/api/ingest` + `/api/since` sync path (a column the sidecar doesn't carry never reaches the Fly mirror) · a CHANGELOG note. `start_conversation.py` and `inspect_conversations.py` declare no schema.
 
 Other rules: WAL mode is mandatory — two processes write the same file. Connections use `isolation_level=None` and `timeout=10.0`; the write paths use explicit `BEGIN`/`COMMIT`/`ROLLBACK`, which is only correct in autocommit mode. Parameterize all queries. And **`web.db.set_db_path()` also exports `$AGENT_CHAT_DB`** — `orchestrator.personas` resolves its own path from that env var per call and never sees `web.db.DB_PATH`, so without the export a custom `--db-path` reads conversations from one DB and personas from another.
 
@@ -213,7 +205,7 @@ Every file under `tests/` is pytest-compatible **and** standalone-runnable (`.\.
 | `test_maintain_app.py` | The nightly backup script run for real against temp paths: a good night checks integrity and prunes only its own `chat-YYYYMMDD-HHMMSS.db` copies; a failed one exits 1, leaves no bad copy and prunes nothing. Needs `pwsh` + the project venv |
 | `test_delivery.py` | Delivery sinks; **folder output == `export.zip`, byte for byte**; off-unless-configured; failure isolation; all three completion paths call `deliver()` |
 | `test_db_sync_watermarks.py` | Sidecar watermarks: push cursor on the **local** clock, pull cursor on the server's; a local edit behind `server_time` still pushes; the pulled-row echo terminates; `--force-push`; **`config/sync-exclude.json` keeps a conversation off the public mirror without deleting it locally** |
-| `test_conv_types.py` | Seat rules, the `conv_type` backfill, schema-mirror parity across the three `SCHEMA` copies, conversation column parity `web/db.py` ↔ `scripts/db_sync.py`, export Type/Role rows, the `signal='result'` deliverable, sub-type presets, and that the launch prompt stays role-agnostic |
+| `test_conv_types.py` | Seat rules, the `conv_type` backfill, **one schema declaration** (no `CREATE TABLE` outside `src/schema.py`), migrated DB == fresh DB, the synced column lists == the real tables, every `INSERT`'s columns exist, export Type/Role rows, the `signal='result'` deliverable, sub-type presets, and that the launch prompt stays role-agnostic |
 
 Beyond that, validation is manual: import the server cleanly · `python -m json.tool` any `.mcp.json` you touch · seed a `--max-turns 2` conversation end-to-end and confirm the row reaches `status='complete'` · watch a live exchange append over SSE. New tests use `pytest` with an isolated tmp `db/chat.db` — **do not mock SQLite**, the WAL multi-process behavior is the thing under test.
 

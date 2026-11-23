@@ -33,7 +33,7 @@ working — the tests import them.
 
 | Module | Owns |
 |:---|:---|
-| [**`db.py`**](web/db.py) | Connection handling, the `SCHEMA` mirror + `_MIGRATIONS`, every SQL helper, and `set_db_path()` (which also exports `$AGENT_CHAT_DB`). |
+| [**`db.py`**](web/db.py) | Connection handling, `db_init()` (via `schema.ensure_schema`), every SQL helper, and `set_db_path()` (which also exports `$AGENT_CHAT_DB`). |
 | [**`security.py`**](web/security.py) | `BasicAuthMiddleware`, `ReadOnlyMiddleware`, the always-on Host allowlist (`allowed_hosts()`, `AGENT_CHAT_ALLOWED_HOSTS`), `CrossSiteWriteGuard` and the AgentBattleground extension allowlist (`AGENT_CHAT_EXTENSION_IDS`), and `_build_middleware()` — what makes the hosted mirror refuse browser mutations. |
 | [**`assets.py`**](web/assets.py) | CSS / JS / SVG constants (`BASE_CSS`, `HOME_CSS`, `_CONV_CSS`, `_PERSONAS_CSS`, favicon). |
 | [**`avatars.py`**](web/avatars.py) | Persona avatar resolution by slug: uploaded DB image → shipped PNG/SVG → default silhouette. Serves `GET /avatars/{slug}`. |
@@ -58,7 +58,7 @@ working — the tests import them.
 
 | Rule | Detail |
 |:---|:---|
-| **Schema lives in four places** | `agent_chat_mcp.py` (canonical), `web/db.py`, `orchestrator/seeding.py`, and `orchestrator/personas.py` (personas table only). Mirror all of them **plus** a `_MIGRATIONS` row per copy, in the same change. |
+| **Schema lives in one place** | [`schema.py`](schema.py): DDL, `MIGRATIONS`, the synced column lists, arena/draft statuses. Stdlib only, so every process (MCP server, web UI, seeding, personas, `scripts/db_sync.py`) imports it. No `CREATE TABLE` anywhere else — a test fails on one. |
 | **Never `print()` in the MCP server** | stdout is the JSON-RPC stream. Write to `sys.stderr`. |
 | **WAL is mandatory** | Two processes write the same file. Connections use `isolation_level=None` + `timeout=10.0`; the write paths rely on autocommit for their explicit `BEGIN`/`COMMIT`. |
 | **The export format is frozen** | Three external consumers parse it — see [`docs/app/export-format.md`](../docs/app/export-format.md). |

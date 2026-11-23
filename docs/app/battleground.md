@@ -55,7 +55,7 @@ The reason is straightforward: an agent that autoposts persona-driven replies in
 
 ## Schema
 
-Two tables, declared in all three `SCHEMA` mirrors (`src/agent_chat_mcp.py`, `src/web/db.py`, `src/orchestrator/seeding.py`) — see the schema rules in `AGENTS.md`. They arrived as new **tables**, so `CREATE TABLE IF NOT EXISTS` covered existing DBs; the one column added since (`battleground_arenas.reply_to`, 2026-08-01) carries a `_MIGRATIONS` row in each of the three mirrors, so an older `db/chat.db` picks it up on the next boot of whichever process opens it first.
+Two tables, declared in `src/schema.py` with the rest of the schema — see the schema rules in `AGENTS.md`. They arrived as new **tables**, so `CREATE TABLE IF NOT EXISTS` covered existing DBs; the one column added since (`battleground_arenas.reply_to`, 2026-08-01) carries a `MIGRATIONS` row, so an older `db/chat.db` picks it up on the next boot of whichever process opens it first.
 
 **`battleground_arenas`** — one captured debate.
 
@@ -82,7 +82,7 @@ Two tables, declared in all three `SCHEMA` mirrors (`src/agent_chat_mcp.py`, `sr
 
 ### Local-only, deliberately
 
-Neither table appears in `_CONV_COLUMNS` / `_MSG_COLUMNS` / `_PERSONA_COLUMNS`, so the sidecar (`scripts/db_sync.py`) never ships them and they never reach the Fly mirror. Captured third-party page content stays on the machine that captured it. `tests/test_battleground.py` pins this.
+Neither table appears in `schema.CONV_COLUMNS` / `MSG_COLUMNS` / `PERSONA_COLUMNS`, so the sidecar (`scripts/db_sync.py`) never ships them and they never reach the Fly mirror. Captured third-party page content stays on the machine that captured it. `tests/test_battleground.py` pins this.
 
 On the hosted mirror the write routes 403 via `ReadOnlyMiddleware` like every other mutation — nothing special was needed, since the gate keys off HTTP method.
 

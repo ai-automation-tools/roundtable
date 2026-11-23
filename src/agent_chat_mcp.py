@@ -41,6 +41,7 @@ from orchestrator import delivery
 from orchestrator import personas as personas_registry
 from orchestrator.conv_types import CONV_TYPES, lead_of
 from presets import BLIND_FIRST, protocol_for
+from schema import DRAFT_APPROVED, DRAFT_PENDING, DRAFT_POSTED, DRAFT_REJECTED, ensure_schema
 
 
 # ---------------------------------------------------------------------------
@@ -75,109 +76,6 @@ POLL_INTERVAL_SECONDS = 1.0
 # Database layer
 # ---------------------------------------------------------------------------
 
-SCHEMA = """
-CREATE TABLE IF NOT EXISTS conversations (
-    id                INTEGER PRIMARY KEY AUTOINCREMENT,
-    topic             TEXT NOT NULL,
-    participants      TEXT NOT NULL,         -- JSON array of agent ids
-    mode              TEXT NOT NULL,         -- 'turns' | 'continuous'
-    max_turns         INTEGER NOT NULL,      -- per-agent cap
-    current_turn      TEXT,                  -- agent id whose turn it is (turns mode)
-    status            TEXT NOT NULL,         -- 'active' | 'complete'
-    end_reason        TEXT,                  -- why it ended, if complete
-    created_at        TEXT NOT NULL,
-    updated_at        TEXT NOT NULL,
-    preset            TEXT,                  -- sub-type / tone; see src/presets.py. NULL = paste-the-prompt flow
-    kickoff_template  TEXT,                  -- rendered template body returned by get_kickoff()
-    participant_personas TEXT,               -- JSON: {agent_id: {persona_slug, persona_name, persona_body}} (debate-mode casts)
-    conv_type         TEXT NOT NULL DEFAULT 'debate',  -- structure: see orchestrator/conv_types.py
-    participant_roles TEXT                   -- JSON: {agent_id: <role>} — roles per type, see orchestrator/conv_types.py
-);
-
-CREATE TABLE IF NOT EXISTS messages (
-    id               INTEGER PRIMARY KEY AUTOINCREMENT,
-    conversation_id  INTEGER NOT NULL REFERENCES conversations(id),
-    sender           TEXT NOT NULL,          -- agent id, or 'system' for kickoff
-    content          TEXT NOT NULL,
-    signal           TEXT,                   -- optional: 'done', 'blocked', 'result'
-    created_at       TEXT NOT NULL
-);
-
-CREATE INDEX IF NOT EXISTS idx_messages_conv ON messages(conversation_id, id);
-
-CREATE TABLE IF NOT EXISTS personas (
-    "group"      TEXT NOT NULL,          -- folder/group name (e.g. Unique-Personas)
-    slug         TEXT NOT NULL,          -- file-stem style id (e.g. crypto-chad)
-    name         TEXT NOT NULL,          -- display name
-    tags         TEXT,                   -- JSON array
-    category     TEXT,
-    subcategory  TEXT,
-    body         TEXT NOT NULL,          -- the personality card prompt body
-    avatar_mime  TEXT,                   -- uploaded avatar's image/* type (NULL = none)
-    avatar_data  TEXT,                   -- uploaded avatar, base64 (see web/avatars.py)
-    created_at   TEXT NOT NULL,
-    updated_at   TEXT NOT NULL,
-    PRIMARY KEY ("group", slug)
-);
-
-CREATE INDEX IF NOT EXISTS idx_personas_updated ON personas(updated_at);
-
--- AgentBattleground: a debate captured from a real webpage that an agent
--- argues in. Local-only — deliberately NOT carried by the Fly sidecar sync.
-CREATE TABLE IF NOT EXISTS battleground_arenas (
-    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    url           TEXT NOT NULL,          -- page the debate lives on
-    site          TEXT NOT NULL,          -- adapter label; see KNOWN_SITES in web/api/battleground.py
-    title         TEXT NOT NULL,          -- thread / page title
-    thread        TEXT NOT NULL,          -- JSON array of captured posts
-    stance        TEXT,                   -- operator brief: which side to argue
-    reply_to      TEXT,                   -- captured post id the operator picked (NULL = agent's choice)
-    agent_id      TEXT,                   -- CLI assigned to this arena (NULL = any)
-    persona_slug  TEXT,
-    persona_name  TEXT,
-    persona_body  TEXT,                   -- snapshot of the card at capture time
-    status        TEXT NOT NULL,          -- 'open' | 'closed'
-    created_at    TEXT NOT NULL,
-    updated_at    TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS battleground_drafts (
-    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    arena_id      INTEGER NOT NULL REFERENCES battleground_arenas(id),
-    agent_id      TEXT NOT NULL,
-    reply_to      TEXT,                   -- captured post id answered (NULL = top level)
-    content       TEXT NOT NULL,          -- what the agent wrote
-    rationale     TEXT,                   -- agent's private note to the operator
-    status        TEXT NOT NULL,          -- 'pending' | 'approved' | 'rejected' | 'posted'
-    verdict_note  TEXT,                   -- operator feedback (revision request / reason)
-    posted_text   TEXT,                   -- text that actually went on the page
-    created_at    TEXT NOT NULL,
-    updated_at    TEXT NOT NULL
-);
-
-CREATE INDEX IF NOT EXISTS idx_bg_arenas_status ON battleground_arenas(status, id);
-CREATE INDEX IF NOT EXISTS idx_bg_drafts_arena ON battleground_drafts(arena_id, id);
-"""
-
-# Columns added after the initial schema. Each tuple is (table, column, ddl).
-# db_init() applies these idempotently via PRAGMA table_info() so existing
-# DBs from before the column was added migrate cleanly on the next boot.
-_MIGRATIONS = (
-    ("conversations", "preset",           "ALTER TABLE conversations ADD COLUMN preset TEXT"),
-    ("conversations", "kickoff_template", "ALTER TABLE conversations ADD COLUMN kickoff_template TEXT"),
-    ("conversations", "participant_personas", "ALTER TABLE conversations ADD COLUMN participant_personas TEXT"),
-    # NOT NULL + DEFAULT is the backfill: every row that predates the column
-    # becomes a 'debate', which is what all of them were.
-    ("conversations", "conv_type",
-     "ALTER TABLE conversations ADD COLUMN conv_type TEXT NOT NULL DEFAULT 'debate'"),
-    ("conversations", "participant_roles",
-     "ALTER TABLE conversations ADD COLUMN participant_roles TEXT"),
-    ("battleground_arenas", "reply_to", "ALTER TABLE battleground_arenas ADD COLUMN reply_to TEXT"),
-    ("personas", "avatar_mime", "ALTER TABLE personas ADD COLUMN avatar_mime TEXT"),
-    ("personas", "avatar_data", "ALTER TABLE personas ADD COLUMN avatar_data TEXT"),
-)
-
-
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -204,11 +102,7 @@ def db_init() -> None:
     """
     os.makedirs(os.path.dirname(os.path.abspath(DB_PATH)), exist_ok=True)
     with db_connect() as conn:
-        conn.executescript(SCHEMA)
-        for table, column, ddl in _MIGRATIONS:
-            cols = {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}
-            if column not in cols:
-                conn.execute(ddl)
+        ensure_schema(conn)
 
 
 def get_latest_conversation(conn: sqlite3.Connection, agent_id: str) -> Optional[sqlite3.Row]:
@@ -1217,10 +1111,6 @@ async def get_persona(params: GetPersonaInput) -> str:
 # standing between the draft and the page.
 # ---------------------------------------------------------------------------
 
-DRAFT_PENDING = "pending"
-DRAFT_APPROVED = "approved"
-DRAFT_REJECTED = "rejected"
-DRAFT_POSTED = "posted"
 
 def _untrusted_thread(arena: dict[str, Any]) -> dict[str, Any]:
     """The captured posts, labelled as what they are (rule 0 below)."""

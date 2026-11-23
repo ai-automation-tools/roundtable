@@ -4,6 +4,12 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 ## 2026-11-22 (latest)
 
+### Changed — the database schema is declared once, in `src/schema.py`
+
+- **One module replaces four copies.** The DDL used to be pasted into `agent_chat_mcp.py`, `web/db.py`, `orchestrator/seeding.py` and (personas only) `orchestrator/personas.py`, each with its own migration list, and the sync column lists lived in both `web/db.py` and `scripts/db_sync.py`. Now `src/schema.py` (stdlib only) holds `SCHEMA`, `MIGRATIONS`, `CONV_COLUMNS` / `MSG_COLUMNS` / `PERSONA_COLUMNS` and the arena/draft status values, and every process boots a file through `schema.ensure_schema(conn)`. No column changed; existing databases need nothing.
+- **Two processes migrating at once no longer crash the loser.** Both could see a column missing and both `ALTER TABLE`; the second now treats "duplicate column name" as done.
+- Tests (`tests/test_conv_types.py`): a `CREATE TABLE` outside `src/schema.py` fails the suite; a migrated DB matches a fresh one; the synced lists equal the `conversations`, `messages` and `personas` tables; every `INSERT INTO` in `src/` (including both battleground tables) names columns that exist. Audit item RT-27.
+
 ### Fixed — a deliverable's `##` sections no longer split the exported transcript
 
 - **`transcript.md` demotes a message body's own headings two levels** (`#` → `###`, `##` → `####`; fenced code untouched). The export contract says the `## sender — timestamp` lines are the only `##` lines a parser splits turns on, but bodies were emitted verbatim, so a collaboration result written with `## Risks` sections added a fake turn for every consumer (the delivery folder, the `.zip`, scripts). This changes the transcript bytes of any run whose messages contain headings; `docs/app/export-format.md` records it. Test: `tests/test_deliverable_flow.py`.

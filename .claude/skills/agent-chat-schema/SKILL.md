@@ -1,28 +1,26 @@
 ---
 name: agent-chat-schema
-description: Use when changing the Roundtable SQLite schema — adding/renaming/dropping a column or table, adding a migration, or touching db_init()/db_connect() pragmas. The schema is duplicated across four files and is the contract between processes, so a one-file edit silently breaks the other writers. Triggered by work on src/agent_chat_mcp.py SCHEMA, src/web/db.py, src/orchestrator/seeding.py, src/orchestrator/personas.py, _MIGRATIONS, "add a column", "migrate the DB", "new table".
+description: Use when changing the Roundtable SQLite schema — adding/renaming/dropping a column or table, adding a migration, or touching db_init()/db_connect() pragmas. The schema is declared once, in src/schema.py, and is the contract between processes. Triggered by work on src/schema.py, SCHEMA, MIGRATIONS, the synced *_COLUMNS lists, db_init()/ensure_schema(), "add a column", "migrate the DB", "new table".
 ---
 
 # Roundtable schema changes
 
 The DB **is** the contract between processes: the MCP server, the web UI, the
-seeder and the persona registry all open the same SQLite-WAL file. There is no
-ORM and no single migration tool — the schema is **copy-pasted across four
-files**, so changing one and not the others produces a DB whose shape depends on
-which process happened to create it first.
+seeder, the persona registry and the sync sidecar all open the same SQLite-WAL
+file. There is no ORM; there is **one module**, `src/schema.py` (stdlib only),
+and every process boots a file through `schema.ensure_schema(conn)`.
 
-## The four declaration sites
+## What `src/schema.py` holds
 
-| File | Constant | Scope |
-|:---|:---|:---|
-| `src/agent_chat_mcp.py` | `SCHEMA` | **canonical** — all 3 tables + 2 indexes |
-| `src/web/db.py` | `SCHEMA` | full mirror (comments stripped) |
-| `src/orchestrator/seeding.py` | `SCHEMA` | full mirror |
-| `src/orchestrator/personas.py` | `_PERSONA_DDL` | `personas` table only |
+| Name | What |
+|:---|:---|
+| `SCHEMA` | DDL for all five tables + indexes |
+| `MIGRATIONS` | `(table, column, ddl)` triples for columns added later |
+| `CONV_COLUMNS` / `MSG_COLUMNS` / `PERSONA_COLUMNS` (+ `PERSONA_COLS_SQL`) | what the sidecar sync carries; read by `/api/ingest` *and* `scripts/db_sync.py` |
+| `ARENA_*` / `DRAFT_*` / `DRAFT_VERDICTS` | battleground status values |
+| `ensure_schema(conn)` | `executescript(SCHEMA)` + each missing migration; a concurrent "duplicate column name" is ignored |
 
-`_MIGRATIONS` is duplicated in the first three as an identical tuple of
-`(table, column, ddl)` triples, applied by `db_init()` gated on
-`PRAGMA table_info({table})` so it stays idempotent:
+Migrations are gated on `PRAGMA table_info({table})` so they stay idempotent:
 
 ```python
 ("conversations", "preset", "ALTER TABLE conversations ADD COLUMN preset TEXT"),
@@ -37,14 +35,15 @@ which process happened to create it first.
 
 ## Checklist for a schema change
 
-1. **Additive only, by default.** New columns are safe: add to the canonical
-   `SCHEMA`, mirror into the other declaration sites, and append a
-   `(table, column, ddl)` row to every `_MIGRATIONS` copy so existing
-   `db/chat.db` files upgrade in place. Renames and drops need an explicit
+1. **Additive only, by default.** New columns are safe: add to `SCHEMA` in
+   `src/schema.py` and append a `(table, column, ddl)` row to `MIGRATIONS` so
+   existing `db/chat.db` files upgrade in place. Renames and drops need an explicit
    migration plan — SQLite can't drop a column on older versions, and every
    running CLI holds the old shape.
-2. **Mirror all four sites in the same change.** Grep for the constant to be
-   sure: `SCHEMA`, `_MIGRATIONS`, `_PERSONA_DDL`.
+2. **Never declare DDL anywhere else.** `tests/test_conv_types.py` fails on a
+   `CREATE TABLE` outside `src/schema.py`. If the column should reach the Fly
+   mirror, add it to the matching `*_COLUMNS` tuple too (the same test pins the
+   lists against the tables).
 3. **Update every reader of the changed column** — `inspect_conversations.py`,
    `web/db.py` helpers, `orchestrator/export.py`, the SSE payload in
    `web/api/conversations.py`, and the `/api/ingest` + `/api/since` sync path
@@ -88,9 +87,9 @@ Pragmas are **not** uniform today, which is worth knowing before you "fix" one:
 - **`personas`** — `"group"` (quoted — SQL reserved word), `slug`, `name`,
   `tags` (JSON), `category`, `subcategory`, `body`, `avatar_mime`, `avatar_data`
   (base64 upload), `created_at`, `updated_at`; `PRIMARY KEY ("group", slug)`.
-  Note `personas.py`'s `_ensure_table()` applies its own `_PERSONA_MIGRATIONS` —
-  the registry is reachable without any server booting, so it can't rely on
-  `db_init()` having run. Reads go through `_PERSONA_READ_COLS` (everything
+  `personas.py`'s `_ensure_table()` calls `schema.ensure_schema()` itself —
+  the registry is reachable without any server booting (debate.ps1 runs it as a
+  script), so it can't rely on `db_init()` having run. Reads go through `_PERSONA_READ_COLS` (everything
   except `avatar_data`), so listing the roster doesn't haul the images.
 - Indexes: `idx_messages_conv ON messages(conversation_id, id)`,
   `idx_personas_updated ON personas(updated_at)`.

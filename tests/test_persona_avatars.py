@@ -387,48 +387,19 @@ def test_images_alone_are_rejected() -> None:
 # 6. Schema / sync parity
 # ---------------------------------------------------------------------------
 
-def test_persona_column_lists_match_across_sync_sites() -> None:
-    """A column web/db.py carries but scripts/db_sync.py doesn't never syncs."""
-    import ast
-
-    from web.db import _PERSONA_COLUMNS
-
-    # Read the sidecar's tuple out of the source rather than importing it — the
-    # script is an operator entrypoint, not a library.
-    src = (Path(__file__).resolve().parent.parent / "scripts" / "db_sync.py"
-           ).read_text(encoding="utf-8")
-    tree = ast.parse(src)
-    sidecar = next(
-        ast.literal_eval(node.value)
-        for node in tree.body
-        if isinstance(node, ast.Assign)
-        and any(getattr(t, "id", "") == "PERSONA_COLUMNS" for t in node.targets)
-    )
-    assert sidecar == _PERSONA_COLUMNS
-    assert "avatar_data" in _PERSONA_COLUMNS and "avatar_mime" in _PERSONA_COLUMNS
-
-
-def test_every_schema_site_declares_the_avatar_columns() -> None:
-    """Four declaration sites; a DB's shape must not depend on who created it."""
-    _fresh_db()
+def test_the_avatar_columns_are_declared_and_synced() -> None:
+    """The table has them and the sync carries them (src/schema.py is the one
+    declaration; test_conv_types pins the lists against the tables)."""
     import sqlite3
 
-    import agent_chat_mcp
-    import web.db as webdb
-    from orchestrator import personas, seeding
+    import schema
 
-    for label, ddl in (
-        ("agent_chat_mcp.SCHEMA", agent_chat_mcp.SCHEMA),
-        ("web.db.SCHEMA", webdb.SCHEMA),
-        ("seeding.SCHEMA", seeding.SCHEMA),
-        ("personas._PERSONA_DDL", personas._PERSONA_DDL),
-    ):
-        tmp = Path(tempfile.mkdtemp(prefix="agentchat-ddl-")) / "chat.db"
-        conn = sqlite3.connect(tmp)
-        conn.executescript(ddl)
-        cols = {r[1] for r in conn.execute("PRAGMA table_info(personas)")}
-        conn.close()
-        assert {"avatar_mime", "avatar_data"} <= cols, f"{label} is missing them"
+    conn = sqlite3.connect(":memory:")
+    schema.ensure_schema(conn)
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(personas)")}
+    conn.close()
+    assert {"avatar_mime", "avatar_data"} <= cols
+    assert {"avatar_mime", "avatar_data"} <= set(schema.PERSONA_COLUMNS)
 
 
 def test_migration_adds_the_columns_to_a_pre_avatar_db() -> None:
@@ -467,7 +438,8 @@ def test_migration_adds_the_columns_to_a_pre_avatar_db() -> None:
 def test_ingest_round_trips_an_avatar() -> None:
     """The sidecar's payload must carry the image to the hosted mirror."""
     _fresh_db()
-    from web.db import _PERSONA_COLUMNS, ingest_payload, since_payload
+    from schema import PERSONA_COLUMNS as _PERSONA_COLUMNS
+    from web.db import ingest_payload, since_payload
 
     row = dict(zip(_PERSONA_COLUMNS, (
         "Testers", "crypto-chad", "Crypto Chad", None, "", "",
