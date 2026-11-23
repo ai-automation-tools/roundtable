@@ -101,14 +101,16 @@ roundtable/
 │   ├── collaborate-mode/         #   Layered skill — build one artifact        [SKILL.md + README.md]
 │   ├── battleground/             #   Argue in a captured web thread            [SKILL.md + README.md]
 │   └── start-debate/             #   Operator skill — launch a debate          [SKILL.md + README.md]
-├── agents/                       # Per-CLI agent workspaces + persona SEED cards
+├── agents/                       # Per-CLI seat TEMPLATES + persona SEED cards
 │   ├── README.md ★               #   Agents index — workspaces, role docs, persona caveat
-│   ├── CLIs/                     #   Role docs (full-stack dev + agent-chat) + per-CLI MCP configs
-│   │   ├── claude-code_agent1/   #     claude.md + .mcp.json
+│   ├── CLIs/                     #   Seat templates: role doc + MCP config (launcher as <repo>/...)
+│   │   ├── claude-code_agent1/   #     claude.md (MCP at user scope, see MCP-NOTE.md)
 │   │   ├── codex_agent1/         #     AGENTS.md (MCP in global ~/.codex/config.toml)
 │   │   ├── antigravity_agent1/   #     AGENTS.md + .agents/mcp_config.json
-│   │   ├── opencode_agent1/      #     AGENTS.md + opencode.json (mcp key, type:local, command array)
-│   │   └── <cli>_agent2..5/      #     Extra seats — generated per machine, GITIGNORED (add_agent_seat.py)
+│   │   └── opencode_agent1/      #     AGENTS.md + opencode.json (mcp key, type:local, command array)
+│   │                             #   Seats LAUNCH from <seat root>/<cli>_agent<N>/, outside the repo:
+│   │                             #   %LOCALAPPDATA%/Roundtable/seats/<clone> or $AGENT_CHAT_SEATS_DIR.
+│   │                             #   add_agent_seat.py --materialize copies the templates there.
 │   ├── Debate-Agents/            #   SEED CARDS ONLY — live personas are DB rows, not these files
 │   │   ├── Debate-Agents-Random/ #     Original roster + Debate-Hosts/ moderators
 │   │   └── AI-Library-Imports/   #     Cards imported from the AI-Automation-Library (+ cover art)

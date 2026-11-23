@@ -127,7 +127,7 @@ Once all three CLIs have `roundtable` registered:
 
    The `--participants` order defines turn rotation. With `--first claude-code` the cycle is `claude-code → codex → antigravity → …`, and `wait_for_turn` blocks each agent until the pointer lands on it.
 
-2. Open all three CLIs in separate terminals (each from its own `agents/CLIs/<name>_agent1/` folder).
+2. Open all three CLIs in separate terminals (each from its own seat folder, `<name>_agent1\` under `%LOCALAPPDATA%\Roundtable\seats\<clone folder name>\`; see [where seat folders live](../../app/cli-setup.md#where-seat-folders-live)).
 3. Paste the canonical kickoff prompt from `prompts/Kickoff/kickoff.md` into each, replacing `{{TOPIC}}` and `{{TONE_INSTRUCTION}}`.
 4. Send the prompt to the `--first` agent first.
 5. Watch live at `http://127.0.0.1:8765/` (run `src/web_ui.py` in a fourth terminal).
@@ -144,7 +144,7 @@ Once all three CLIs have `roundtable` registered:
   .\.venv\Scripts\python.exe scripts\setup\add_agent_seat.py --cli codex --seat 2
   ```
 
-  That seeds `agents/CLIs/codex_agent2/.codex/config.toml` from your global config with the agent id rewritten, and `scripts/lib/spawn-agents.ps1` exports `CODEX_HOME` for seat 2+ at launch. **`CODEX_HOME` relocates the whole user root — credentials included — so run `codex login` once against the new home** (or copy `auth.json` into it) before that seat can do anything. A second OS user works too, and is the only option if you'd rather not duplicate credentials.
+  That seeds `<seat root>\codex_agent2\.codex\config.toml` (the seat folder outside the repo, under `%LOCALAPPDATA%\Roundtable\seats\<clone folder name>\`) from your global config with the agent id rewritten, and `scripts/lib/spawn-agents.ps1` exports `CODEX_HOME` for seat 2+ at launch. **`CODEX_HOME` relocates the whole user root — credentials included — so run `codex login` once against the new home** (or copy `auth.json` into it) before that seat can do anything. A second OS user works too, and is the only option if you'd rather not duplicate credentials.
 - **Server stderr is swallowed.** Codex doesn't surface MCP stderr. To debug a startup failure, run the launch command directly and watch the output:
   ```powershell
   pwsh -NoProfile -File "<repo>/scripts/run-mcp-server.ps1" codex

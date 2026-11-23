@@ -41,6 +41,7 @@ from starlette.responses import JSONResponse, Response
 
 from orchestrator import personas as orch_personas
 from orchestrator import preflight as orch_preflight
+from orchestrator import seats as orch_seats
 from web.db import (
     ARENA_CLOSED,
     ARENA_OPEN,
@@ -92,13 +93,14 @@ KNOWN_SITES = (
 # into their own terminal. A localhost HTTP endpoint that spawns processes is a
 # different feature with a different threat model; this is a string.
 #
-# Mirrors the `$Clis` registry in scripts/lib/spawn-agents.ps1 (`Dir` + `Exe`);
-# tests/test_battleground.py pins the two together.
+# The binary mirrors the `$Clis` registry in scripts/lib/spawn-agents.ps1
+# (tests/test_battleground.py pins the two together); the folder is the seat's,
+# outside the repo (orchestrator.seats.seat_dir, audit RT-01).
 CLI_LAUNCH = {
-    "claude-code": {"dir": "agents/CLIs/claude-code_agent1", "exe": "claude"},
-    "codex":       {"dir": "agents/CLIs/codex_agent1",       "exe": "codex"},
-    "antigravity": {"dir": "agents/CLIs/antigravity_agent1", "exe": "agy"},
-    "opencode":    {"dir": "agents/CLIs/opencode_agent1",    "exe": "opencode"},
+    "claude-code": {"exe": "claude"},
+    "codex":       {"exe": "codex"},
+    "antigravity": {"exe": "agy"},
+    "opencode":    {"exe": "opencode"},
 }
 
 
@@ -595,7 +597,7 @@ def api_bg_roster(request: Request) -> Response:
         "agents": list(orch_preflight.SUPPORTED_CLIS),
         "sites": list(KNOWN_SITES),
         "launch": {
-            cli: CLI_LAUNCH[cli]
+            cli: {"dir": str(orch_seats.seat_dir(cli)), **CLI_LAUNCH[cli]}
             for cli in orch_preflight.SUPPORTED_CLIS
             if cli in CLI_LAUNCH
         },

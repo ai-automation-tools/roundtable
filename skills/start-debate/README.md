@@ -24,7 +24,7 @@ into each CLI's config dir automatically:
 ```
 
 > **Operator session note:** unlike the participation skills (which the *spawned*
-> CLI agents load from their `agents/CLIs/<cli>_agent1/` workspaces), `start-debate`
+> CLI agents load from their seat folders outside the repo), `start-debate`
 > is meant for the assistant **you** talk to at the repo root. For it to surface as
 > a `/skill` there, link `skills/` into that session's discovery dir too — e.g.
 > `New-Item -ItemType Junction -Path .claude\skills\start-debate -Target (Resolve-Path skills\start-debate)` —

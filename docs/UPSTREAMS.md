@@ -17,8 +17,8 @@ source. `—` means never checked.
 
 ## Supported CLIs
 
-Each CLI's launch line lives in `$Clis` in `scripts/lib/spawn-agents.ps1`, its MCP config in
-`agents/CLIs/<cli>_agent*/`, and its setup doc in `docs/cli-mcp-config/per-cli/`. A change to
+Each CLI's launch line lives in `$Clis` in `scripts/lib/spawn-agents.ps1`, its MCP config template in
+`agents/CLIs/<cli>_agent1/` (copied to the seat folders outside the repo), and its setup doc in `docs/cli-mcp-config/per-cli/`. A change to
 any of the three must keep the other two, and `tests/test_availability.py` / `tests/test_seats.py`, in step.
 
 | Upstream | What the code assumes | Doc | Check at | Last checked |

@@ -15,14 +15,20 @@ daily-driver doc — for one-time setup steps see
   pointing at this repo's `db/chat.db`. Start at the consolidated
   project-vs-global reference,
   [`docs/cli-mcp-config/README.md`](../cli-mcp-config/README.md); per-CLI
-  deep dives live under [`per-cli/`](../cli-mcp-config/per-cli/):
-  - Claude Code reads `agents/CLIs/claude-code_agent1/.mcp.json` —
+  deep dives live under [`per-cli/`](../cli-mcp-config/per-cli/). Each CLI
+  launches from its seat folder outside the repo, `<seat root>\<cli>_agent1\`
+  where `<seat root>` is `%LOCALAPPDATA%\Roundtable\seats\<clone folder name>\`
+  ([where seat folders live](../app/cli-setup.md#where-seat-folders-live));
+  `.\.venv\Scripts\python.exe scripts\setup\add_agent_seat.py --materialize`
+  creates them from the `agents/CLIs/` templates and prints the paths:
+  - Claude Code reads `~/.claude.json` (user scope) for seat 1, or
+    `<seat root>\claude-code_agent<N>\.mcp.json` —
     [`claude.md`](../cli-mcp-config/per-cli/claude.md).
   - Codex reads `~/.codex/config.toml` —
     [`codex.md`](../cli-mcp-config/per-cli/codex.md).
-  - Antigravity reads `agents/CLIs/antigravity_agent1/.agents/mcp_config.json` —
+  - Antigravity reads `<seat root>\antigravity_agent1\.agents\mcp_config.json` —
     [`antigravity.md`](../cli-mcp-config/per-cli/antigravity.md).
-  - OpenCode auto-loads `agents/CLIs/opencode_agent1/opencode.json` when launched
+  - OpenCode auto-loads `<seat root>\opencode_agent1\opencode.json` when launched
     from that folder (or register globally at `~/.config/opencode/opencode.json`);
     note the different shape (`mcp` key, `type:local`, `command` array); needs
     `opencode auth login` once — [`opencode.md`](../cli-mcp-config/per-cli/opencode.md).
@@ -350,7 +356,7 @@ Note `codex-2` above: that's a **second seat** on the Codex CLI, so a five-perso
 podcast doesn't need five different tools. Create one with
 `scripts/setup/add_agent_seat.py --cli codex --seat 2` (Codex needs an extra
 `codex login` — the script tells you). Launch it from
-`agents/CLIs/codex_agent2/` instead of `codex_agent1/`.
+`<seat root>\codex_agent2\` instead of `codex_agent1\`.
 
 ### A collaboration instead of an argument
 

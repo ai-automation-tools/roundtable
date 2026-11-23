@@ -192,8 +192,9 @@ approve it.
 ```
 
 If the CLI isn't running yet, **Copy launch command** gives you the line that
-starts it from the folder holding its MCP config (`cd agents/CLIs/codex_agent1;
-codex`). The panel copies it; you run it. Nothing here spawns a process — a
+starts it from its seat folder, which holds its MCP config and sits outside the
+repo (`cd <absolute seat folder>; codex`, see
+[where seat folders live](../app/cli-setup.md#where-seat-folders-live)). The panel copies it; you run it. Nothing here spawns a process — a
 localhost endpoint that starts programs on request is a different feature with
 a different threat model.
 

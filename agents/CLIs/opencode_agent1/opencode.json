@@ -18,7 +18,7 @@
         "pwsh",
         "-NoProfile",
         "-File",
-        "D:/AI_Agents/Projects/Mikes_AI_Lab/Repos/AI-Automation-Tools/Live_Apps/roundtable/scripts/run-mcp-server.ps1",
+        "<repo>/scripts/run-mcp-server.ps1",
         "opencode"
       ]
     }

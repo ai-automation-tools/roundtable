@@ -454,10 +454,11 @@ def test_roster_launch_commands_match_the_spawn_registry():
         # Every supported CLI the map knows about is offered...
         assert set(launch) <= set(bg.CLI_LAUNCH)
         assert "claude-code" in launch and "codex" in launch
+        from orchestrator import seats
         for cli, entry in launch.items():
-            assert entry["dir"].replace("/", "\\") in registry, (
-                f"{cli}: launch dir {entry['dir']} is not in spawn-agents.ps1"
-            )
+            # The seat folder, outside the repo (audit RT-01) -- the same one
+            # Resolve-AgentSeat launches from (test_seats pins that parity).
+            assert entry["dir"] == str(seats.seat_dir(cli)), (cli, entry)
             assert f"Exe = '{entry['exe']}" in registry, (
                 f"{cli}: launch exe {entry['exe']!r} is not in spawn-agents.ps1"
             )

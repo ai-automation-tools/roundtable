@@ -600,9 +600,10 @@ host gets a distinct "moderate, don't argue a side" launch prompt (role
 > on `roundtable-demo.ai-automation-tools.dev`:
 >
 > 1. **Preflight can't see the configs.** The handler requires each selected
->    CLI's `roundtable` config to exist on disk (under `agents/CLIs/`). That
->    tree is gitignored and **excluded from the Fly image**, so on the hosted
->    mirror every CLI fails preflight → `409`, nothing seeded.
+>    CLI's `roundtable` config to exist on disk, in its seat folder outside
+>    the repo (see [CLI setup](cli-setup.md#where-seat-folders-live)). The
+>    hosted mirror has none, so every CLI fails preflight → `409`, nothing
+>    seeded.
 > 2. **No agents run on Fly.** The container runs **only this `web_ui.py`** — a
 >    Starlette viewer. The CLI agents and the MCP server they launch exist only
 >    on your local machine; the cloud can't start processes there, so even a
@@ -634,7 +635,7 @@ option (`codex — config_missing`); it is not dropped, because an option that
 silently isn't there explains nothing. This is advisory: the authoritative
 preflight runs again server-side on POST, against the derived seat ids.
 
-Extra seats (`agents/CLIs/<cli>_agent2/` → `<cli>-2`) are no longer something
+Extra seats (`<seat root>/<cli>_agent2/` → `<cli>-2`) are no longer something
 the form lists or the operator names. A chair picks a **tool**; its seat number
 comes from chair order, and `POST /api/orchestrate` creates the config folder
 if it doesn't exist — see
@@ -779,7 +780,7 @@ spawn happens *after* a clean preflight + seed, in `scripts/orchestrate-debate.p
 
 | Check | claude-code | codex | antigravity |
 |:---|:---|:---|:---|
-| Config exists | `agents/CLIs/claude-code_agent1/.mcp.json` | `~/.codex/config.toml` | `agents/CLIs/antigravity_agent1/.agents/mcp_config.json` |
+| Config exists | `<seat root>/claude-code_agent1/.mcp.json`, else user scope `~/.claude.json` | `~/.codex/config.toml` | `<seat root>/antigravity_agent1/.agents/mcp_config.json` |
 | Parses | JSON | TOML (`tomllib`, stdlib 3.11+) | JSON |
 | Has `roundtable` entry | `mcpServers.roundtable` | `[mcp_servers.roundtable]` | `mcpServers.roundtable` |
 | `command` resolves | `shutil.which()` or file exists | same | same |
@@ -806,9 +807,9 @@ stripped for Windows filename compatibility). Format:
 # Requested CLIs: claude-code, codex, antigravity
 
 # Preflight: 2/3 OK
-  OK   claude-code  D:\...\agents\CLIs\claude-code_agent1\.mcp.json
+  OK   claude-code  C:\Users\you\.claude.json
   FAIL codex        [config_missing] Codex MCP config not found at ~/.codex/config.toml. See README 'Register the server' section for the [mcp_servers.roundtable] block.
-  OK   antigravity  D:\...\agents\CLIs\antigravity_agent1\.agents\mcp_config.json
+  OK   antigravity  C:\Users\you\AppData\Local\Roundtable\seats\roundtable\antigravity_agent1\.agents\mcp_config.json
 ```
 
 Successful runs do **not** write a log (the conversation row in

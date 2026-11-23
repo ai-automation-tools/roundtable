@@ -108,14 +108,51 @@ Capacity is `len(clis) × MAX_SEATS_PER_CLI` (5 per tool), and a conversation
 caps at 5 participants anyway — so one CLI can fill any conversation this app
 can seed.
 
+### Where seat folders live
+
+A CLI reads instructions from every `CLAUDE.md` / `AGENTS.md` (Antigravity:
+`GEMINI.md`) above the folder it starts in, and the repo's two tell a
+full-stack developer agent to work on this codebase. So a seat never starts
+inside the repo (audit RT-01). Each one launches from
+
+```
+%LOCALAPPDATA%\Roundtable\seats\<clone folder name>\<cli>_agent<N>\
+```
+
+(`$XDG_DATA_HOME` or `~/.local/share` instead of `%LOCALAPPDATA%` off Windows),
+or from `$AGENT_CHAT_SEATS_DIR\<cli>_agent<N>\` when that is set. One resolver
+decides it: `orchestrator.seats.seat_root()` / `seat_dir()`, mirrored by
+`Get-SeatRoot` in `scripts/lib/spawn-agents.ps1` (`tests/test_seats.py` runs
+both and compares). A seat root inside the repo is refused.
+
+The tracked `agents/CLIs/<cli>_agent1/` folders are **templates**: the role doc
+and, for Antigravity and OpenCode, the MCP config with its launcher written as
+`<repo>/scripts/run-mcp-server.ps1`. `add_agent_seat.py --materialize` copies
+them into the seat root, writes this clone's launcher path and the seat's agent
+id into each config, and leaves everything else in the folder alone (a Codex
+seat's `.codex/` home, a Claude seat's `.claude/settings.local.json`). It runs
+when the web app starts, when the CLI-tools tab is saved, before `/orchestrate`'s
+preflight, and before every launch, so a fresh clone needs no extra step.
+
+**Trust prompts.** A seat opens in a folder its CLI has never seen, in a real
+window, so each CLI's "do you trust this folder?" check would stall it. The
+launch-time run pre-trusts each folder in the CLI's own user config, adding one
+entry and nothing else: `projects["<folder>"].hasTrustDialogAccepted` in
+`~/.claude.json`, `[projects.'<folder, lower-cased>'] trust_level = "trusted"`
+in the Codex `config.toml` the seat runs with (`~/.codex/` for seat 1, the
+seat's own `CODEX_HOME` after that; Codex asks even with `--sandbox` set), and
+`trustedWorkspaces` in `~/.gemini/antigravity-cli/settings.json`. OpenCode has
+no trust prompt. The web app runs the same step with `trust=False`, so only a
+launch writes to a CLI's config.
+
 ### Missing seat folders
 
-A planned seat past the first needs `agents/CLIs/<cli>_agent<N>/` to exist.
+A planned seat past the first needs `<seat root>/<cli>_agent<N>/` to exist.
 `missing_seat_folders()` reports which don't, and the tab offers to create them
 by calling `add_seat()` from
 [`scripts/setup/add_agent_seat.py`](../../scripts/setup/add_agent_seat.py)
 **in process** — a web request that shells out to a script is a different thing
-to reason about, and this one only ever writes inside `agents/CLIs/`.
+to reason about, and this one only ever writes inside the seat root.
 
 Seat 1 is never reported as missing. Its folder is part of registering the CLI
 at all, so its absence is a preflight failure with its own advice, not something

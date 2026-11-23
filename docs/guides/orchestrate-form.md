@@ -10,8 +10,9 @@ dropdowns.
 > **This works on the *local* Web UI only** (`http://127.0.0.1:8765/orchestrate`),
 > not the hosted mirror at `roundtable-demo.ai-automation-tools.dev`. The form runs a preflight
 > check against each CLI's on-disk `roundtable` config before it will seed, and
-> those configs live under `agents/CLIs/` — a tree that is **not** deployed to
-> Fly. On the hosted site every CLI shows a red "failed" badge and the form
+> those configs live in seat folders on your machine (under
+> `%LOCALAPPDATA%\Roundtable\seats\`, copied from the `agents/CLIs/` templates),
+> which the hosted mirror on Fly does not have. On the hosted site every CLI shows a red "failed" badge and the form
 > can't submit. See [why the hosted site can't kick off a conversation](#why-only-local).
 
 > [!NOTE]
@@ -48,7 +49,9 @@ click-to-seed front-end and you launch the CLIs yourself.
   ticked simply isn't there. **One CLI is enough** — the form will happily run
   `claude-code` against `claude-code-2`.
 - Each CLI you want in the debate has the `roundtable` server registered (its
-  config file exists under `agents/CLIs/<cli>_agent1/`). The form's preflight
+  config file exists in its seat folder, `<cli>_agent1\` under the
+  [seat root](../app/cli-setup.md#where-seat-folders-live); the form creates
+  these from the `agents/CLIs/` templates before preflight). The form's preflight
   badge tells you per-CLI whether this is true. Registration steps:
   [`docs/cli-mcp-config/`](../cli-mcp-config/README.md).
 
@@ -107,8 +110,9 @@ launches the agents:
 With **Spawn** enabled you can skip this — the windows are already open. If you
 seeded only, the redirect target shows a **"Next: launch each CLI"** panel with a
 `Copy prompt` button per participant. For each CLI: open a terminal in that CLI's
-`agents/CLIs/<cli>_agent1/` folder so it loads the right `--agent-id`, launch the
-CLI, and paste its two-line prompt — **`--first` speaker first**:
+seat folder (`<seat root>\<cli>_agent1\`; `.\.venv\Scripts\python.exe
+scripts\setup\add_agent_seat.py --materialize` prints them) so it loads the
+right `--agent-id`, launch the CLI, and paste its two-line prompt — **`--first` speaker first**:
 
 ```text
 You're agent <id> on the roundtable MCP server.

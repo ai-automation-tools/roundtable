@@ -89,19 +89,19 @@ New-Item -ItemType Directory -Force "$PWD/.agents/skills/agent-chat" | Out-Null
 Copy-Item "$PWD/skills/agent-chat/SKILL.md" "$PWD/.agents/skills/agent-chat/SKILL.md"
 ```
 
-Launch Antigravity from `agents/CLIs/antigravity_agent1/` and verify with `/skills`.
+Launch Antigravity from that folder and verify with `/skills`.
 
-#### Project-local installs in the agent workspaces (`agents/CLIs/<cli>_agent1/`)
+#### Project-local installs in the seat folders (`<seat root>/<cli>_agent1/`)
 
-When you launch a CLI from its `agents/CLIs/<cli>_agent1/` folder, it also discovers skills in its **own config dir** alongside its existing settings:
+The seat folders the CLIs launch from sit outside the repo, under `<seat root>` = `%LOCALAPPDATA%\Roundtable\seats\<clone folder name>\` ([where seat folders live](../../docs/app/cli-setup.md#where-seat-folders-live)). They are copied from the `agents/CLIs/` templates, and `.\.venv\Scripts\python.exe scripts\setup\add_agent_seat.py --materialize` prints them. When you launch a CLI from its seat folder, it also discovers skills in its **own config dir** alongside its existing settings:
 
-| Agent workspace | Working install path |
+| Seat folder | Working install path |
 |---|---|
-| `agents/CLIs/claude-code_agent1/` | `agents/CLIs/claude-code_agent1/.claude/skills/agent-chat/SKILL.md` |
-| `agents/CLIs/codex_agent1/` | `agents/CLIs/codex_agent1/.codex/skills/agent-chat/SKILL.md` |
-| `agents/CLIs/antigravity_agent1/` | `agents/CLIs/antigravity_agent1/.agents/skills/agent-chat/SKILL.md` |
+| `<seat root>/claude-code_agent1/` | `<seat root>/claude-code_agent1/.claude/skills/agent-chat/SKILL.md` |
+| `<seat root>/codex_agent1/` | `<seat root>/codex_agent1/.codex/skills/agent-chat/SKILL.md` |
+| `<seat root>/antigravity_agent1/` | `<seat root>/antigravity_agent1/.agents/skills/agent-chat/SKILL.md` |
 
-This is what the `scripts/setup/setup-skill-links.ps1` / `.sh` script (or `/skills install`, or asking the CLI to install it for you) does by default in these workspaces — the skill ends up in the CLI's own per-folder config dir next to its MCP config. Those dirs (`.claude/`, `.codex/`, `.agents/`) are gitignored, so each machine needs its own install. Re-run the setup script after cloning to a new machine.
+This is what the `scripts/setup/setup-skill-links.ps1` / `.sh` script (or `/skills install`, or asking the CLI to install it for you) does by default in these seat folders — the skill ends up in the CLI's own per-folder config dir next to its MCP config. Those dirs (`.claude/`, `.codex/`, `.agents/`) are outside the repo, so each machine needs its own install, and the seat folders must exist first (any launch, or `--materialize`, creates them). Re-run the setup script after cloning to a new machine.
 
 For Codex this path isn't in the official discovery list ([developers.openai.com/codex/skills](https://developers.openai.com/codex/skills) shows only `.agents/skills/`), but it works empirically.
 
@@ -138,7 +138,7 @@ If an agent asks "should I continue?" between turns, the skill isn't loading. Re
 
 ## Relationship to the per-seat role docs
 
-`agents/CLIs/<seat>/` each carry a role doc (`claude.md` / `AGENTS.md`) that the CLI reads on startup from its own folder. Those describe **who the seat is** — a full-stack developer on this repo that can also join an agent-chat conversation — plus its agent id and where its MCP config lives, which is per-CLI and can't live in a shared skill.
+The templates under `agents/CLIs/<seat>/` each carry a role doc (`claude.md` / `AGENTS.md`), copied into the seat folder, that the CLI reads on startup from there. Those describe **who the seat is** — a full-stack developer on this repo that can also join an agent-chat conversation — plus its agent id and where its MCP config lives, which is per-CLI and can't live in a shared skill.
 
 The `SKILL.md` here is **role-agnostic** and describes the participation loop itself. There is deliberate overlap: a CLI with no skills installed still has to be able to participate, so the role doc restates the loop. **The skill is canonical** — when a rule changes, change it here first, then mirror it into the role docs (all four are generated from one template, so that is one edit, not four).
 

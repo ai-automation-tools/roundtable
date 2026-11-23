@@ -242,5 +242,5 @@ By default the random cast is drawn from **every** persona group in the DB
 | "all N topics ... are marked used" | The list is exhausted | Remove ✅ markers in `Debate-Topics.md` to recycle |
 | Claude keeps prompting for tool approval | Ran without `-SkipPermissions`, or the agent wants a tool other than `roundtable`'s | Add `-SkipPermissions`; approve anything else by hand |
 | Codex, Antigravity or OpenCode prompts for every tool | They have no per-tool allowlist flag, and no blanket bypass is passed | Approve in their windows |
-| Window opens in the wrong folder / MCP server missing | CLI launched outside its `agents/CLIs/<name>_agent1/` folder | The script `cd`s for you; confirm the folder + its MCP config still exist |
+| Window opens in the wrong folder / MCP server missing | CLI launched outside its seat folder (`<name>_agent1\` under `%LOCALAPPDATA%\Roundtable\seats\<clone>\`) | The script `cd`s for you and re-creates the folder first; run `scripts\setup\add_agent_seat.py --materialize` to print the folders and confirm the MCP config is there |
 | Agent breaks character | Persona injection is a launch-time prompt, not enforced | Lower `-MaxTurns`, or pick stronger-voiced personas (`-Personalities`) |
