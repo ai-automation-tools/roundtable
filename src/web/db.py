@@ -118,11 +118,20 @@ def list_stats() -> dict[str, int]:
     }
 
 
+def _message_counts(conn: sqlite3.Connection) -> dict[int, int]:
+    """Message count per conversation in one query; it was one COUNT per row,
+    on every page that shows the rail (audit RT-28)."""
+    return dict(conn.execute(
+        "SELECT conversation_id, COUNT(*) FROM messages GROUP BY conversation_id"
+    ).fetchall())
+
+
 def list_conversations() -> list[dict[str, Any]]:
     with _connect() as conn:
         rows = conn.execute(
             "SELECT * FROM conversations ORDER BY id DESC"
         ).fetchall()
+        counts = _message_counts(conn)
         out = []
         for r in rows:
             d = dict(r)
@@ -130,10 +139,7 @@ def list_conversations() -> list[dict[str, Any]]:
                 d["participants"] = json.loads(d["participants"])
             except (json.JSONDecodeError, TypeError):
                 pass
-            d["message_count"] = conn.execute(
-                "SELECT COUNT(*) FROM messages WHERE conversation_id = ?",
-                (r["id"],),
-            ).fetchone()[0]
+            d["message_count"] = counts.get(r["id"], 0)
             out.append(d)
         return out
 
@@ -152,11 +158,9 @@ def list_featured_debates(limit: int = 4) -> list[dict[str, Any]]:
             "SELECT * FROM conversations WHERE status='complete' ORDER BY id DESC"
         ).fetchall()
         out: list[dict[str, Any]] = []
+        counts = _message_counts(conn)
         for r in rows:
-            n = conn.execute(
-                "SELECT COUNT(*) FROM messages WHERE conversation_id = ?",
-                (r["id"],),
-            ).fetchone()[0]
+            n = counts.get(r["id"], 0)
             if n < 4:  # skip trivial / aborted runs
                 continue
             d = dict(r)

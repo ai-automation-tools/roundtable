@@ -30,6 +30,7 @@ disk that is full loses an artifact, not a turn. Callers ignore the return value
 
 from __future__ import annotations
 
+import functools
 import json
 import os
 import subprocess
@@ -193,6 +194,21 @@ def is_opted_in(cid: int) -> bool:
     return int(cid) in _load_optin()
 
 
+# The web handlers run in a threadpool (audit RT-28), so two saves could read
+# config/delivery*.json, merge, and the second write the first one away.
+_CONFIG_LOCK = threading.RLock()
+
+
+def config_locked(fn):
+    """Serialize a read-merge-write of this module's config files."""
+    @functools.wraps(fn)
+    def run(*args, **kwargs):
+        with _CONFIG_LOCK:
+            return fn(*args, **kwargs)
+    return run
+
+
+@config_locked
 def mark_opt_in(cid: int) -> bool:
     """Record a conversation as opted in. Idempotent; never raises.
 
@@ -215,6 +231,7 @@ def mark_opt_in(cid: int) -> bool:
         return False
 
 
+@config_locked
 def clear_opt_in(cid: int) -> bool:
     """Remove a conversation from the opt-in list. Idempotent; never raises."""
     ids = [i for i in _load_optin() if i != int(cid)]

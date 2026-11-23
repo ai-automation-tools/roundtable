@@ -827,7 +827,6 @@ def _orchestrate(db_path: str, **payload):
     which is exactly the kind of environment-dependent green nobody should
     trust. `tests/test_web_readonly.py` covers the gate itself.
     """
-    import asyncio
     import json as _json
 
     from orchestrator import preflight as orch_preflight
@@ -849,7 +848,8 @@ def _orchestrate(db_path: str, **payload):
     real = orch_preflight.run_preflight
     orch_preflight.run_preflight = _all_ok
     try:
-        resp = asyncio.run(api.api_orchestrate(_Req()))
+        import anyio.to_thread  # sync handler: run it as Starlette does
+        resp = anyio.run(anyio.to_thread.run_sync, api.api_orchestrate, _Req())
     finally:
         orch_preflight.run_preflight = real
     return resp.status_code, _json.loads(resp.body.decode())
@@ -1216,7 +1216,6 @@ def test_orchestrate_refuses_a_busy_seat_before_preflight():
         real = orch_preflight.run_preflight
         orch_preflight.run_preflight = lambda seats: called.append(seats) or real(seats)
         try:
-            import asyncio
 
             from web.api import orchestrate as api
 
@@ -1225,7 +1224,9 @@ def test_orchestrate_refuses_a_busy_seat_before_preflight():
                     return {"topic": "T2", "conv_type": "collaborate", "preset": "plan",
                             "participants": ["codex", "antigravity"], "spawn": False}
 
-            resp = asyncio.run(api.api_orchestrate(_Req()))
+            import anyio.to_thread  # sync handler: run it as Starlette does
+
+            resp = anyio.run(anyio.to_thread.run_sync, api.api_orchestrate, _Req())
         finally:
             orch_preflight.run_preflight = real
         data = json.loads(resp.body.decode())

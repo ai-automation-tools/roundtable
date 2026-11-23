@@ -54,6 +54,7 @@ from web.db import (
     bg_update_arena,
 )
 from web.security import _env_file_value, _is_public_readonly, has_write_secret, is_same_origin
+from web.api import request_json
 
 # Guardrails on what a page capture may push into the DB. A thread is a
 # snapshot for the agent to argue against, not an archive of the site.
@@ -227,9 +228,9 @@ def _clean_posts(raw: Any) -> list[dict[str, Any]] | str:
     return out
 
 
-async def _body(request: Request) -> dict[str, Any] | None:
+def _body(request: Request) -> dict[str, Any] | None:
     try:
-        body = await request.json()
+        body = request_json(request)
     except (json.JSONDecodeError, ValueError):
         return None
     return body if isinstance(body, dict) else None
@@ -291,7 +292,7 @@ def _resolve_persona(
 # Arenas
 # ---------------------------------------------------------------------------
 
-async def api_bg_arenas(request: Request) -> Response:
+def api_bg_arenas(request: Request) -> Response:
     """GET /api/battleground/arenas — list arenas, newest first.
 
     Query params: ``status`` (``open``/``closed``), ``agent`` (returns that
@@ -313,7 +314,7 @@ async def api_bg_arenas(request: Request) -> Response:
     return JSONResponse({"count": len(arenas), "arenas": arenas})
 
 
-async def api_bg_create_arena(request: Request) -> Response:
+def api_bg_create_arena(request: Request) -> Response:
     """POST /api/battleground/arenas — open an arena from a page capture.
 
     Body::
@@ -338,7 +339,7 @@ async def api_bg_create_arena(request: Request) -> Response:
     """
     if not _authorized(request):
         return _unauthorized()
-    body = await _body(request)
+    body = _body(request)
     if body is None:
         return JSONResponse({"error": "body must be a JSON object"}, status_code=400)
 
@@ -396,7 +397,7 @@ async def api_bg_create_arena(request: Request) -> Response:
     return JSONResponse({"arena": arena}, status_code=201)
 
 
-async def api_bg_arena(request: Request) -> Response:
+def api_bg_arena(request: Request) -> Response:
     """GET /api/battleground/arenas/{aid} — one arena plus every draft on it.
 
     This is what the side panel polls: it renders the newest ``pending`` draft
@@ -414,7 +415,7 @@ async def api_bg_arena(request: Request) -> Response:
     return JSONResponse(data)
 
 
-async def api_bg_update_arena(request: Request) -> Response:
+def api_bg_update_arena(request: Request) -> Response:
     """POST /api/battleground/arenas/{aid} — patch stance / target / cast / status.
 
     Every field is optional; omitted fields are left alone. Passing
@@ -426,7 +427,7 @@ async def api_bg_update_arena(request: Request) -> Response:
     if not _authorized(request):
         return _unauthorized()
     aid = int(request.path_params["aid"])
-    body = await _body(request)
+    body = _body(request)
     if body is None:
         return JSONResponse({"error": "body must be a JSON object"}, status_code=400)
 
@@ -489,7 +490,7 @@ async def api_bg_update_arena(request: Request) -> Response:
     return JSONResponse({"arena": arena})
 
 
-async def api_bg_capture(request: Request) -> Response:
+def api_bg_capture(request: Request) -> Response:
     """POST /api/battleground/arenas/{aid}/capture — fold in a re-capture.
 
     Body: ``{"thread": [...]}``. Known post ids are refreshed, new ones
@@ -499,7 +500,7 @@ async def api_bg_capture(request: Request) -> Response:
     if not _authorized(request):
         return _unauthorized()
     aid = int(request.path_params["aid"])
-    body = await _body(request)
+    body = _body(request)
     if body is None:
         return JSONResponse({"error": "body must be a JSON object"}, status_code=400)
     posts = _clean_posts(body.get("thread"))
@@ -514,7 +515,7 @@ async def api_bg_capture(request: Request) -> Response:
     return JSONResponse({"arena": arena, "posts_added": arena["posts_added"]})
 
 
-async def api_bg_delete_arena(request: Request) -> Response:
+def api_bg_delete_arena(request: Request) -> Response:
     """POST /api/battleground/arenas/{aid}/delete — remove arena + drafts."""
     if not _authorized(request):
         return _unauthorized()
@@ -532,7 +533,7 @@ async def api_bg_delete_arena(request: Request) -> Response:
 # Drafts
 # ---------------------------------------------------------------------------
 
-async def api_bg_verdict(request: Request) -> Response:
+def api_bg_verdict(request: Request) -> Response:
     """POST /api/battleground/drafts/{did}/verdict — the human-in-the-loop gate.
 
     Body: ``{"verdict": "approved"|"rejected"|"posted", "note": str?,
@@ -546,7 +547,7 @@ async def api_bg_verdict(request: Request) -> Response:
     if not _authorized(request):
         return _unauthorized()
     did = int(request.path_params["did"])
-    body = await _body(request)
+    body = _body(request)
     if body is None:
         return JSONResponse({"error": "body must be a JSON object"}, status_code=400)
     verdict = (_clip(body.get("verdict"), 20) or "").lower()
@@ -573,7 +574,7 @@ async def api_bg_verdict(request: Request) -> Response:
 # Roster (one round trip for the panel's pickers)
 # ---------------------------------------------------------------------------
 
-async def api_bg_roster(request: Request) -> Response:
+def api_bg_roster(request: Request) -> Response:
     """GET /api/battleground/roster — personas + CLI ids for the side panel.
 
     Debater roster only (``list_debater_personas`` excludes the reserved
@@ -605,7 +606,7 @@ async def api_bg_roster(request: Request) -> Response:
 # Health (unauthenticated on purpose)
 # ---------------------------------------------------------------------------
 
-async def api_bg_healthz(request: Request) -> Response:
+def api_bg_healthz(request: Request) -> Response:
     """GET /api/battleground/healthz — is this bridge usable, and how?
 
     Deliberately **outside** the bearer-token check: its whole job is telling

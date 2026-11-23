@@ -12,12 +12,14 @@ import os
 import secrets
 import sqlite3
 
+from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 from schema import SENDER_RE, SIGNALS
 from web.avatars import invalidate_index
 from web.db import ingest_payload, since_payload
+from web.api import request_json
 
 # A sync batch carries only rows that changed since the last push, so a
 # normal one is kilobytes; 32 MB still fits a dozen personas with a 2 MB
@@ -46,7 +48,7 @@ def _row_error(conversations: list, messages: list) -> str | None:
     return None
 
 
-async def api_since(request: Request) -> Response:
+def api_since(request: Request) -> Response:
     """Pull endpoint for the bidirectional-sync sidecar.
 
     Auth: ``Authorization: Bearer <token>`` matched against
@@ -106,7 +108,7 @@ async def api_since(request: Request) -> Response:
 
     if request.method == "POST":
         try:
-            params = await request.json()
+            params = request_json(request)
         except ValueError:
             return JSONResponse({"error": "body must be JSON"}, status_code=400)
         if not isinstance(params, dict):
@@ -250,8 +252,10 @@ async def api_ingest(request: Request) -> Response:
         return JSONResponse({"error": problem}, status_code=400)
 
     try:
-        result = ingest_payload(
-            conversations, messages, deletions,
+        # Off the event loop: a big batch or a locked DB would stall every
+        # other request (audit RT-28).
+        result = await run_in_threadpool(
+            ingest_payload, conversations, messages, deletions,
             personas, deleted_persona_keys,
         )
     except sqlite3.Error as e:
