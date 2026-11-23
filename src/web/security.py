@@ -1,13 +1,15 @@
 """Auth middleware + env-flag middleware-stack assembly.
 
-Two independent gates, both off by default (local dev stays fully writable):
-``AGENT_CHAT_BASIC_AUTH_PASSWORD`` (HTTP basic) and
-``AGENT_CHAT_PUBLIC_READONLY`` (reject browser mutations — the hosted
-Fly-mirror posture).
+Two independent gates, both off by default:
+``AGENT_CHAT_BASIC_AUTH_PASSWORD`` (HTTP basic; required once
+``AGENT_CHAT_ALLOWED_HOSTS`` names a non-loopback host, see
+``exposure_error``) and ``AGENT_CHAT_PUBLIC_READONLY`` (reject browser
+mutations — the hosted Fly-mirror posture).
 
 Always on: a ``Host`` allowlist (``127.0.0.1``, ``localhost`` and
-``AGENT_CHAT_ALLOWED_HOSTS``), the cross-site write guard, and the baseline
-security headers.
+``AGENT_CHAT_ALLOWED_HOSTS``), the cross-site write guard, the baseline
+security headers, and — wherever writes are possible — the per-install write
+secret (``WriteSecretMiddleware``).
 """
 
 from __future__ import annotations
@@ -15,6 +17,7 @@ from __future__ import annotations
 import base64
 import os
 import secrets
+import time
 from pathlib import Path
 
 from starlette.middleware import Middleware
@@ -63,6 +66,128 @@ def allowed_hosts() -> list[str]:
     )
     extra = [h.strip().lower() for h in raw.split(",")]
     return [*_LOOPBACK_HOSTS, *(h for h in extra if h and h != "*")]
+
+
+def basic_auth_password() -> str:
+    """``AGENT_CHAT_BASIC_AUTH_PASSWORD``: the environment, then ``.env``.
+
+    Read from ``.env`` too so the password needn't sit in the user
+    environment, where every process the app spawns (agent seats included)
+    would inherit it."""
+    return os.environ.get("AGENT_CHAT_BASIC_AUTH_PASSWORD") or _env_file_value(
+        "AGENT_CHAT_BASIC_AUTH_PASSWORD"
+    )
+
+
+def exposure_error() -> str | None:
+    """Why this server must not start, or None.
+
+    A non-loopback name in ``AGENT_CHAT_ALLOWED_HOSTS`` (a ``tailscale serve``
+    MagicDNS name) means other machines can reach the control surface, which
+    can launch agents and configure command sinks. That needs a password. The
+    read-only mirror is exempt: it has no writes to protect and is public by
+    design (audit RT-05).
+    """
+    remote = [h for h in allowed_hosts() if h not in _LOOPBACK_HOSTS]
+    if not remote or basic_auth_password() or _is_public_readonly():
+        return None
+    return (
+        f"AGENT_CHAT_ALLOWED_HOSTS names {', '.join(remote)}, which other machines "
+        "can reach, but no AGENT_CHAT_BASIC_AUTH_PASSWORD is set. Add one to the "
+        "repo's .env (docs/guides/remote-access.md) or remove the host."
+    )
+
+
+# ---------------------------------------------------------------------------
+# Write secret — required on every local mutation (audit RT-05)
+# ---------------------------------------------------------------------------
+
+# Per install, generated on first use. config/ is gitignored.
+WRITE_SECRET_FILE = Path(__file__).resolve().parents[2] / "config" / "web-write-secret"
+WRITE_COOKIE = "rt_write"
+WRITE_HEADER = "x-roundtable-write"
+_write_secret_cache: dict[Path, str] = {}
+
+
+def write_secret(path: Path = WRITE_SECRET_FILE) -> str:
+    """This install's write secret, creating it on first call.
+
+    Two processes may race to create it: ``open(..., "x")`` lets exactly one
+    write, and the loser reads what the winner wrote."""
+    if path in _write_secret_cache:
+        return _write_secret_cache[path]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with path.open("x", encoding="utf-8") as f:
+            f.write(secrets.token_urlsafe(32))
+    except FileExistsError:
+        pass
+    value = ""
+    for _ in range(50):  # the winner may not have flushed yet
+        value = path.read_text(encoding="utf-8").strip()
+        if value:
+            break
+        time.sleep(0.01)
+    if not value:
+        raise RuntimeError(f"{path} is empty; delete it and restart the web UI")
+    _write_secret_cache[path] = value
+    return value
+
+
+def has_write_secret(request: Request) -> bool:
+    """True when the request carries this install's write secret, as the
+    cookie this server sets on every page or as the ``X-Roundtable-Write``
+    header (scripts)."""
+    expected = write_secret().encode("utf-8")
+    for given in (request.cookies.get(WRITE_COOKIE), request.headers.get(WRITE_HEADER)):
+        if given and secrets.compare_digest(given.encode("utf-8"), expected):
+            return True
+    return False
+
+
+class WriteSecretMiddleware(BaseHTTPMiddleware):
+    """Refuse a mutation that doesn't carry the per-install write secret.
+
+    The Host and Origin checks stop a page on another site, but a request
+    with no ``Origin`` passes them: a blind POST from another local service,
+    a webhook pointed at ``127.0.0.1``, a stray ``curl``. This makes every
+    write prove it could first read one of this app's own responses.
+
+    The secret reaches the browser as an ``HttpOnly``, ``SameSite=Strict``
+    cookie set on any GET that lacks it, so the app's own pages need no
+    change. A process that can GET a page, or read ``config/``, can still
+    write; containing local agents is the seat sandbox's job, not this one.
+
+    Exempt: ``/api/ingest`` (its own bearer realm) and the AgentBattleground
+    bridge, whose handler requires the bridge token or a same-origin request
+    carrying this secret (``battleground._authorized``). Not installed on the
+    read-only mirror, which refuses every browser write anyway.
+    """
+
+    async def dispatch(self, request: Request, call_next):
+        path = request.url.path
+        if request.method in _SAFE_METHODS:
+            response = await call_next(request)
+            if request.cookies.get(WRITE_COOKIE) != write_secret():
+                https = request.headers.get("x-forwarded-proto", request.url.scheme) == "https"
+                response.set_cookie(
+                    WRITE_COOKIE, write_secret(), max_age=400 * 86400, path="/",
+                    httponly=True, samesite="strict", secure=https,
+                )
+            return response
+        if (path in _BEARER_REALM_PATHS or path.startswith(_BATTLEGROUND_PREFIX)
+                or has_write_secret(request)):
+            return await call_next(request)
+        return JSONResponse(
+            {
+                "error": "missing write secret",
+                "detail": (
+                    "Reload the page and try again. Scripts send the value of "
+                    "config/web-write-secret as the X-Roundtable-Write header."
+                ),
+            },
+            status_code=401,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -359,8 +484,8 @@ class RegistryHostMiddleware(BaseHTTPMiddleware):
 def _build_middleware() -> list[Middleware]:
     """Assemble the middleware stack from env-var feature flags.
 
-    Both gates are off by default, so local dev stays fully writable and
-    unauthenticated:
+    Both gates are off by default; local writes still need the write secret
+    (``WriteSecretMiddleware``, innermost, absent on the read-only mirror):
 
     * AGENT_CHAT_BASIC_AUTH_PASSWORD → require HTTP basic auth on every route
       except the bearer/sync/static exceptions baked into BasicAuthMiddleware.
@@ -383,10 +508,13 @@ def _build_middleware() -> list[Middleware]:
         Middleware(ExtensionCorsMiddleware),
         Middleware(CrossSiteWriteGuard),
     ]
-    password = os.environ.get("AGENT_CHAT_BASIC_AUTH_PASSWORD")
+    password = basic_auth_password()
     if password:
-        user = os.environ.get("AGENT_CHAT_BASIC_AUTH_USER", "admin")
+        user = (os.environ.get("AGENT_CHAT_BASIC_AUTH_USER")
+                or _env_file_value("AGENT_CHAT_BASIC_AUTH_USER") or "admin")
         stack.append(Middleware(BasicAuthMiddleware, username=user, password=password))
     if _env_truthy("AGENT_CHAT_PUBLIC_READONLY"):
         stack.append(Middleware(ReadOnlyMiddleware))
+    else:
+        stack.append(Middleware(WriteSecretMiddleware))
     return stack

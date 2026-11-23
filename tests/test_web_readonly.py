@@ -146,6 +146,7 @@ def test_build_middleware_default_is_cors_only():
         web_ui.RegistryHostMiddleware,
         web_ui.ExtensionCorsMiddleware,
         web_ui.CrossSiteWriteGuard,
+        web_ui.WriteSecretMiddleware,
     ]
 
 
@@ -170,6 +171,7 @@ def test_build_middleware_basic_auth_only():
         web_ui.ExtensionCorsMiddleware,
         web_ui.CrossSiteWriteGuard,
         web_ui.BasicAuthMiddleware,
+        web_ui.WriteSecretMiddleware,
     ]
 
 
@@ -316,14 +318,95 @@ def test_loopback_hosts_pass():
 def test_configured_proxy_host_passes():
     allowed = " Box.Tailnet.ts.net , roundtable-demo.ai-automation-tools.dev,*"
     c = _hosted_stack_client("box.tailnet.ts.net", allowed)
+    from web.security import WRITE_HEADER, write_secret
     r = c.post("/api/settings/delivery", json={},
-               headers={"Origin": "http://box.tailnet.ts.net"})
+               headers={"Origin": "http://box.tailnet.ts.net", WRITE_HEADER: write_secret()})
     assert r.status_code == 200, r.status_code
     assert _hosted_stack_client("roundtable-demo.ai-automation-tools.dev", allowed) \
         .get("/api/settings/delivery").status_code == 200
     # A bare "*" in the list must not switch the check off.
     assert _hosted_stack_client("evil.example", allowed) \
         .get("/api/settings/delivery").status_code == 400
+
+
+def test_local_write_needs_the_write_secret():
+    """Host + Origin alone don't authorize a write any more (audit RT-05): a
+    blind POST with a matching Origin, or none, is 401. A GET hands the
+    browser the secret as a strict cookie; a script may send the header."""
+    from web.security import WRITE_COOKIE, WRITE_HEADER, write_secret
+    c = _hosted_stack_client("127.0.0.1:8765")
+    origin = {"Origin": "http://127.0.0.1:8765"}
+    assert c.post("/api/settings/delivery", json={}, headers=origin).status_code == 401
+    assert c.post("/api/settings/delivery", json={}).status_code == 401
+    assert c.post("/api/settings/delivery", json={},
+                  headers={WRITE_HEADER: "wrong"}).status_code == 401
+    # /api/ingest keeps its own bearer realm: not refused here (404 = no route).
+    assert c.post("/api/ingest", json={}).status_code == 404
+
+    page = c.get("/api/settings/delivery")
+    cookie = page.headers["set-cookie"]
+    assert cookie.startswith(f"{WRITE_COOKIE}=") and "HttpOnly" in cookie, cookie
+    assert "samesite=strict" in cookie.lower(), cookie
+    assert c.post("/api/settings/delivery", json={}, headers=origin).status_code == 200
+    # Once the browser holds it, pages stop re-sending it.
+    assert "set-cookie" not in c.get("/api/settings/delivery").headers
+
+    fresh = _hosted_stack_client("127.0.0.1:8765")
+    assert fresh.post("/api/settings/delivery", json={},
+                      headers={WRITE_HEADER: write_secret()}).status_code == 200
+
+
+def test_write_secret_is_made_once_per_install():
+    from web import security
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "config" / "web-write-secret"
+        first = security.write_secret(path)
+        security._write_secret_cache.clear()
+        assert security.write_secret(path) == first == path.read_text(encoding="utf-8")
+        assert len(first) >= 40
+    security._write_secret_cache.clear()
+
+
+def test_a_tailnet_host_needs_a_password():
+    """A non-loopback AGENT_CHAT_ALLOWED_HOSTS without basic auth refuses to
+    start; the read-only mirror is exempt (audit RT-05)."""
+    from web import security
+    keys = ("AGENT_CHAT_ALLOWED_HOSTS", "AGENT_CHAT_BASIC_AUTH_PASSWORD",
+            "AGENT_CHAT_PUBLIC_READONLY")
+    saved = {k: os.environ.pop(k, None) for k in keys}
+    real_env_file = security._env_file_value
+    security._env_file_value = lambda name, path=None: ""  # ignore a developer's .env
+    argv = sys.argv
+    try:
+        assert security.exposure_error() is None
+        os.environ["AGENT_CHAT_ALLOWED_HOSTS"] = "localhost,box.tailnet.ts.net"
+        err = security.exposure_error()
+        assert err.split(", which")[0] == "AGENT_CHAT_ALLOWED_HOSTS names box.tailnet.ts.net", err
+        assert "AGENT_CHAT_BASIC_AUTH_PASSWORD" in err
+        sys.argv = ["web_ui.py"]
+        try:
+            web_ui.main()
+            raise AssertionError("main() started with an unauthenticated tailnet host")
+        except SystemExit as exc:
+            assert "refused to start" in str(exc), exc
+        os.environ["AGENT_CHAT_PUBLIC_READONLY"] = "1"
+        assert security.exposure_error() is None
+        del os.environ["AGENT_CHAT_PUBLIC_READONLY"]
+        os.environ["AGENT_CHAT_BASIC_AUTH_PASSWORD"] = "pw"
+        assert security.exposure_error() is None
+    finally:
+        sys.argv = argv
+        security._env_file_value = real_env_file
+        for k in keys:
+            os.environ.pop(k, None)
+            if saved[k] is not None:
+                os.environ[k] = saved[k]
+
+
+def test_remote_access_guide_keeps_the_password_out_of_the_environment():
+    guide = (Path(__file__).resolve().parent.parent / "docs" / "guides"
+             / "remote-access.md").read_text(encoding="utf-8")
+    assert "setx" not in guide
 
 
 def test_allowed_hosts_reads_the_env_file():

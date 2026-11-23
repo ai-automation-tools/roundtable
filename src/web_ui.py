@@ -153,9 +153,12 @@ from web.security import (  # noqa: E402,F401
     ReadOnlyMiddleware,
     RegistryHostMiddleware,
     SecurityHeadersMiddleware,
+    WriteSecretMiddleware,
     _build_middleware,
     _env_truthy,
     _is_public_readonly,
+    basic_auth_password,
+    exposure_error,
 )
 
 
@@ -471,6 +474,9 @@ def main() -> None:
         help="Port. Defaults to $PORT or 8765.",
     )
     args = parser.parse_args()
+    refusal = exposure_error()
+    if refusal:
+        raise SystemExit(f"roundtable web UI refused to start: {refusal}")
 
     db_path = args.db_path if args.db_path else _default_db_path()
     resolved = str(Path(db_path).resolve())
@@ -483,7 +489,7 @@ def main() -> None:
     ingest_on = bool(os.environ.get("AGENT_CHAT_INGEST_TOKEN"))
     print(f"roundtable web UI — DB: {resolved}")
     print(f"  bind: http://{args.host}:{args.port}/")
-    print(f"  basic auth: off (gate disabled)")
+    print(f"  basic auth: {'on' if basic_auth_password() else 'off'}")
     print(f"  /api/ingest: {'on' if ingest_on else 'off'}")
     print(f"  AI-Models cards: {models['created']} created, {models['skipped']} present")
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")
