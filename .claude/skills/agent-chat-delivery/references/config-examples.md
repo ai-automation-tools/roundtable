@@ -131,7 +131,7 @@ whoever knows it can read your notifications.
 {
   "type": "command",
   "enabled": true,
-  "argv": ["pwsh", "-File", "scripts/publish.ps1", "{dir}", "{cid}"],
+  "argv": ["pwsh", "-File", "scripts/my-hook.ps1", "{dir}", "{cid}"],
   "timeout": 120,
   "events": ["complete"]
 }

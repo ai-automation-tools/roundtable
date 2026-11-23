@@ -50,7 +50,7 @@ Then walk the table. Stop at the first row that matches.
 | Ended at `max_turns` with fewer messages than expected | correct behaviour if **every** seat is spent. If one seat still had turns, that is the old first-agent-wins bug | probe 4 + `end_reason` |
 | Ended with no deliverable, `conv_type` produces one | a non-lead signalled `done`. `blocks_premature_done()` should have refused it before the insert | probe 5: the last message's `signal` and `sender` vs `participant_roles` |
 | Quiet but under the bar | not a stall yet. The bar is `max(600s, the run's own rhythm)` | `inspect_conversations.py watch --quiet` prints the bar |
-| Nothing renders in the web UI | the UI reads `db/chat.db`; a custom `--db-path` on the agents writes a *different* file | probe 0 — resolve the path each side is actually using |
+| Nothing renders in the web UI | the UI reads `db/chat.db`; a custom `--db-path` on the agents writes a *different* file. The MCP server now exits at startup on a relative `$AGENT_CHAT_DB` or one whose folder does not exist (a shell opened before a repo move), so a stale export shows as a dead seat, not an empty DB | probe 0 — resolve the path each side is actually using |
 | `database is locked` | WAL missing, or a writer holding a transaction | probe 6 |
 | Live locally, absent on the hosted mirror | the sidecar (`scripts/db_sync.py`) is down, or the column is not in its list | `scripts/healthcheck-app.ps1 -Repair:$false` |
 
@@ -78,7 +78,9 @@ CLI process. In order of likelihood:
 
 1. **It is waiting on an operator prompt.** A project `.mcp.json` in a Claude Code seat makes it
    ask for approval on every launch and stall a spawned agent — which is why seat 1 for Claude
-   Code is *expected* to have no project `.mcp.json`.
+   Code is *expected* to have no project `.mcp.json`. Seats made by `scripts/setup/add_agent_seat.py`
+   now get a `.claude/settings.local.json` that allows `mcp__roundtable` and enables the project
+   server, so only a seat built before that change (or by hand) still prompts on each `send_message`.
 2. **It exited.** Scroll its window for a traceback; the MCP server logs to stderr, never stdout
    (stdout is the JSON-RPC stream).
 3. **It is asking *you* something between turns.** The `agent-chat` skill tells participants not

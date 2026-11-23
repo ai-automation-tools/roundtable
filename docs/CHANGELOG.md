@@ -4,6 +4,12 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 ## 2026-11-22 (latest)
 
+### Changed — maintainer skills caught up with the code
+
+- The three skills installed from `agent-skills` (`agent-chat-conv-types`, `agent-chat-delivery`, `agent-chat-run-triage`) are re-installed from its `main`; the copies here had fallen two upstream revisions behind.
+- `agent-chat-add-cli` documents the spawn registry's real `Allow` / `Deny` fields and the no-bypass rule instead of the removed `SkipPerm`; `agent-chat-schema` lists `SENDER_RE` / `SIGNALS` and `resolve_db_path`; `docs/UPSTREAMS.md` records the containment flags each CLI is launched with rather than bypass flags; the OpenCode page drops a stale `--auto` note.
+- Audit item RT-24 (repo side).
+
 ### Fixed — one rule for which database a process opens; the MCP server's persona tools follow `--db-path`
 
 - **`schema.resolve_db_path()` replaces five copies** (MCP server, web UI, `inspect_conversations`, seeding, personas, delivery): `--db-path` > `$AGENT_CHAT_DB` > `<repo>/db/chat.db`, always absolute. Only the MCP server's copy used to check the environment value; now every process refuses a relative `AGENT_CHAT_DB` or one pointing into a missing folder.

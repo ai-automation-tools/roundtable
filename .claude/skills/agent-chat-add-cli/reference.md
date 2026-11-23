@@ -64,12 +64,20 @@ Add an entry to the **`$Clis`** ordered hashtable. Shape per entry:
 
 ```powershell
 '<id>' = @{
-    Dir       = "$RepoRoot\agents\CLIs\<id>_agent1"   # launch dir (reads its role doc here)
-    Exe       = '<binary-on-PATH>'                     # e.g. 'opencode'
-    PromptArg = '<how the opening prompt is passed>'   # {0} = quoted opening prompt; e.g. 'run "{0}"'
-    SkipPerm  = '<unattended flag>'                    # e.g. '--yolo' or '' if none
+    Dir       = 'agents\CLIs\<id>_agent1'   # launch dir (reads its role doc here)
+    Exe       = '<binary-on-PATH>'           # e.g. 'opencode run'
+    PromptArg = '<how the opening prompt is passed>'   # {0} = quoted opening prompt; e.g. '-i {0}'
+    Allow     = '<roundtable-only allowlist flag>'     # used only with -SkipPermissions; '' if none verified
+    Deny      = '<containment flags>'                  # EVERY launch: no shell, writes, web or other MCP; '' if the seat config does it
 }
 ```
+
+**Never a blanket bypass.** `--dangerously-skip-permissions`, `--yolo` and `--auto` approve every
+tool, and a seat reads text anyone could have written (persona cards, topics, peers' messages,
+captured threads). `Allow` may only allowlist the `roundtable` MCP tools, and `Deny` (or, for a CLI
+without verified flags, a `permission` block in the seat's own config, as OpenCode's
+`opencode.json` has) must take away shell, file writes, web and every other MCP server (audit RT-01).
+`tests/test_spawn_allowlist.py` fails on a bypass flag in any launch plan.
 
 Order matters — it's the CLI preference order; the first entry is the default `--first`. **Omit this entry entirely for a seedable-only CLI** (no prompt-arg / no unattended mode) — it stays in `SUPPORTED_CLIS` (detectable and seedable) but is never auto-launched.
 

@@ -172,7 +172,7 @@ From a full audit of `4f71561` (kept outside the repo). One item per PR, titled 
 - [ ] **RT-21** Hard stop: seat PIDs, close windows, wall-clock cap, `NO_SPAWN`
 - [ ] **RT-22** Real-person personas: disclosure and import review (owner decision) — 🔒 Needs owner
 - [ ] **RT-23** Remove persona zips and cover PNGs from the repo (owner decision) — 🔒 Needs owner
-- [ ] **RT-24** Fix skill and upstream drift
+- [ ] **RT-24** Fix skill and upstream drift **(2026-11-22)** Repo side done: the three installed skills re-installed from agent-skills main (no drift), add-cli documents `Allow`/`Deny` instead of `SkipPerm`, the schema skill lists `SENDER_RE` / `resolve_db_path`, UPSTREAMS lists no bypass flags. Open: agent-skills still says "four SCHEMA copies", puts the schema in `agent_chat_mcp.py` and predates `deliver_later` — fix there, republish, reinstall
 - [ ] **RT-25** MCP tool text and annotations; `list_persona_groups`
 - [ ] **RT-26** Cut agent-loaded docs: `AGENTS.md` ≤ 15 KB, archive done phases, split the changelog
 - [x] **RT-27** One schema module; parity tests for messages and battleground columns — done 2026-11-22: `src/schema.py` (stdlib only) holds the DDL, migrations, synced column lists and arena/draft statuses; the four copies and `db_sync.py`'s lists are gone. Tests fail on DDL outside it and pin the column lists and every `INSERT` against the real tables
