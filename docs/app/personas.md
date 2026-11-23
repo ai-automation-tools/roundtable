@@ -305,9 +305,8 @@ personas.get_avatar("new-bot")                  # ("image/png", b"\x89PNG…") |
   (not stored): `summary` is recomputed from `body`; `path` is synthesized as
   `agents/Debate-Agents/<group>/<slug>.md` so the shape is unchanged for callers
   (`debate.ps1` only displays `.path`, never opens it).
-- `list_personas(group=None)` returns the **canonical roster** — the
-  `PREFERRED_GROUPS = ("Unique-Personas", "Debate-Hosts")` constant. Passing a
-  `group` filters to any group in the DB (case-insensitive).
+- `list_personas(group=None)` returns **every** persona, ordered by group then
+  name. Passing a `group` filters to any group in the DB (case-insensitive).
 - `discover_groups()` returns every group present in the `personas` table; the
   two `PREFERRED_GROUPS` sort first, the rest follow alphabetically.
 - `get_persona()` matching is **case-, punctuation-, and emoji-insensitive**, so
@@ -497,13 +496,15 @@ personas.avatar_index()            # {slug: updated_at} for personas that have o
 
 ## The MCP tools
 
-Both are read-only and idempotent, mirroring `get_kickoff`'s annotation shape.
+All three are read-only and idempotent. `list_persona_groups()` returns
+`{"count", "groups": [{"group", "count"}]}`; groups are free-form, so this is how
+an agent finds a name to pass to `list_personas(group=...)`.
 
 ### `list_personas(group=None)`
 
 Lightweight roster — **no body**, to keep it cheap to call. Optional `group`
-filter (`"Unique-Personas"`, `"Debate-Hosts"`, or any curated-subset folder).
-`group=None` returns the canonical roster (`Unique-Personas` + `Debate-Hosts`).
+filter: any group name from `list_persona_groups()`. `group=None` returns every
+persona.
 
 ```json
 {
