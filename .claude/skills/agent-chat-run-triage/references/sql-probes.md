@@ -23,6 +23,10 @@ Get-Content .mcp.json                    # what --db-path each seat was register
 Get-ChildItem agents/CLIs/*/**/*.json | Select-String 'db-path'
 ```
 
+The MCP server refuses a relative `AGENT_CHAT_DB`, and one whose parent folder is missing (a stale
+export after a repo move), with a `SystemExit` naming the value, so a seat that never started may
+be this rather than a rotation problem. Restart the shell that exported it.
+
 `scripts/run-mcp-server.ps1` defaults to `<repo>/db/chat.db` and resolves it relative to itself.
 `web.db.set_db_path()` also exports `$AGENT_CHAT_DB` — without that export, a custom path reads
 conversations from one DB and personas from another.

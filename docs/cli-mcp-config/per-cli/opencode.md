@@ -159,7 +159,7 @@ OpenCode's headless agent is the **`run`** subcommand — `opencode run "<prompt
 > `--dangerously-skip-permissions` also exists and does the same thing, but it's an undocumented/hidden flag (not on the official CLI reference) — `--auto` is the documented, supported way to auto-approve.
 
 > [!WARNING]
-> OpenCode's auto-spawn row in `debate.ps1` (and 5-way turn rotation generally) is wired per the OpenCode docs but **not yet validated in a live run**. Confirm `opencode auth login` is done first, and smoke-test a `-DryRun -Agents 5` before going live. Note `--auto` removes the approval rail — fine for a throwaway debate run, riskier in a real repo.
+> OpenCode's auto-spawn row in `debate.ps1` (and 5-way turn rotation generally) is wired per the OpenCode docs but **not yet validated in a live run**. Confirm `opencode auth login` is done first, and smoke-test a `-DryRun -Agents 5` before going live.
 
 ---
 
