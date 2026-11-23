@@ -43,6 +43,7 @@ from orchestrator.conv_types import CONV_TYPES, lead_of
 from presets import BLIND_FIRST, protocol_for
 from schema import (
     SENDER_RE,
+    resolve_db_path,
     DRAFT_APPROVED, DRAFT_PENDING, DRAFT_POSTED, DRAFT_REJECTED,
     complete_conversation, ensure_schema, write_txn,
 )
@@ -1204,6 +1205,7 @@ async def list_personas(params: ListPersonasInput) -> str:
         {"count": int, "group": str|null,
          "personas": [{"slug", "name", "group", "tags", "summary"}, ...]}
     """
+    personas_registry.DB_PATH = DB_PATH   # this server's DB, not $AGENT_CHAT_DB's
     personas = personas_registry.list_personas(params.group)
     return json.dumps({
         "count": len(personas),
@@ -1243,6 +1245,7 @@ async def get_persona(params: GetPersonaInput) -> str:
         {"status": "not_found", "query": str,
          "available": ["<slug>", ...]}
     """
+    personas_registry.DB_PATH = DB_PATH
     persona = personas_registry.get_persona(params.name)
     if persona is None:
         return json.dumps({
@@ -1817,41 +1820,11 @@ async def wait_for_verdict(params: WaitForVerdictInput) -> str:
 # ---------------------------------------------------------------------------
 
 def _default_db_path() -> str:
-    """Resolve DB path with precedence: $AGENT_CHAT_DB > <repo>/db/chat.db.
-
-    The computed default sits one level above this script (src/), so a fresh
-    clone Just Works without any flag or env var: `<repo>/db/chat.db`.
-    """
-    env_db = os.environ.get("AGENT_CHAT_DB")
-    if env_db:
-        # A RELATIVE value here is always a bug, and a silent one. This server
-        # is launched by a CLI that has already `Set-Location`d into its own
-        # seat folder, so a relative path resolves against *that* — quietly
-        # creating `agents/CLIs/<seat>/db/chat.db`, an empty database whose
-        # get_kickoff() reports no conversation. The agent then sits doing
-        # nothing, with no error anywhere, which is how conversation #52 burned
-        # ten minutes (2026-08-26). Refusing is strictly better than guessing:
-        # resolving it here would just make the wrong path absolute, since the
-        # cwd that gives it meaning belongs to whoever exported it.
-        if not Path(env_db).is_absolute():
-            raise SystemExit(
-                f"AGENT_CHAT_DB must be an absolute path; got {env_db!r}. "
-                f"It is inherited by agents launched from their own seat "
-                f"folders, so a relative path silently points each one at a "
-                f"different, empty database. Export a resolved path "
-                f"(web.db.set_db_path() does this for you), or pass --db-path."
-            )
-        # A folder that doesn't exist means a stale value, not a new install:
-        # a shell opened before a repo move still exports the old path, and
-        # db_init() would mkdir it and start an empty DB there (2026-09-22).
-        if not Path(env_db).parent.is_dir():
-            raise SystemExit(
-                f"AGENT_CHAT_DB points into a folder that does not exist: "
-                f"{env_db!r}. It is probably stale (repo moved?) — restart the "
-                f"shell or CLI that exported it, or pass --db-path."
-            )
-        return env_db
-    return str((Path(__file__).resolve().parent.parent / "db" / "chat.db"))
+    """``schema.resolve_db_path()`` with no ``--db-path``, as an exit message."""
+    try:
+        return resolve_db_path()
+    except ValueError as e:
+        raise SystemExit(str(e)) from None
 
 
 def parse_args() -> argparse.Namespace:
@@ -1876,7 +1849,14 @@ def main() -> None:
     global AGENT_ID, DB_PATH
     args = parse_args()
     AGENT_ID = args.agent_id.strip()
-    DB_PATH = args.db_path if args.db_path else _default_db_path()
+    try:
+        DB_PATH = resolve_db_path(args.db_path, relative_ok=False)
+    except ValueError as e:
+        raise SystemExit(str(e)) from None
+    # orchestrator.personas (list_personas / get_persona) resolves its own path
+    # from the environment, so --db-path has to reach it there too, or the
+    # persona tools read a different database from the turn tools (RT-20).
+    os.environ["AGENT_CHAT_DB"] = DB_PATH
 
     if not AGENT_ID:
         print("ERROR: --agent-id cannot be empty", file=sys.stderr)

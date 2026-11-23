@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Optional
 
 from presets import deliverable_for
-from schema import ensure_schema, write_txn
+from schema import ensure_schema, resolve_db_path, write_txn
 from . import delivery
 from .conv_types import (
     DEFAULT_CONV_TYPE,
@@ -73,11 +73,8 @@ def now_iso() -> str:
 
 
 def default_db_path() -> str:
-    """Resolve DB path: $AGENT_CHAT_DB > <repo>/db/chat.db."""
-    env_db = os.environ.get("AGENT_CHAT_DB")
-    if env_db:
-        return env_db
-    return str(_REPO_ROOT / "db" / "chat.db")
+    """$AGENT_CHAT_DB > <repo>/db/chat.db (``schema.resolve_db_path``)."""
+    return resolve_db_path()
 
 
 def load_template(path: Path) -> str:

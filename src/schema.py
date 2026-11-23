@@ -18,11 +18,61 @@ check-then-write that must not interleave with another process.
 
 from __future__ import annotations
 
+import os
 import re
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Iterator
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
+def resolve_db_path(explicit: str | None = None, *, relative_ok: bool = True) -> str:
+    """The one rule for which database file a process opens (audit RT-20):
+    ``--db-path`` > ``$AGENT_CHAT_DB`` > ``<repo>/db/chat.db``. Always absolute.
+
+    ``relative_ok=False`` refuses a relative ``--db-path`` (the MCP server: a
+    CLI starts it from its own seat folder, so a relative path names a
+    different, empty database there). Raises ValueError; entrypoints turn that
+    into an exit message.
+
+    ``$AGENT_CHAT_DB`` must be absolute and point into a folder that exists.
+    It is inherited by agents launched from their own seat folders, so a
+    relative value silently points each one at a different, empty database
+    (conversation #52, 2026-08-26), and a missing folder means a stale value
+    from before a repo move, where opening it would start an empty DB
+    (2026-09-22). Resolving either here would only make the wrong path
+    absolute: the cwd that gives it meaning belongs to whoever exported it.
+    """
+    if explicit:
+        path = Path(explicit)
+        if not path.is_absolute():
+            if not relative_ok:
+                raise ValueError(
+                    f"--db-path must be an absolute path; got {explicit!r}. This "
+                    "process runs from a seat folder, where a relative path names "
+                    "a different, empty database.")
+            # abspath, not resolve(): see web.db.set_db_path for why.
+            path = Path(os.path.abspath(explicit))
+        return str(path)
+    env_db = os.environ.get("AGENT_CHAT_DB")
+    if env_db:
+        if not Path(env_db).is_absolute():
+            raise ValueError(
+                f"AGENT_CHAT_DB must be an absolute path; got {env_db!r}. "
+                f"It is inherited by agents launched from their own seat "
+                f"folders, so a relative path silently points each one at a "
+                f"different, empty database. Export a resolved path "
+                f"(web.db.set_db_path() does this for you), or pass --db-path.")
+        if not Path(env_db).parent.is_dir():
+            raise ValueError(
+                f"AGENT_CHAT_DB points into a folder that does not exist: "
+                f"{env_db!r}. It is probably stale (repo moved?) — restart the "
+                f"shell or CLI that exported it, or pass --db-path.")
+        return env_db
+    return str(REPO_ROOT / "db" / "chat.db")
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS conversations (

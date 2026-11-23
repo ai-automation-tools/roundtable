@@ -494,6 +494,105 @@ def presets_for_collaborate():
     return presets_for("collaborate")
 
 
+def test_one_db_path_rule():
+    """Five modules each resolved the DB path, and only the MCP server checked
+    what it got (audit RT-20). schema.resolve_db_path() is now the only reader
+    of $AGENT_CHAT_DB; web.db and the MCP server only export it."""
+    import os
+    import schema
+
+    src = Path(__file__).resolve().parent.parent / "src"
+    def reads_env(line: str) -> bool:
+        return ('environ.get("AGENT_CHAT_DB"' in line
+                or ('environ["AGENT_CHAT_DB"]' in line and '"] =' not in line))
+
+    readers = sorted(
+        f.relative_to(src).as_posix() for f in src.rglob("*.py")
+        if any(reads_env(line) for line in f.read_text(encoding="utf-8").splitlines()))
+    assert readers == ["schema.py"], readers
+
+    tmp = Path(__import__("tempfile").mkdtemp())
+    assert schema.resolve_db_path(str(tmp / "x.db")) == str(tmp / "x.db")
+    assert Path(schema.resolve_db_path("rel/x.db")).is_absolute()
+    try:
+        schema.resolve_db_path("rel/x.db", relative_ok=False)
+    except ValueError as e:
+        assert "absolute" in str(e)
+    else:
+        raise AssertionError("a relative --db-path was accepted for the MCP server")
+
+
+def test_mcp_server_db_path_reaches_the_persona_tools():
+    """--db-path set the turn tools' database, but the persona tools followed
+    $AGENT_CHAT_DB, so they read another file (repro_09)."""
+    import asyncio
+    import json as _json
+    import os
+    import sqlite3
+    import tempfile
+
+    import agent_chat_mcp as mcp
+    from orchestrator import personas
+
+    saved = (mcp.DB_PATH, mcp.AGENT_ID, personas.DB_PATH, os.environ.get("AGENT_CHAT_DB"))
+    try:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
+            other = Path(tmp) / "other.db"
+            custom = Path(tmp) / "custom.db"
+            os.environ["AGENT_CHAT_DB"] = str(other)       # what the env says
+            mcp.DB_PATH, mcp.AGENT_ID = str(custom), "a"     # what --db-path said
+            mcp.db_init()
+            c = sqlite3.connect(custom, isolation_level=None)
+            c.execute('INSERT INTO personas ("group", slug, name, body, created_at, updated_at) '
+                      "VALUES ('G', 'only-in-custom', 'Only', 'body', 'x', 'x')")
+            c.close()
+            got = _json.loads(asyncio.run(mcp.get_persona(mcp.GetPersonaInput(name="only-in-custom"))))
+            assert got["status"] != "not_found", got
+    finally:
+        mcp.DB_PATH, mcp.AGENT_ID, personas.DB_PATH, env = saved
+        if env is None:
+            os.environ.pop("AGENT_CHAT_DB", None)
+        else:
+            os.environ["AGENT_CHAT_DB"] = env
+
+
+def test_web_ui_main_starts_on_a_given_db_path():
+    """main() resolves --db-path and reaches uvicorn.run. Nothing else runs it
+    that far, which let a missing import ship to the image build (RT-20)."""
+    import os
+    import sys as _sys
+    import tempfile
+
+    import web_ui
+
+    started = {}
+    real_run, argv, env = web_ui.uvicorn.run, _sys.argv, os.environ.get("AGENT_CHAT_DB")
+    web_ui.uvicorn.run = lambda app, **kw: started.update(kw)
+    try:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
+            db = str(Path(tmp) / "chat.db")
+            _sys.argv = ["web_ui.py", "--db-path", db, "--port", "8799"]
+            web_ui.main()
+            assert started.get("port") == 8799, started
+            assert os.environ["AGENT_CHAT_DB"] == db
+    finally:
+        web_ui.uvicorn.run, _sys.argv = real_run, argv
+        if env is None:
+            os.environ.pop("AGENT_CHAT_DB", None)
+        else:
+            os.environ["AGENT_CHAT_DB"] = env
+
+
+def test_mcp_server_refuses_a_relative_db_path():
+    import subprocess
+    import sys as _sys
+    server = Path(__file__).resolve().parent.parent / "src" / "agent_chat_mcp.py"
+    r = subprocess.run([_sys.executable, str(server), "--agent-id", "codex",
+                        "--db-path", "db/chat.db"],
+                       capture_output=True, text=True, timeout=60, stdin=subprocess.DEVNULL)
+    assert r.returncode != 0 and "--db-path must be an absolute path" in r.stderr, r.stderr
+
+
 def test_set_db_path_always_exports_an_absolute_path():
     """A relative AGENT_CHAT_DB silently gives every spawned agent its own DB.
 

@@ -73,18 +73,20 @@ _PERSONAS_ROOT = _REPO_ROOT / "agents" / "Debate-Agents"
 # on sys.path; src/schema.py is stdlib-only, so the import graph stays light.
 if str(_REPO_ROOT / "src") not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT / "src"))
-from schema import ensure_schema  # noqa: E402
+from schema import ensure_schema, resolve_db_path  # noqa: E402
+
+
+# Set by the process that owns a database (web.db.set_db_path, the MCP
+# server's persona tools). Without it this module followed $AGENT_CHAT_DB
+# alone, so an MCP server started with --db-path served personas from a
+# different database than its conversations (audit RT-20).
+DB_PATH: str | None = None
 
 
 def _db_path() -> str:
-    """Resolve the DB path: ``$AGENT_CHAT_DB`` > ``<repo>/db/chat.db``.
-
-    Copies ``orchestrator.seeding.default_db_path()`` rather than importing it,
-    to keep this module's import graph stdlib-only (seeding pulls pydantic)."""
-    env_db = os.environ.get("AGENT_CHAT_DB")
-    if env_db:
-        return env_db
-    return str(_REPO_ROOT / "db" / "chat.db")
+    """``DB_PATH`` when the owning process set it, else
+    ``schema.resolve_db_path()`` (``$AGENT_CHAT_DB`` > ``<repo>/db/chat.db``)."""
+    return DB_PATH or resolve_db_path()
 
 
 def now_iso() -> str:

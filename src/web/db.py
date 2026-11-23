@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from orchestrator import delivery
+from orchestrator import delivery, personas
 from schema import (  # noqa: F401 — the ARENA_/DRAFT_ names are re-exported to web_ui and web.api/render
     ARENA_CLOSED, ARENA_OPEN, CONV_COLUMNS, DRAFT_APPROVED, DRAFT_PENDING, DRAFT_POSTED,
     DRAFT_REJECTED, DRAFT_VERDICTS, MSG_COLUMNS, PERSONA_COLS_SQL, PERSONA_COLUMNS,
@@ -58,6 +58,7 @@ def set_db_path(path: str) -> None:
     global DB_PATH
     DB_PATH = os.path.abspath(os.path.expanduser(path))
     os.environ["AGENT_CHAT_DB"] = DB_PATH
+    personas.DB_PATH = DB_PATH
 
 
 # ---------------------------------------------------------------------------
