@@ -168,6 +168,7 @@ topic: Has social media made people less happy overall?
 | `-Preset <name>` | `-Format collaborate` only. Override the sub-type (`brainstorm`, `plan`, `decide`, `solve`, `code-review`, `audit`, `design`, `validate`, `collaborate`). Default: the task's `Preset:` line, else `collaborate`. |
 | `-HostPersona <name>` | `-Format podcast` only. Force the host's persona (slug or display name, any group) instead of a random draw. |
 | `-DryRun` | Do everything except seed + open windows. Prints the topic, persona→CLI mapping, prompt-file paths, and the exact launch command per agent. Writes nothing. **Run this first.** |
+| `-Model <id=model,…>` | Model per seat, e.g. `-Model claude-code=sonnet,codex=gpt-5.4-mini`. A bare CLI name covers all of its seats; an exact seat id (`claude-code-2`) wins. Each CLI is launched with `--model <name>`; seats not named keep the CLI's default. Names are limited to model-id characters. |
 | `-SkipPermissions` | Let Claude Code seats call the `roundtable` tools without asking (an allowlist, not a bypass). Other CLIs still ask. |
 | `-Topic "..."` | Force a topic instead of random selection. (A forced topic is **not** checked off, since it may not be in the file.) |
 | `-Agents 2\|3\|4\|5` | Force the debater count, overriding the topic's `Debaters:` line. `4` adds `opencode`; `5` has no 5th tool to reach for, so the seat planner deals a second seat on a tool already in play (e.g. `claude-code-2`). Both wired but not yet field-validated. |

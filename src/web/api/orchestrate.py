@@ -9,6 +9,7 @@ whether the spawn is possible (hosted mirror, non-Windows, no ``pwsh``).
 from __future__ import annotations
 
 import json
+import re
 import random
 import shutil
 import subprocess
@@ -52,6 +53,10 @@ _PERSONA_CUSTOM = "__custom__"
 # Guard the parse, not just the upload: the browser caps the file, but this
 # route is reachable without it.
 _PERSONA_CUSTOM_MAX_CHARS = 100_000
+
+
+# Same rule as $ModelNamePattern in scripts/lib/spawn-agents.ps1 (RT-36).
+_MODEL_NAME_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:/@#\[\]-]{0,99}")
 
 
 def api_orchestrate(request: Request) -> Response:
@@ -221,6 +226,23 @@ def api_orchestrate(request: Request) -> Response:
     except _CastError as e:
         return JSONResponse({"ok": False, "kind": "validation",
                              "error": str(e)}, status_code=400)
+
+    # ---- per-seat model (optional, RT-36) ------------------------------------
+    # ``models`` maps seat -> model name; each CLI is launched with --model. A
+    # seat left out keeps its CLI's default. The name reaches a command line,
+    # so only model-id characters pass (the launcher checks again).
+    models_pick = payload.get("models") or {}
+    if not isinstance(models_pick, dict) or not all(
+            isinstance(k, str) and isinstance(v, str) for k, v in models_pick.items()):
+        return JSONResponse({"ok": False, "kind": "validation",
+                             "error": "models must be an object mapping seat -> model name"},
+                            status_code=400)
+    seat_models = {k: v.strip() for k, v in models_pick.items() if v.strip()}
+    for seat, name in seat_models.items():
+        if not _MODEL_NAME_RE.fullmatch(name):
+            return JSONResponse({"ok": False, "kind": "validation",
+                                 "error": f"model name for {seat} has characters a model "
+                                          f"id doesn't use: {name!r}"}, status_code=400)
 
     # ---- moderator / host (optional) ----------------------------------------
     # ``moderator`` is ``{cli, persona}`` | null. The host runs on its own CLI
@@ -408,6 +430,7 @@ def api_orchestrate(request: Request) -> Response:
             participant_personas=participant_personas,
             participant_roles=seed.participant_roles,
             skip_permissions=bool(payload.get("skip_permissions")),
+            seat_models=seat_models,
         )
     else:
         spawn = {"status": "skipped", "detail": "auto-spawn not requested"}
@@ -560,6 +583,7 @@ def _maybe_spawn(
     participant_personas: dict[str, dict[str, str]],
     skip_permissions: bool,
     participant_roles: dict[str, str] | None = None,
+    seat_models: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """Best-effort: launch one CLI window per participant via the PowerShell
     spawn wrapper. Returns a status dict; never raises (seeding already
@@ -598,6 +622,7 @@ def _maybe_spawn(
         "persona_name": participant_personas.get(c, {}).get("persona_name", ""),
         "persona_body": participant_personas.get(c, {}).get("persona_body", ""),
         "role": roles.get(c, "debater"),
+        "model": (seat_models or {}).get(c, ""),
     } for c in ordered]
 
     launch_dir = repo_root / "db" / "launch"

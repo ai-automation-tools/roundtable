@@ -140,6 +140,34 @@ def test_every_window_records_its_pid_first() -> None:
         assert cmd.index(".pid'") < cmd.index("Set-Location"), (seat, cmd)
 
 
+def test_a_seat_model_becomes_a_model_flag() -> None:
+    """Audit RT-36: a seat given a model launches with --model <name>; the rest
+    keep their CLI's default; a name with shell characters is refused."""
+    if not _PWSH:
+        return
+    lib = _ROOT / "scripts" / "lib" / "spawn-agents.ps1"
+    launch = Path(tempfile.mkdtemp(prefix="agentchat-model-"))
+
+    def plan(model: str) -> subprocess.CompletedProcess:
+        script = (
+            f". '{lib}'; "
+            "$plan = New-AgentLaunchPlan -Assignments @("
+            f"[pscustomobject]@{{ Cli = 'claude-code'; Model = '{model}' }}, "
+            "[pscustomobject]@{ Cli = 'codex' }) -Topic 't' -ConvId 7 "
+            f"-LaunchDir '{launch}' -RepoRoot '{_ROOT}' -DryRun; "
+            "$plan | ForEach-Object { $_.Cli + ' :: ' + $_.Command }")
+        return subprocess.run([_PWSH, "-NoProfile", "-NonInteractive", "-Command", script],
+                              capture_output=True, text=True, encoding="utf-8", timeout=120)
+
+    out = plan("claude-sonnet-4-5")
+    assert out.returncode == 0, out.stdout + out.stderr
+    lines = dict(ln.split(" :: ", 1) for ln in out.stdout.splitlines() if " :: " in ln)
+    assert "claude --model 'claude-sonnet-4-5' " in lines["claude-code"], lines
+    assert "--model" not in lines["codex"], lines
+    bad = plan("x;calc")
+    assert bad.returncode != 0 or "invalid model name" in (bad.stdout + bad.stderr), bad.stdout
+    assert "invalid model name" in (bad.stdout + bad.stderr), bad.stdout + bad.stderr
+
 def test_a_path_with_an_apostrophe_still_parses() -> None:
     """A launch folder (or clone) under "Mike's Projects" closed the quoted
     path early and broke every seat's command line (audit RT-37). Each command

@@ -1094,7 +1094,10 @@ def _render_orchestrate(
       '{plus_svg}<span class="w-off">custom</span><span class="w-on">remove</span></button>' +
       '<input type="file" class="orch-persona-file" hidden data-chair="' + id + '"' +
       ' accept="{persona_accept}" />' +
-      '<button type="button" class="seat-del" aria-label="Remove this seat">&times;</button>';
+      '<button type="button" class="seat-del" aria-label="Remove this seat">&times;</button>' +
+      '<input type="text" class="seat-model" aria-label="Model for this seat"' +
+      ' placeholder="model (blank = the CLI default)" autocomplete="off" spellcheck="false"' +
+      ' maxlength="100" />';
     seatsBox.appendChild(row);
     const toolSel = row.querySelector('.seat-tool');
     if (tool && Array.from(toolSel.options).some(o => o.value === tool)) toolSel.value = tool;
@@ -1590,8 +1593,11 @@ def _render_orchestrate(
     const participants = room.chairs;
     const personas = {{}};
     const personaCustom = {{}};
+    const models = {{}};
     chairRows().forEach((row, i) => {{
       const seat = participants[i];
+      const model = (row.querySelector('.seat-model')?.value || '').trim();
+      if (model) models[seat] = model;
       const sel = row.querySelector('.seat-persona');
       if (!sel) return;
       personas[seat] = sel.value;
@@ -1611,6 +1617,7 @@ def _render_orchestrate(
       kickoff: (fd.get('kickoff') || '').trim() || null,
       personas: personas,
       persona_custom: personaCustom,
+      models: models,
       roles: extraRolePayload(),
       spawn: !!(spawnToggle && spawnToggle.checked),
       skip_permissions: !!(skipToggle && skipToggle.checked),
