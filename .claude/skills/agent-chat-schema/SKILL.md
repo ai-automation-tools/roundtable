@@ -19,6 +19,8 @@ and every process boots a file through `schema.ensure_schema(conn)`.
 | `CONV_COLUMNS` / `MSG_COLUMNS` / `PERSONA_COLUMNS` (+ `PERSONA_COLS_SQL`) | what the sidecar sync carries; read by `/api/ingest` *and* `scripts/db_sync.py` |
 | `ARENA_*` / `DRAFT_*` / `DRAFT_VERDICTS` | battleground status values |
 | `ensure_schema(conn)` | `executescript(SCHEMA)` + each missing migration; a concurrent "duplicate column name" is ignored |
+| `complete_conversation(conn, cid, reason)` | the only way a row leaves `active`; True only for the caller that moved it (deliver `complete` on True) |
+| `write_txn(conn)` | `BEGIN IMMEDIATE` … `COMMIT` for a check-then-write another process could interleave |
 
 Migrations are gated on `PRAGMA table_info({table})` so they stay idempotent:
 

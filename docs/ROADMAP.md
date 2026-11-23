@@ -157,7 +157,7 @@ From a full audit of `4f71561` (kept outside the repo). One item per PR, titled 
 - [x] **RT-06** Harden the delivery command sink — done 2026-11-22: topic/status move to `ROUNDTABLE_*` env vars; a shell evaluating a string needs `allow_shell`
 - [ ] **RT-07** Make publishing to the public mirror opt-in per conversation (owner decision) — 🔒 Needs owner
 - [ ] **RT-08** Bind each MCP session to one conversation; refuse to seed a busy seat
-- [ ] **RT-09** Transactional turn engine: one `transition()` helper with `BEGIN IMMEDIATE`
+- [x] **RT-09** Transactional turn engine: one `transition()` helper with `BEGIN IMMEDIATE` — done 2026-11-22: `schema.complete_conversation()` (conditional, returns whether this caller closed the row) and `schema.write_txn()` (`BEGIN IMMEDIATE`) instead of a generic `transition()`; send, web Stop, CLI stop, arena claim and thread merge go through them; repro_07 and repro_11 no longer reproduce, repro_08's forced interleave can no longer commit
 - [x] **RT-10** Deploy to Fly only after CI passes; build the image in CI; post-deploy checks — done 2026-11-22: `ci.yml` `deploy` job (`needs: test`) calls `deploy-fly.yml`; PR `image` job; Fly http check; post-deploy curl. Non-root image deferred (the volume is root-owned)
 - [ ] **RT-11** Require the CI check on `main` (owner click) — 🔒 Needs owner
 - [ ] **RT-12** Backups and health alerts that fail loudly; restore drill **(2026-11-22)** Landed: backup integrity check, exit 1 + alert on failure, no prune after a failure, prune only nightly names, one health alert per outage, local restore runbook + first drill. Still open: an off-disk copy, confirming Fly volume snapshots (owner), arming a Notifications sink on this machine (owner)

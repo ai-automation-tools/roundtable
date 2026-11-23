@@ -36,16 +36,12 @@ import os
 import sqlite3
 import sys
 import time
-from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from orchestrator import delivery, watchdog  # noqa: E402
-
-
-def now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+from schema import complete_conversation  # noqa: E402
 
 
 def _default_db_path() -> str:
@@ -186,20 +182,17 @@ def cmd_tail(conn: sqlite3.Connection, conv_id: int, interval: float) -> int:
 
 
 def cmd_stop(conn: sqlite3.Connection, conv_id: int, db_path: str) -> int:
-    conv = conn.execute(
-        "SELECT status FROM conversations WHERE id = ?", (conv_id,)
-    ).fetchone()
-    if conv is None:
-        print(f"(no conversation #{conv_id})")
-        return 1
-    if conv["status"] == "complete":
+    # Same transition as the web UI's Stop and the MCP send path: the row
+    # leaves 'active' once, and only the caller that moved it delivers.
+    if not complete_conversation(conn, conv_id, "stopped by operator"):
+        exists = conn.execute(
+            "SELECT 1 FROM conversations WHERE id = ?", (conv_id,)
+        ).fetchone()
+        if exists is None:
+            print(f"(no conversation #{conv_id})")
+            return 1
         print(f"(conversation #{conv_id} already complete)")
         return 0
-    conn.execute(
-        "UPDATE conversations SET status='complete', end_reason='stopped by operator', "
-        "current_turn=NULL, updated_at=? WHERE id=?",
-        (now_iso(), conv_id),
-    )
     print(f"Stopped conversation #{conv_id}")
     # No-op unless config/delivery.json turns a sink on. The DB path is
     # whatever this CLI was pointed at, so a delivery never reads a different
