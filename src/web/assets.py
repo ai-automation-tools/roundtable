@@ -2754,6 +2754,15 @@ body:has(.cv2.cv-fullscreen) .topbar { margin-left:0; }
   .cv-rail { border-right:0; border-bottom:1px solid var(--cv-line); }
   .cv-resizer { display:none; }
   .cv-list { max-height:38vh; }
+  /* A conversation (or its 404) reads first; the list follows it. With the
+     list on top the transcript started ~700px down a 812px phone (RT-38). */
+  .cv2.cv-reading { grid-template-rows:auto auto; }
+  .cv2.cv-reading .cv-rail { order:2; border-bottom:0; border-top:1px solid var(--cv-line); }
+  /* …and inside it the transcript comes straight after the title and cast;
+     the action and kickoff panels follow it. */
+  .cv2.cv-reading .cv-read { display:flex; flex-direction:column; }
+  .cv2.cv-reading .cv-read > * { order:2; }
+  .cv2.cv-reading .cv-read > :is(.cv-read-head, .cv-cast, .cv-convo-box, .cv-jumpwrap) { order:1; }
   #cv-rail-open { top:auto; bottom:14px; }
   .cv-read { padding:28px 16px 56px; }
   .cv-ov { padding:28px 16px 56px; }

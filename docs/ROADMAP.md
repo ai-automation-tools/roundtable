@@ -186,7 +186,7 @@ From a full audit of `4f71561` (kept outside the repo). One item per PR, titled 
 - [ ] **RT-35** Align `wait_for_turn` default with client tool timeouts
 - [ ] **RT-36** Per-seat model choice
 - [ ] **RT-37** Close SQLite connections explicitly; escape quotes in the PS spawn string
-- [ ] **RT-38** Show the transcript first on phones
+- [x] **RT-38** Show the transcript first on phones — done 2026-11-22: at ≤900px the detail and 404 pages put the list below the reader and the actions/kickoff panels below the transcript; on 375×812 the title sits at y≈150 and the first message at y≈550 (were ≈760 and ≈1420); the index keeps the list first
 - [x] **RT-39** Accessibility quick fixes: skip link, dark muted contrast, names, tap targets — done 2026-11-22: Lighthouse a11y 100 on /conversations (desktop), 99 on a mobile transcript (only heading-order left, RT-40)
 - [ ] **RT-40** Transcript semantics, one h1 per page, real form labels
 - [ ] **RT-41** Front-end load: defer highlight.js, self-host fonts, slim the polled index
