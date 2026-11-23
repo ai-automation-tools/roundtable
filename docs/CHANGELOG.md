@@ -6,6 +6,12 @@ Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changel
 
 ## 2026-11-22 (latest)
 
+### Fixed — the hosted mirror stops describing its own container
+
+- **Reads about the local machine are `404` on the mirror:** `/api/setup` (it listed container paths and `/root/.claude.json`), `/api/settings/*`, `/api/notifications` and `/api/battleground/*`. Writes there are still the read-only `403`.
+- The web UI's startup log prints `public read-only: on|off` next to `basic auth`.
+- Audit item RT-31.
+
 ### Changed — the docs every agent loads are a quarter of the size
 
 - **`AGENTS.md` is 13 KB, down from 58 KB.** Every agent session, and every Claude Code seat, loads it. The per-area rules (database and MCP server, web UI, AgentBattleground, delivery, conversation types and personas, testing, docs/git/deploy) moved verbatim to [`docs/maintainers/`](maintainers/README.md), one file per area; `AGENTS.md` keeps the rule most often broken in each area and a link.

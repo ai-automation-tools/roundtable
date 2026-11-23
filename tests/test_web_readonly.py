@@ -538,6 +538,15 @@ def test_real_routes_readonly_end_to_end():
                 resp = client.request(method, path)
                 assert resp.status_code == 403, f"{method} {path} -> {resp.status_code}"
                 assert resp.json()["error"] == "read-only deployment", path
+
+            # Reads about this machine 404 on the mirror: /api/setup showed the
+            # container's paths and /root/.claude.json (audit RT-31).
+            for path in ("/api/setup", "/api/notifications", "/api/settings/delivery",
+                         "/api/battleground/healthz", "/api/battleground/arenas"):
+                resp = client.get(path)
+                assert resp.status_code == 404, f"GET {path} -> {resp.status_code}"
+            # ...while a public read that merely shares a prefix still works.
+            assert client.get("/settings").status_code == 200
         finally:
             os.environ.pop("AGENT_CHAT_PUBLIC_READONLY", None)
             if saved is not None:

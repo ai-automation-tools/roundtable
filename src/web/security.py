@@ -254,6 +254,16 @@ _SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 # a read, POSTed so its known-id list can't outgrow a request head (RT-15).
 _BEARER_REALM_PATHS = frozenset({"/api/ingest", "/api/since"})
 
+# Reads about *this machine* — CLI probes, config/ files, the battleground
+# bridge. On the mirror they described the container (``/root/.claude.json``),
+# so a read gets 404 there; a write still gets the read-only 403 (RT-31).
+_LOCAL_ONLY_PREFIXES = ("/api/setup", "/api/settings", "/api/notifications",
+                        "/api/battleground")
+
+
+def _is_local_only(path: str) -> bool:
+    return any(path == p or path.startswith(p + "/") for p in _LOCAL_ONLY_PREFIXES)
+
 
 def _env_truthy(name: str) -> bool:
     """True when env var *name* is set to a truthy string (1/true/yes/on)."""
@@ -283,6 +293,8 @@ class ReadOnlyMiddleware(BaseHTTPMiddleware):
     """
 
     async def dispatch(self, request: Request, call_next):
+        if request.method in _SAFE_METHODS and _is_local_only(request.url.path):
+            return JSONResponse({"error": "not found"}, status_code=404)
         if (
             request.method not in _SAFE_METHODS
             and request.url.path not in _BEARER_REALM_PATHS
