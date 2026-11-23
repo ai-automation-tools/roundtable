@@ -130,7 +130,7 @@ roundtable/
 ## 1. Remote and local git
 
 1. Created a private GitHub repo at `https://github.com/ai-automation-tools/roundtable` (no auto-init — repo was empty so the local could push first).
-2. `git init -b main` inside `D:\AI_Agents\Projects\Mikes_AI_Lab\Repos\AI-Automation-Tools\Live_Apps\roundtable`.
+2. `git init -b main` inside `<repo>`.
 3. Wrote `.gitignore` with Python build artifacts, `.venv/`, `*.db*`, `.env*` (with `.env.example` allow-listed), `.vscode/`, `.idea/`, `.DS_Store`, `Thumbs.db`.
 4. Staged files, made initial commit, added `origin`, pushed.
 
@@ -152,8 +152,8 @@ Both agent folders already existed (`agents/CLIs/claude-code_agent1/` and `agent
 
 ### Shared paths
 
-- Server script: `D:/AI_Agents/Projects/Mikes_AI_Lab/Repos/AI-Automation-Tools/Live_Apps/roundtable/src/agent_chat_mcp.py`
-- Shared DB: `D:/AI_Agents/Projects/Mikes_AI_Lab/Repos/AI-Automation-Tools/Live_Apps/roundtable/db/chat.db` (auto-created on first run; `db/` exists, `*.db` is gitignored)
+- Server script: `<repo>/src/agent_chat_mcp.py`
+- Shared DB: `<repo>/db/chat.db` (auto-created on first run; `db/` exists, `*.db` is gitignored)
 
 ### Claude Code agent (`agents/CLIs/claude-code_agent1/`)
 
@@ -165,7 +165,7 @@ Appended a new server entry to the existing `.mcp.json` (which already had 9 unr
   "args": [
     "-NoProfile",
     "-File",
-    "D:/AI_Agents/Projects/Mikes_AI_Lab/Repos/AI-Automation-Tools/Live_Apps/roundtable/scripts/run-mcp-server.ps1",
+    "<repo>/scripts/run-mcp-server.ps1",
     "claude-code"
   ]
 }
@@ -185,7 +185,7 @@ The seat's role doc is `claude.md` in that folder — a **full-stack developer**
 
 ### Codex CLI agent (`agents/CLIs/codex_agent1/`)
 
-The MCP server is registered in the **user-level** Codex config at `C:\Users\mikes\.codex\config.toml` (later in the day — initially we tried a per-folder `.codex/config.toml` here, but Codex's loader doesn't read that location by default, so the in-repo file was removed). The block appended to the global config:
+The MCP server is registered in the **user-level** Codex config at `~/.codex/config.toml` (later in the day — initially we tried a per-folder `.codex/config.toml` here, but Codex's loader doesn't read that location by default, so the in-repo file was removed). The block appended to the global config:
 
 ```toml
 [mcp_servers.roundtable]
@@ -193,7 +193,7 @@ command = "pwsh"
 args = [
   "-NoProfile",
   "-File",
-  "D:/AI_Agents/Projects/Mikes_AI_Lab/Repos/AI-Automation-Tools/Live_Apps/roundtable/scripts/run-mcp-server.ps1",
+  "<repo>/scripts/run-mcp-server.ps1",
   "codex",
 ]
 tool_timeout_sec = 330  # wait_for_turn may block up to 300 s; Codex defaults to 300
@@ -204,7 +204,7 @@ tool_timeout_sec = 330  # wait_for_turn may block up to 300 s; Codex defaults to
 > only hardcoded path is `scripts/run-mcp-server.ps1`, and `--db-path`
 > is optional (server defaults + `$AGENT_CHAT_DB`).
 
-Side effect: `roundtable` is now visible to **every** Codex session on this machine, regardless of cwd. That's fine — the server only does work when an agent calls its tools — but it means the venv at `D:/AI_Agents/Projects/Mikes_AI_Lab/Repos/AI-Automation-Tools/Live_Apps/roundtable/.venv/` must keep existing or every Codex session will fail to start that server until the path is fixed.
+Side effect: `roundtable` is now visible to **every** Codex session on this machine, regardless of cwd. That's fine — the server only does work when an agent calls its tools — but it means the venv at `<repo>/.venv/` must keep existing or every Codex session will fail to start that server until the path is fixed.
 
 `agents/CLIs/codex_agent1/.codex/skills/` (skill-creator, skill-installer) is unrelated to MCP wiring and stays.
 
@@ -253,7 +253,7 @@ Resolved versions captured in `requirements.txt` (committed): `mcp==1.27.0`, `py
 Both agent MCP configs were repointed from `"command": "python"` to the venv interpreter:
 
 ```
-D:/AI_Agents/Projects/Mikes_AI_Lab/Repos/AI-Automation-Tools/Live_Apps/roundtable/.venv/Scripts/python.exe
+<repo>/.venv/Scripts/python.exe
 ```
 
 Verification: `& .venv\Scripts\python.exe -c "import mcp, pydantic; print(pydantic.VERSION)"` → `2.13.3`.

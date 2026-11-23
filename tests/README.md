@@ -1,12 +1,11 @@
 <h1 align="center">🧪 Tests</h1>
 
 <p align="center">
-  <em>Twenty-two suites; only the browser one needs a test dependency. Every file is pytest-compatible<br>
+  <em>One suite per file; only the browser one needs a test dependency. Every file is pytest-compatible<br>
   <b>and</b> standalone-runnable, against an isolated temp database.</em>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Suites-22-10b981?style=for-the-badge&labelColor=09090b" alt="22 suites">
   <img src="https://img.shields.io/badge/Test_deps-CI--only-71717a?style=for-the-badge&labelColor=09090b" alt="CI-only test deps">
   <img src="https://img.shields.io/badge/CI-GitHub_Actions-2088FF?style=for-the-badge&labelColor=09090b&logo=githubactions&logoColor=white" alt="GitHub Actions">
 </p>
@@ -63,6 +62,9 @@ installs it, and the suite prints `SKIP` without it. To run it locally:
 | [**`test_debate_launcher.py`**](test_debate_launcher.py) | `scripts\debate.ps1 -Format podcast` and `-Format collaborate` (a random task with its seats and preset, facilitator first, no personas unless asked, `-Preset` override), run for real with `-DryRun` against a temp DB: the host takes seat one and `--host`, guests follow, the topic and guest count come from `Podcast-Topics.md`, the guest bounds hold, a debate's seed line is unchanged, and the printed flags seed a `podcast` row with host/guest roles. **Skips** without `pwsh` or the project venv, so it skips in CI, which installs into the runner's Python. |
 | [**`test_podcast_topics.py`**](test_podcast_topics.py) | The shape of `docs/chat-topics/Podcast-Topics.md`: `N. Title` + `- Guests: N` (the `debate.ps1` parser's shape with one word swapped), contiguous numbering, every guest count inside what `CONV_TYPES["podcast"]` seats, and **no yes/no propositions** — the debate library's openers (`Should…`, `Is…`, `Will…`) catch 99 of its 100 topics, which is the point. |
 | [**`test_topic_libraries.py`**](test_topic_libraries.py) | The other two topic libraries: `Debate-Topics.md` (`N. Title` + `- Debaters: N` inside what a debate seats, contiguous numbering, unique titles, and `debate.ps1` defaulting to it) and `Collaboration-Topics.md` (`- Seats: N` inside what a collaboration seats, a `- Preset:` naming a real collaborate preset, and tasks rather than yes/no questions). |
+| [**`test_persona_explorer.py`**](test_persona_explorer.py) | The public persona explorer (`/personas`, `/personas/{slug}`, card and zip downloads): the AI-Models group stays out of the grid, filters are GET params, a cover never renders broken. |
+| [**`test_spawn_allowlist.py`**](test_spawn_allowlist.py) | The launch command a spawned seat gets: an allowlist, never a bypass flag; each seat's deny flags and OpenCode permission block; the PID record line, `config/NO_SPAWN`, *close windows*, and a launch path with an apostrophe. Needs `pwsh`. |
+| [**`test_maintain_app.py`**](test_maintain_app.py) | `scripts/maintain-app.ps1` fails loudly and prunes only its own backups, run for real against temp paths. Needs `pwsh` and the venv. |
 
 ## 📐 Conventions
 

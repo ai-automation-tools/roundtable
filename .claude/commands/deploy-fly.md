@@ -3,7 +3,7 @@
 Decide whether the hosted mirror actually needs a deploy, then run it. Context:
 **$ARGUMENTS**
 
-The Fly app `agent-chat-mikesailab` (→ `agent-chat-demo.ai-automation-tools.dev`) runs **only
+The Fly app `agent-chat-mikesailab` (→ `roundtable-demo.ai-automation-tools.dev`) runs **only
 the web UI** (`src/web_ui.py` and the `src/web/` package it imports). Most of
 this repo never runs there.
 
@@ -51,7 +51,7 @@ this repo never runs there.
    The machine's `LAST UPDATED` should be the deploy you just ran, and the
    version number should have incremented. Then hit the real URL and confirm the
    change is actually visible — e.g.
-   `curl.exe -s https://agent-chat-demo.ai-automation-tools.dev/conversations | Select-String "<something your change added>"`.
+   `curl.exe -s https://roundtable-demo.ai-automation-tools.dev/conversations | Select-String "<something your change added>"`.
    Reaching for the browser is fine too, but a `curl` grep is the cheapest proof.
 
 ## Reporting
