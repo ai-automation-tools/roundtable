@@ -249,8 +249,9 @@ class BasicAuthMiddleware(BaseHTTPMiddleware):
 _SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 
 # POST routes that carry their own bearer-token auth (the sidecar sync realm)
-# and must keep working even when the public site is read-only.
-_BEARER_REALM_PATHS = frozenset({"/api/ingest"})
+# and must keep working even when the public site is read-only. /api/since is
+# a read, POSTed so its known-id list can't outgrow a request head (RT-15).
+_BEARER_REALM_PATHS = frozenset({"/api/ingest", "/api/since"})
 
 
 def _env_truthy(name: str) -> bool:
