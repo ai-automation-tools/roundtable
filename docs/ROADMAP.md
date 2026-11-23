@@ -145,6 +145,55 @@ Found in the owner's own static audit, inside its rules of engagement. Each item
 - [ ] `small` **No credential hint in the basic-auth log line, no raw DB error in responses** *(Security)* — **What:** carried from the 2026-11-10 security sweep: the startup and auth log lines name no credential or credential fragment, and API routes answer a database failure with a generic `{ error, code }` instead of the exception text. **Done when:** a test forces a DB error on an API route and the response body carries no exception text, and the startup output names no credential.
 - [x] `small` **Contain `publish_debate.py --category` inside the library folder** *(Security)* — dropped 2026-11-06: `scripts/publish_debate.py` was deleted along with the rest of the publish-to-library pipeline, so there is no `--category` left to contain. — **What:** `resolved = (library_root / category).resolve()`; refuse unless `resolved.is_relative_to(library_root.resolve())`. **Done when:** `--category ../x` exits with an error and writes nothing, in a test.
 
+### 🔎 Audit follow-ups, 2026-11-22
+
+From a full audit of `4f71561` (kept outside the repo). One item per PR, titled `fix(RT-NN): …`. Security items are worded neutrally and marked 🔒 Needs owner so an unattended run doesn't take them; the rest follow the audit's order (RT-27 → RT-09 → RT-08 → RT-13 before the bug fixes that sit on them).
+
+- [ ] **RT-01** Harden spawned seat permissions and MCP scope — 🔒 Needs owner
+- [x] **RT-02** Validate link schemes in the battleground console and bridge — done 2026-11-22: http(s) only at the bridge, in the extension and at render
+- [ ] **RT-03** Harden how captured threads and peer messages reach seats — 🔒 Needs owner
+- [ ] **RT-04** Tighten what the sync sidecar trusts from the mirror — 🔒 Needs owner
+- [ ] **RT-05** Harden the local control surface's write auth — 🔒 Needs owner
+- [ ] **RT-06** Harden the delivery command sink — 🔒 Needs owner
+- [ ] **RT-07** Make publishing to the public mirror opt-in per conversation (owner decision) — 🔒 Needs owner
+- [ ] **RT-08** Bind each MCP session to one conversation; refuse to seed a busy seat
+- [ ] **RT-09** Transactional turn engine: one `transition()` helper with `BEGIN IMMEDIATE`
+- [ ] **RT-10** Deploy to Fly only after CI passes; build the image in CI; post-deploy checks
+- [ ] **RT-11** Require the CI check on `main` (owner click) — 🔒 Needs owner
+- [ ] **RT-12** Backups and health alerts that fail loudly; restore drill
+- [ ] **RT-13** MCP turn tools return a history delta, not the full transcript
+- [ ] **RT-14** Delivery off the event loop; watchdog retry when no sink succeeded
+- [ ] **RT-15** Sync robustness: POST `/api/since`, push not blocked by pull, watermark overlap
+- [ ] **RT-16** Export: demote headings inside message bodies to keep the `##` contract
+- [ ] **RT-17** SSE: drain final messages before `complete`; 400 on a bad `since`; cap streams
+- [ ] **RT-18** Harden transcript rendering and ingest validation — 🔒 Needs owner
+- [ ] **RT-19** Harden notification URL handling — 🔒 Needs owner
+- [ ] **RT-20** One DB-path resolver
+- [ ] **RT-21** Hard stop: seat PIDs, close windows, wall-clock cap, `NO_SPAWN`
+- [ ] **RT-22** Real-person personas: disclosure and import review (owner decision) — 🔒 Needs owner
+- [ ] **RT-23** Remove persona zips and cover PNGs from the repo (owner decision) — 🔒 Needs owner
+- [ ] **RT-24** Fix skill and upstream drift
+- [ ] **RT-25** MCP tool text and annotations; `list_persona_groups`
+- [ ] **RT-26** Cut agent-loaded docs: `AGENTS.md` ≤ 15 KB, archive done phases, split the changelog
+- [ ] **RT-27** One schema module; parity tests for messages and battleground columns
+- [ ] **RT-28** Stop blocking the event loop; one `GROUP BY` for counts
+- [ ] **RT-29** CI hygiene: main-only push, timeouts, SHA pins, Linux leg, ruff
+- [ ] **RT-30** Docs accuracy sweep
+- [ ] **RT-31** Hosted mirror: refuse local-only routes; truthful startup log — 🔒 Needs owner
+- [ ] **RT-32** Repo housekeeping: merged branches, release tags (owner settings) — 🔒 Needs owner
+- [ ] **RT-33** One copy of the generated diagram; EOL rule
+- [ ] **RT-34** Move inline CSS/JS into static files; nonce CSP
+- [ ] **RT-35** Align `wait_for_turn` default with client tool timeouts
+- [ ] **RT-36** Per-seat model choice
+- [ ] **RT-37** Close SQLite connections explicitly; escape quotes in the PS spawn string
+- [ ] **RT-38** Show the transcript first on phones
+- [ ] **RT-39** Accessibility quick fixes: skip link, dark muted contrast, names, tap targets
+- [ ] **RT-40** Transcript semantics, one h1 per page, real form labels
+- [ ] **RT-41** Front-end load: defer highlight.js, self-host fonts, slim the polled index
+- [ ] **RT-42** Mirror and registry polish
+- [ ] **RT-43** Extension side panel accessibility
+- [ ] **RT-44** House style: Inter body font
+
 ### 🔴 High
 
 - [ ] **Publish the scheduled jobs as Cronsole templates** *(Enhancement)* — **What:** a builder modelled on `edge-spectrum/site/scripts/build-registry.mjs` writes a Registry v1 catalog to `homepage/registry/`: `roundtable-debate`, `roundtable-podcast`, `roundtable-collaborate` (`debate.ps1 -Format … -SkipPermissions`, interactive logon), `roundtable-healthcheck` (hourly) and `roundtable-maintain` (daily), plus one `roundtable` pack; a `--check` mode in CI; a daily *Registry drift* workflow; a **Schedule it** section on the homepage. Templates for the run formats say they launch CLI windows and skip tool approvals. Build *Default orchestrated agents to approvals on* first: its restricted allowlist is what makes an unattended run safe. **Done when:** `https://roundtable.ai-automation-tools.dev/registry/index.json` answers 200 with ACAO `*`, `--check` passes in CI, and the homepage cards link `#/t/<id>`. Interconnect then adds the gallery entry. Open question: which jobs ship (the run formats only, or the healthcheck and maintain jobs too) and whether a run template may default to `-SkipPermissions` or must make the user opt in. 🔒 Needs owner

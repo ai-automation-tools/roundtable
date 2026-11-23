@@ -67,6 +67,17 @@ _REJECT_REASONS = (
 )
 
 
+def _safe_href(value: Any) -> str:
+    """An escaped http(s) URL, or "" — rows stored before the bridge checked
+    schemes may still hold a ``javascript:`` link, so check again here."""
+    url = str(value or "").strip()
+    try:
+        ok = urlsplit(url).scheme.lower() in ("http", "https")
+    except ValueError:
+        ok = False
+    return html.escape(url, quote=True) if ok else ""
+
+
 def _e(value: Any) -> str:
     """Escape for text content; ``None`` becomes an empty string."""
     return html.escape("" if value is None else str(value))
@@ -245,10 +256,10 @@ def _post_html(post: dict[str, Any], reply_to: str | None) -> str:
     for key in ("score", "timestamp"):
         if post.get(key):
             bits.append(f"<span>{_e(post[key])}</span>")
-    permalink = post.get("permalink")
+    permalink = _safe_href(post.get("permalink"))
     if permalink:
         bits.append(
-            f'<a href="{html.escape(str(permalink), quote=True)}" target="_blank" '
+            f'<a href="{permalink}" target="_blank" '
             'rel="noopener noreferrer">link &#8599;</a>'
         )
     bits.append(f'<span style="color:var(--muted-2)">{_e(pid)}</span>')
@@ -327,6 +338,11 @@ def _render_battleground_arena(data: dict[str, Any]) -> str:
     drafts = data.get("drafts") or []
     aid = int(arena["id"])
     url = str(arena.get("url") or "")
+    href = _safe_href(url)
+    open_link = (
+        f'<a href="{href}" target="_blank" rel="noopener noreferrer">Open the thread &#8599;</a>'
+        if href else ""
+    )
     status = str(arena.get("status") or "")
     is_open = status == ARENA_OPEN
     reply_to = arena.get("reply_to")
@@ -385,7 +401,7 @@ def _render_battleground_arena(data: dict[str, Any]) -> str:
       <span>agent <b>{_e(arena.get("agent_id") or "unassigned")}</b></span>
       <span>cast <b>{_e(_cast_label(arena))}</b></span>
       <span>captured {_e(_short_ts(arena.get("created_at")))}</span>
-      <a href="{html.escape(url, quote=True)}" target="_blank" rel="noopener noreferrer">Open the thread &#8599;</a>
+      {open_link}
     </p>
   </header>
   {_DRAFTS_NEVER_POSTS}

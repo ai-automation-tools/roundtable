@@ -4,6 +4,14 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 ## 2026-11-22 (latest)
 
+### Fixed — battleground links are http(s) only
+
+- **The bridge, the extension and the `/battleground` console accept only `http`/`https` links.** A captured post's permalink with any other scheme is dropped at capture and at the bridge; an arena whose URL isn't http(s) is refused with a 400; and the console renders no link for a stored row that predates the check. Tests: `tests/test_battleground.py`.
+
+### Added — audit follow-ups on the roadmap
+
+- `docs/ROADMAP.md` gains an *Audit follow-ups, 2026-11-22* section: 44 items from a full audit, one PR each.
+
 ### Changed — the GitHub About names all four CLIs
 
 - The repo description named two CLI agents. It now lists Claude Code, Codex CLI, Antigravity and OpenCode, and says what they do on the bus (debates, podcasts, collaborations). Closes the roadmap's Metadata item.

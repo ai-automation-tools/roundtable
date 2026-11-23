@@ -178,6 +178,52 @@ def test_capture_input_is_scrubbed():
         assert "depth" not in posts[1]  # 999 is out of range → not stored
 
 
+def test_only_http_links_are_stored_or_rendered():
+    """A captured page picks its own links. A ``javascript:`` permalink clicked
+    on the console would run on the app's origin, where same-origin writes pass
+    the cross-site guard — so non-http(s) schemes are dropped at the bridge,
+    refused as an arena URL, and never rendered as an href."""
+    with _Env() as env:
+        bad = ["javascript:alert(1)", "JavaScript:alert(1)", " data:text/html,x", "vbscript:x"]
+        arena = _open_arena(
+            env.client,
+            thread=[
+                {"id": f"p{i}", "author": "a", "text": "t", "permalink": u}
+                for i, u in enumerate(bad + ["https://example.com/c/1"])
+            ],
+        )
+        links = [p.get("permalink") for p in arena["thread"]]
+        assert links == [None] * len(bad) + ["https://example.com/c/1"]
+
+        for u in ("javascript:alert(1)", "data:text/html,x", "file:///C:/x"):
+            resp = env.client.post(
+                "/api/battleground/arenas", json={"url": u, "thread": _THREAD}
+            )
+            assert resp.status_code == 400 and "http" in resp.json()["error"], u
+
+        # A row written before the bridge checked schemes: render still refuses.
+        conn = sqlite3.connect(env.db_path)
+        conn.execute(
+            "UPDATE battleground_arenas SET url = ?, thread = ? WHERE id = ?",
+            (
+                "javascript:alert(2)",
+                json.dumps([{"id": "x", "author": "a", "text": "t", "permalink": "javascript:alert(3)"}]),
+                arena["id"],
+            ),
+        )
+        conn.commit()
+        conn.close()
+        page = env.client.get(f"/battleground/{arena['id']}").text
+        assert 'href="javascript:' not in page.lower()
+        assert "Open the thread" not in page
+
+
+def test_extension_drops_non_http_permalinks_before_sending():
+    src = (_SRC.parent / "extension" / "src" / "capture.js").read_text(encoding="utf-8")
+    assert "permalink: httpOnly(extra.permalink)" in src
+    assert "/^https?:\/\//i" in src
+
+
 def test_every_shipped_adapter_label_survives_a_capture():
     """The extension's adapters and the bridge's KNOWN_SITES have to agree.
 
