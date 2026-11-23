@@ -324,7 +324,16 @@ def main() -> int:
     sp_del.add_argument("--show", action="store_true",
                         help="Print the resolved config and exit.")
 
+    sp_alert = sub.add_parser(
+        "alert", help="Send an app-health alert through the Notifications sink.")
+    sp_alert.add_argument("text")
+
     args = p.parse_args()
+    if args.cmd == "alert":
+        # No DB needed: the scheduled scripts call this when things are broken.
+        line = delivery.send_alert(args.text)
+        print(line)
+        return 1 if line.startswith("ERROR") else 0
     if not args.db_path:
         args.db_path = _default_db_path()
 

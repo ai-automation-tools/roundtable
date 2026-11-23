@@ -31,6 +31,17 @@
 .PARAMETER SkipBackup
   Trim logs only.
 
+.PARAMETER DbPath / BackupDir / LogDir
+  Override the paths (tests point these at a temp folder).
+
+.NOTES
+  **Fails loudly** (audit 2026-11-22, RT-12): a backup that errors or whose
+  copy fails PRAGMA integrity_check exits 1, so Task Scheduler shows it, and
+  sends one alert through the Notifications sink if one is armed
+  (`inspect_conversations alert`). The prune removes only the nightly
+  `chat-YYYYMMDD-HHMMSS.db` files; a hand-made snapshot (`chat-pre-*.db`)
+  is never pruned.
+
 .EXAMPLE
   .\scripts\maintain-app.ps1
 #>
@@ -39,17 +50,23 @@
 param(
     [int]    $KeepDays = 14,
     [int]    $MaxLogLines = 5000,
-    [switch] $SkipBackup
+    [switch] $SkipBackup,
+    [string] $DbPath,
+    [string] $BackupDir,
+    [string] $LogDir
 )
 
 $ErrorActionPreference = 'Stop'
 
 $ProjectRoot = (Resolve-Path "$PSScriptRoot\..").Path
 $Python      = Join-Path $ProjectRoot '.venv\Scripts\python.exe'
-$Db          = Join-Path $ProjectRoot 'db\chat.db'
-$BackupDir   = Join-Path $ProjectRoot 'db\backups'
-$LogDir      = Join-Path $ProjectRoot 'db'
+$Db = if ($DbPath) { $DbPath } else { Join-Path $ProjectRoot 'db\chat.db' }
+if (-not $BackupDir) { $BackupDir = Join-Path $ProjectRoot 'db\backups' }
+if (-not $LogDir)    { $LogDir    = Join-Path $ProjectRoot 'db' }
 $RunLog      = Join-Path $LogDir 'maintain-app.log'
+$Failed      = $false
+# Only what this task writes; a snapshot taken by hand keeps its own name.
+$NightlyName = '^chat-\d{8}-\d{6}\.db$'
 
 function Write-RunLog {
     param([string] $Message, [string] $Level = 'INFO')
@@ -68,6 +85,7 @@ if ($SkipBackup) {
     Write-RunLog "backup: no database at $Db -- nothing to back up" 'WARN'
 } elseif (-not (Test-Path $Python)) {
     Write-RunLog "backup: venv python not found at $Python -- skipping" 'ERROR'
+    $Failed = $true
 } else {
     if (-not (Test-Path $BackupDir)) { New-Item -ItemType Directory -Path $BackupDir | Out-Null }
     $stamp  = (Get-Date).ToString('yyyyMMdd-HHmmss')
@@ -81,10 +99,13 @@ src = sqlite3.connect(f'file:{sys.argv[1]}?mode=ro', uri=True)
 dst = sqlite3.connect(sys.argv[2])
 with dst:
     src.backup(dst)
+ok = dst.execute('PRAGMA integrity_check').fetchone()[0]
+if ok != 'ok':
+    sys.exit(f'integrity_check on the copy: {ok}')
 n = dst.execute('SELECT COUNT(*) FROM conversations').fetchone()[0]
 m = dst.execute('SELECT COUNT(*) FROM messages').fetchone()[0]
 dst.close(); src.close()
-print(f'{n} conversations, {m} messages')
+print(f'{n} conversations, {m} messages, integrity ok')
 "@
     try {
         $out = & $Python -c $py $Db $target 2>&1
@@ -93,16 +114,24 @@ print(f'{n} conversations, {m} messages')
             Write-RunLog "backup: $target ($mb MB) -- $out"
         } else {
             Write-RunLog "backup: FAILED -- $out" 'ERROR'
+            $Failed = $true
         }
     } catch {
         Write-RunLog "backup: FAILED -- $($_.Exception.Message)" 'ERROR'
+        $Failed = $true
     }
+    # A half-written or corrupt copy must not sit among the good ones.
+    if ($Failed -and (Test-Path $target)) { Remove-Item $target -Force -ErrorAction SilentlyContinue }
 
     # --- Prune ------------------------------------------------------------
-    if ($KeepDays -gt 0) {
+    # Never after a failed backup: nights of failures would otherwise prune
+    # away every good copy while looking routine.
+    if ($Failed) {
+        Write-RunLog 'prune: skipped -- tonight''s backup failed' 'WARN'
+    } elseif ($KeepDays -gt 0) {
         $cutoff = (Get-Date).AddDays(-$KeepDays)
         $old = @(Get-ChildItem -Path $BackupDir -Filter 'chat-*.db' -ErrorAction SilentlyContinue |
-                 Where-Object { $_.LastWriteTime -lt $cutoff })
+                 Where-Object { $_.Name -match $NightlyName -and $_.LastWriteTime -lt $cutoff })
         foreach ($f in $old) {
             try { Remove-Item $f.FullName -Force; Write-RunLog "prune: removed $($f.Name)" }
             catch { Write-RunLog "prune: could not remove $($f.Name) -- $($_.Exception.Message)" 'WARN' }
@@ -131,5 +160,16 @@ if ($MaxLogLines -le 0) {
     }
 }
 
+if ($Failed) {
+    $inspect = Join-Path $ProjectRoot 'src\inspect_conversations.py'
+    if (Test-Path $Python) {
+        try {
+            $sent = & $Python $inspect alert "Roundtable backup FAILED on $env:COMPUTERNAME -- see $RunLog" 2>&1
+            Write-RunLog "alert: $sent"
+        } catch { Write-RunLog "alert: could not send -- $($_.Exception.Message)" 'WARN' }
+    }
+    Write-RunLog 'maintain-app end (FAILED)' 'ERROR'
+    exit 1
+}
 Write-RunLog 'maintain-app end'
 exit 0

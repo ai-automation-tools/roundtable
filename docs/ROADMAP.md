@@ -160,7 +160,7 @@ From a full audit of `4f71561` (kept outside the repo). One item per PR, titled 
 - [ ] **RT-09** Transactional turn engine: one `transition()` helper with `BEGIN IMMEDIATE`
 - [x] **RT-10** Deploy to Fly only after CI passes; build the image in CI; post-deploy checks — done 2026-11-22: `ci.yml` `deploy` job (`needs: test`) calls `deploy-fly.yml`; PR `image` job; Fly http check; post-deploy curl. Non-root image deferred (the volume is root-owned)
 - [ ] **RT-11** Require the CI check on `main` (owner click) — 🔒 Needs owner
-- [ ] **RT-12** Backups and health alerts that fail loudly; restore drill
+- [ ] **RT-12** Backups and health alerts that fail loudly; restore drill **(2026-11-22)** Landed: backup integrity check, exit 1 + alert on failure, no prune after a failure, prune only nightly names, one health alert per outage, local restore runbook + first drill. Still open: an off-disk copy, confirming Fly volume snapshots (owner), arming a Notifications sink on this machine (owner)
 - [ ] **RT-13** MCP turn tools return a history delta, not the full transcript
 - [ ] **RT-14** Delivery off the event loop; watchdog retry when no sink succeeded
 - [ ] **RT-15** Sync robustness: POST `/api/since`, push not blocked by pull, watermark overlap
