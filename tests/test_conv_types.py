@@ -708,7 +708,7 @@ def test_topic_field_is_a_title_capped_at_the_seeding_limit() -> None:
     from web.render.orchestrate import _render_orchestrate
     html = _render_orchestrate([], conv_type="collaborate")
     assert 'name="topic" type="text"' not in html
-    assert f'<textarea name="topic" required maxlength="{TOPIC_MAX_CHARS}"' in html
+    assert f'<textarea name="topic" id="orch-topic" aria-describedby="orch-topic-hint" required maxlength="{TOPIC_MAX_CHARS}"' in html
     # The counter lives in the section head row, not on a stray line below the box.
     assert f'<span id="orch-topic-count">0</span>/{TOPIC_MAX_CHARS}' in html
     # Enter used to submit the form because it was an <input>; keep that.
@@ -729,9 +729,9 @@ def test_the_brief_box_takes_a_file_without_uploading_it() -> None:
     # field, and a "put it here instead" at the bottom of a long form is not an
     # answer. Collapsed and labelled optional, so the common case still reads
     # as one short field.
-    assert (html.index('<span class="lbl">Title')
+    assert (html.index('<label class="lbl" for="orch-topic">Title')
             < html.index('orch-brief-details')
-            < html.index('<span class="lbl">Format</span>'))
+            < html.index('id="orch-type-label">Format</span>'))
     assert "optional" in html[html.index('orch-brief-details'):][:600]
     for ext in (".md", ".txt"):
         assert ext in BRIEF_EXTENSIONS

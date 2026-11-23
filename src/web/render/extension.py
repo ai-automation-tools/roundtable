@@ -94,7 +94,7 @@ def _render_extension_page() -> str:
     body = f"""
 <div class="orch-shell xt-shell">
   <header class="orch-head">
-    <h2>AgentBattleground &mdash; the browser extension</h2>
+    <h1>AgentBattleground &mdash; the browser extension</h1>
     <p>A second front for the same MCP server. Instead of two CLIs arguing inside a local
        SQLite file, <strong>one CLI adopts a persona and argues in a debate that already
        exists on the web</strong>. The extension captures a comment thread, your agent
@@ -110,7 +110,7 @@ def _render_extension_page() -> str:
   </header>
 
   <div class="xt-invariant spot">
-    <h3>It drafts. It never posts.</h3>
+    <h2>It drafts. It never posts.</h2>
     <p>Every reply an agent produces is stored as a <code>pending</code> draft. Approving
        one <em>types the text into the site&rsquo;s own composer</em> and stops there
        &mdash; a human presses submit. Nothing in this server or in the extension can
@@ -124,21 +124,21 @@ def _render_extension_page() -> str:
   </div>
 
   <div class="xt-sec">
-    <h3>How a round goes</h3>
+    <h2>How a round goes</h2>
     <ol class="xt-steps">
-      <li><div><h4>Capture the thread</h4><p>Open the side panel on a comment page and
+      <li><div><h3>Capture the thread</h3><p>Open the side panel on a comment page and
         capture. Site access is requested <strong>per domain, at that moment</strong>
         &mdash; the extension ships with no standing permissions and injects nothing
         until you click. A preview shows exactly what the agent will be handed.</p></div></li>
-      <li><div><h4>Cast a persona and hand off</h4><p>Pick a persona from your roster;
+      <li><div><h3>Cast a persona and hand off</h3><p>Pick a persona from your roster;
         the panel gives you a ready-made prompt and the launch command for the CLI you
         want to argue with. You run that command yourself &mdash; this server never
         spawns a process because a web page asked it to.</p></div></li>
-      <li><div><h4>The agent drafts</h4><p>Over MCP: <code>get_arena</code> to read the
+      <li><div><h3>The agent drafts</h3><p>Over MCP: <code>get_arena</code> to read the
         thread and the rules, <code>submit_draft</code> to answer,
         <code>wait_for_verdict</code> to find out what you decided. Pick a specific
         comment to answer and the agent is told exactly whom it is replying to.</p></div></li>
-      <li><div><h4>You review</h4><p>Approve, edit, or reject with a one-click brief
+      <li><div><h3>You review</h3><p>Approve, edit, or reject with a one-click brief
         (&ldquo;too long&rdquo;, &ldquo;sounds like an LLM&rdquo;, &ldquo;needs a
         source&rdquo;) and the agent tries again. Approving inserts the text into the
         page&rsquo;s reply box and reads it back to confirm it landed. Then it is your
@@ -147,7 +147,7 @@ def _render_extension_page() -> str:
   </div>
 
   <div class="xt-sec">
-    <h3>Sites with a dedicated adapter</h3>
+    <h2>Sites with a dedicated adapter</h2>
     <p>An adapter&rsquo;s job is to find the posts and give each one a stable id, so
        re-capturing a thread merges new replies instead of duplicating it. Anything
        else falls back to a <code>generic</code> reader, which usually works and is
@@ -156,18 +156,18 @@ def _render_extension_page() -> str:
   </div>
 
   <div class="xt-sec">
-    <h3>Install it</h3>
+    <h2>Install it</h2>
     <ol class="xt-steps">
-      <li><div><h4>Chrome (and Chromium browsers)</h4>
+      <li><div><h3>Chrome (and Chromium browsers)</h3>
         <p>Open <code>chrome://extensions</code>, turn on Developer mode, choose
            <strong>Load unpacked</strong>, and select the <code>extension/</code>
            folder in your clone.</p></div></li>
-      <li><div><h4>Firefox</h4>
+      <li><div><h3>Firefox</h3>
         <p>Build the Gecko variant first, then load
            <code>extension/dist/firefox/</code> as a temporary add-on from
            <code>about:debugging</code>.</p>
         <div class="xt-code">.\\scripts\\build-extension.ps1</div></div></li>
-      <li><div><h4>Point it at your local server</h4>
+      <li><div><h3>Point it at your local server</h3>
         <p>The panel&rsquo;s Settings expect <code>http://127.0.0.1:8765</code> &mdash;
            this app, running locally. The bridge only answers an extension you name
            and a token you set: put the extension&rsquo;s id (from
@@ -180,7 +180,7 @@ def _render_extension_page() -> str:
   </div>
 
   <div class="xt-sec">
-    <h3>Where your data goes</h3>
+    <h2>Where your data goes</h2>
     <p>Nowhere. The two arena tables are deliberately excluded from the local&rarr;hosted
        sync, so captured third-party page content never reaches the public mirror. The
        persona an agent was given is snapshotted onto the arena at capture time, so
@@ -189,7 +189,7 @@ def _render_extension_page() -> str:
   </div>
 
   <div class="xt-sec">
-    <h3>Read more</h3>
+    <h2>Read more</h2>
     <div class="xt-links">
       <a href="{_REPO}/tree/main/extension" target="_blank" rel="noopener noreferrer">Extension source &amp; README &#8599;</a>
       <a href="{_REPO}/blob/main/docs/guides/battleground.md" target="_blank" rel="noopener noreferrer">Operator guide &#8599;</a>

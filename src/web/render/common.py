@@ -60,15 +60,47 @@ def _link_open_renderer(self, tokens, idx, options, env):
 _md.add_render_rule("link_open", _link_open_renderer)
 
 
-def render_markdown(text: str) -> str:
+def _heading_renderer(self, tokens, idx, options, env):
+    """Shift a heading down by ``env["shift"]`` levels (capped at h6) so a
+    message's or a card's headings nest under the page's own instead of
+    competing with its h1 (audit RT-40). ``md-hN`` keeps the authored level,
+    which the CSS sizes by, so the shift doesn't restyle it."""
+    shift = (env or {}).get("shift", 0)
+    tok = tokens[idx]
+    if shift:
+        level = int(tok.tag[1])
+        if tok.nesting == 1:
+            tok.attrJoin("class", f"md-h{level}")
+        tok.tag = f"h{min(level + shift, 6)}"
+    return self.renderToken(tokens, idx, options, env)
+
+
+_md.add_render_rule("heading_open", _heading_renderer)
+_md.add_render_rule("heading_close", _heading_renderer)
+
+# The heading level markdown is rendered beneath (its top heading becomes the
+# next level down).
+MESSAGE_HEADING_LEVEL = 3   # page h1 > "Conversation" h2 > speaker h3 > content
+CARD_HEADING_LEVEL = 2      # page h1 > "Cast" / "The card" h2 > card content
+
+
+def render_markdown(text: str, nest_under: int = 0) -> str:
     """Render a single message's content as safe HTML.
 
     Server-side only. The output is trusted by the browser without further
     escaping (the JS uses `innerHTML` for content_html). Safety relies on
     `html: False` plus markdown-it-py's URL-scheme validator (which rejects
-    `javascript:` etc. in link hrefs).
+    `javascript:` etc. in link hrefs). With ``nest_under=N`` the content's top
+    heading renders as h(N+1) and the rest keep their distance from it, so
+    `##`-first content doesn't skip a level (see ``_heading_renderer``).
     """
-    return _md.render(text or "")
+    env: dict = {"shift": 0}
+    tokens = _md.parse(text or "", env)
+    if nest_under:
+        levels = [int(t.tag[1]) for t in tokens if t.type == "heading_open"]
+        if levels:
+            env["shift"] = nest_under + 1 - min(levels)
+    return _md.renderer.render(tokens, _md.options, env)
 
 # The persona explorer — browse, read and download persona cards. In-app since
 # 2026-11-06; it replaced the static Persona Registry on the AI-Automation-Library
@@ -633,7 +665,7 @@ def _render_generic_404(path: str) -> str:
         'flex-direction:column;align-items:center;gap:4px;">'
         '<div style="font-family:\'JetBrains Mono\',ui-monospace,monospace;font-size:40px;'
         'font-weight:800;color:var(--accent);line-height:1;">404</div>'
-        '<h2 style="margin:10px 0 2px;">Page not found</h2>'
+        '<h1 style="margin:10px 0 2px;font-size:1.5em;">Page not found</h1>'
         f'<p style="color:var(--muted);margin:0;">Nothing lives at <code>{html.escape(path)}</code>.</p>'
         '<div style="margin-top:20px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">'
         '<a class="btn btn-primary" href="/conversations">Browse conversations</a>'

@@ -115,7 +115,7 @@ def _delivery_body(state: dict) -> str:
     body = f"""
 <div class="orch-shell su-shell set-shell">
   <header class="orch-head">
-    <h2>Write finished conversations out</h2>
+    <h1>Write finished conversations out</h1>
     <p>A conversation lives in <code>db/chat.db</code> and you come here to read it.
        Delivery is the other direction: when a run ends, push it somewhere. The
        folder sink writes the <strong>same bundle the <code>.zip</code> download
@@ -130,17 +130,17 @@ def _delivery_body(state: dict) -> str:
         <span>Save a copy of each finished conversation to a folder</span>
       </label>
       <div class="set-sub">
-        <span class="lbl">Folder</span>
+        <label class="lbl" for="dl-folder-path">Folder</label>
         <p class="hint">Relative paths resolve against the repo root, so a bare
            <code>deliveries</code> lands beside <code>db/</code>.</p>
         <input type="text" id="dl-folder-path" class="nt-input"
                value="{html.escape(str(folder.get('path') or 'deliveries'), quote=True)}"
                autocomplete="off" spellcheck="false">
 
-        <span class="lbl">Which conversations</span>
+        <span class="lbl" id="dl-scope-label">Which conversations</span>
         <p class="hint">Every run, or only the ones whose launch form had
            <em>save a copy</em> ticked.</p>
-        <div class="set-evrow">
+        <div class="set-evrow" role="radiogroup" aria-labelledby="dl-scope-label">
           <label class="set-evchk"><input type="radio" name="dl-scope" value="all"
             {'checked' if folder.get('scope') != 'opt-in' else ''}> every conversation</label>
           <label class="set-evchk"><input type="radio" name="dl-scope" value="opt-in"
@@ -166,7 +166,7 @@ def _delivery_body(state: dict) -> str:
         <span>Run a command against the delivered folder</span>
       </label>
       <div class="set-sub">
-        <span class="lbl">Command</span>
+        <label class="lbl" for="dl-cmd-argv">Command</label>
         <p class="hint"><code>{{dir}}</code>, <code>{{cid}}</code> and
            <code>{{event}}</code> are substituted; the topic and status arrive as
            <code>ROUNDTABLE_TOPIC</code> / <code>ROUNDTABLE_STATUS</code> environment
@@ -183,7 +183,7 @@ def _delivery_body(state: dict) -> str:
         <span class="lbl">Run it when a conversation&hellip;</span>
         {_event_checks("command", list(command.get("events") or []), all_events)}
 
-        <span class="lbl">Timeout (seconds)</span>
+        <label class="lbl" for="dl-cmd-timeout">Timeout (seconds)</label>
         <input type="number" id="dl-cmd-timeout" class="nt-input set-num" min="1"
                value="{int(command.get('timeout') or 120)}">
         <p class="hint">Needs the folder sink switched on &mdash; it acts on the
@@ -259,13 +259,13 @@ def _delivery_body(state: dict) -> str:
         msg.textContent = 'Saved \\u2713';
       }} else {{
         msg.textContent = '';
-        errorPanel.innerHTML = '<h4>Not saved</h4><p>' +
+        errorPanel.innerHTML = '<h2>Not saved</h2><p>' +
           esc(data.error || 'Unknown error') + '</p>';
         errorPanel.classList.remove('hidden');
       }}
     }} catch (err) {{
       msg.textContent = '';
-      errorPanel.innerHTML = '<h4>Network error</h4><p>' + esc(String(err)) + '</p>';
+      errorPanel.innerHTML = '<h2>Network error</h2><p>' + esc(String(err)) + '</p>';
       errorPanel.classList.remove('hidden');
     }} finally {{
       saveBtn.disabled = false;
@@ -331,19 +331,19 @@ def _render_settings_readonly(tab: str) -> str:
     body = f"""
 <div class="orch-shell">
   <header class="orch-head">
-    <h2>Settings live on your own machine</h2>
+    <h1>Settings live on your own machine</h1>
     <p>This hosted site is a <strong>read-only demo</strong>. Everything on this page
        is stored in <code>config/</code> &mdash; gitignored, per-machine, and about
        the computer that runs your CLI agents. None of it exists here.</p>
   </header>
 
   <div class="orch-ro-card">
-    <h3>{html.escape(title)}</h3>
+    <h2>{html.escape(title)}</h2>
     {detail}
   </div>
 
   <div class="orch-ro-card">
-    <h3>Open it locally</h3>
+    <h2>Open it locally</h2>
     <pre><code>.\\.venv\\Scripts\\python.exe src\\web_ui.py
 # then open http://127.0.0.1:8765/settings?tab={html.escape(tab, quote=True)}</code></pre>
     <p>Nothing you set there leaves that machine, and nothing is committed.</p>
