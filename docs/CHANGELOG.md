@@ -4,6 +4,13 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 ## 2026-11-22 (latest)
 
+### Fixed — the AgentBattleground side panel works with a screen reader
+
+- Status lines (capture, arena, hand-off, auto re-capture, settings) are announced as they change. The bridge indicator says *Connected* or *Offline* in words, not only in colour, and the settings toggle has a name and reports whether it's open.
+- The disclosure-line field and the auto re-capture seconds field have their own labels; the seconds field no longer sits inside the checkbox's label.
+- Contrast: white-on-accent buttons use a darker orange (5.4:1), accent text a per-scheme shade, and hint text the muted colour instead of faded ink. Lighthouse accessibility is 100 on the panel page in dark and light.
+- Reload the extension to pick it up. Audit item RT-43.
+
 ### Changed — persona zips and covers leave the repo; every seed card imports
 
 - **The bulk persona zips (89 MB) and cover PNGs are no longer tracked.** The zips duplicated the cards beside them; the covers are served from the roundtable-personas site, which already has all 22. Nothing at runtime read either. `.gitignore` now keeps them out. They are still in git history; rewriting history is a separate decision.
