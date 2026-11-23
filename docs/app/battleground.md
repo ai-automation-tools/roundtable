@@ -195,7 +195,7 @@ Other things worth knowing:
 - **Everything on the page is escaped, not rendered.** Titles, authors and post text came off a third-party website; unlike a conversation message (rendered as Markdown), captured content is emitted as text in a `white-space: pre-wrap` block. Draft content too — it's destined for a plain comment box, so what you review should be exactly what would be typed.
 - **The hosted mirror gets an explainer**, not an empty list. Both arena tables are excluded from the sidecar sync, so a list there wouldn't be "no arenas yet", it would be permanently empty — which reads as the opposite of the guarantee. Same shape `/orchestrate` uses when hosted.
 
-Implementation: [`src/web/render/battleground.py`](../../src/web/render/battleground.py) (rendering), the two page routes in [`src/web_ui.py`](../../src/web_ui.py), `BATTLEGROUND_CSS` in `web/assets.py`.
+Implementation: [`src/web/render/battleground.py`](../../src/web/render/battleground.py) (rendering), the two page routes in [`src/web_ui.py`](../../src/web_ui.py), `web/static/css/battleground.css` and `js/battleground-arena.js`.
 
 ## Extension internals
 

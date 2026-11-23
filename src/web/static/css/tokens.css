@@ -1,0 +1,76 @@
+/* Apex-aligned design tokens — mirror mikesailab.com.
+   Canvas #060606, zinc text, emerald-400 links, emerald-500 actions, red-500
+   destructive, amber-500 warning. Class names match the names the existing
+   renderers and SSE-append JS write to the DOM — do not rename without
+   updating _render_message + the inline script in _render_conversation. */
+:root {
+  --bg: #060606;
+  --panel: rgba(24, 24, 27, 0.4);          /* zinc-900/40 */
+  --panel-solid: #18181b;                   /* zinc-900 */
+  --panel-2: #27272a;                       /* zinc-800 */
+  --text: #f4f4f5;                          /* zinc-100 */
+  --muted: #a1a1aa;                         /* zinc-400 */
+  --muted-2: #909099;                       /* zinc-500 lifted: 6.4:1 on --bg, 4.7:1 on --panel-2 (WCAG AA) */
+  --accent: #10b981;                        /* emerald-400 — links */
+  --accent-strong: #059669;                 /* emerald-500 */
+  --accent-2: #10b981;                      /* emerald-500 — actions/done */
+  --border: rgba(39, 39, 42, 0.6);          /* zinc-800/60 */
+  --border-strong: #3f3f46;                 /* zinc-700 */
+  --good: #10b981;                          /* emerald-500 */
+  --warn: #f59e0b;                          /* amber-500 */
+  --bad: #ef4444;                           /* red-500 */
+
+  /* --- Layout -------------------------------------------------------------
+     The *header* is full-bleed: the wordmark sits in the literal left corner,
+     the actions in the right one, inset only by --gutter. Content is not —
+     reading pages centre on --page (margins), and only the app surfaces
+     (/conversations, /personas) run their panes edge-to-edge.
+
+     --rail-w is the universal icon sidebar. It's `position:fixed`, so every
+     page's <main> is inset by exactly this much; change it here and the whole
+     app shifts together. */
+  --gutter: clamp(16px, 1.8vw, 28px);
+  --topbar-h: 52px;
+  /* The shared source bar: the strip across the very top of every
+     ai-automation-tools site, with the repo link in its right corner (see
+     .src-bar in css/topbar.css). Always present, so the height is always spent —
+     it is what <body>'s padding, the topbar and the fixed rail are all offset
+     by. --chrome-h is that offset plus the topbar: what a full-height pane
+     has to subtract from the viewport. */
+  --srcbar-h: 34px;
+  --chrome-h: calc(var(--topbar-h) + var(--srcbar-h));
+  --page: 1400px;                           /* centred content column */
+  --measure: 75ch;                          /* readable line length for prose */
+
+  /* Content-shell widths. Every inner page's shell is `.orch-shell` plus a
+     class that only re-points max-width, so these three tokens are the whole
+     width system. Fluid with a cap, not a fixed px: at 2266px of viewport a
+     hard 780px column renders marooned in 1300px of nothing, and a hard 1600px
+     one runs body copy past comfortable. Pick by CONTENT, not by page:
+       --w-form   labelled controls read down a single column; wider only helps
+                  the card grids inside them (the /orchestrate format cards).
+       --w-panel  cards + stats that reflow into more columns as they get room.
+       --w-list   full-width rows where every pixel is title or metadata.
+     Prose keeps --measure and is deliberately NOT on this scale. */
+  --w-form: min(100%, 1080px);
+  --w-panel: min(100%, 1280px);
+  --w-list: min(100%, 1440px);
+
+  /* The rail is expanded (titles showing) by default and collapses to icons.
+     Resolve --rail-w from these two rather than overriding it directly: the
+     mobile media query below only has to move the endpoints, so it can't lose
+     a specificity fight with html.rail-collapsed.
+     --rail-open is 240px because the brand row has to fit "Agent
+     Battleground" AND the collapse toggle on one line; at 208 the wordmark
+     ellipsised. */
+  --rail-open: 240px;
+  --rail-shut: 64px;
+  --rail-w: var(--rail-open);
+
+  /* The one easing every transition on the site shares (2026-10-05, the org
+     design vocabulary). A fast start that settles slowly reads as weight;
+     the old mix of `ease`, `ease-out` and three bezier curves read as
+     nothing in particular. */
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+html.rail-collapsed { --rail-w: var(--rail-shut); }

@@ -1,0 +1,11 @@
+.orch-ro-card{border:1px solid rgba(255,255,255,0.10);border-radius:10px;padding:16px 18px;margin:16px 0;background:rgba(24,24,27,0.4);}
+.orch-ro-card :is(h2,h3){margin:0 0 8px;font-size:14px;color:#e5e7eb;}
+.orch-ro-card pre{margin:0 0 10px;padding:12px 14px;background:#0b0f0e;border:1px solid rgba(255,255,255,0.08);border-radius:6px;overflow-x:auto;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12.5px;color:#cbd5e1;}
+.orch-ro-card p{margin:0;color:#9ca3af;font-size:13px;}
+/* Per-format guide links. The homepage's debate + podcast CTAs both land on
+   this page when hosted, so this is where a public visitor is told how to
+   actually run one. */
+.orch-ro-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+.orch-ro-links a{border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:7px 11px;font-size:12.5px;color:#d4d4d8;text-decoration:none;}
+.orch-ro-links a:hover{border-color:#10b981;color:#fff;text-decoration:none;}
+.orch-ro-foot{margin-top:18px;color:#9ca3af;font-size:13px;}

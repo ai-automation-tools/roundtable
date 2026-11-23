@@ -1,8 +1,8 @@
 """Homepage (GET /) — the self-contained marketing/landing page.
 
 Until 2026-10-05 this page pulled Tailwind from a CDN at runtime and styled
-itself with inline utility classes. It is now plain markup over ``HOME_CSS``
-(``web/assets.py``), in the design vocabulary the org's other sites share —
+itself with inline utility classes. It is now plain markup over ``css/home.css``
+(``web/static/``), in the design vocabulary the org's other sites share —
 the same ``#060606`` ground, zinc neutrals, emerald accent, spotlight cards
 and page-load rise the shell already had. Two things that bought:
 
@@ -23,18 +23,17 @@ from typing import Any
 from orchestrator import availability
 from orchestrator import personas as personas_registry
 
-from web.assets import HOME_CSS, LIGHT_CSS, THEME_BOOT_JS
 from web.avatars import avatar_url
 from web.db import existing_conversation_ids, list_featured_debates
 from web.render.common import (
     PUBLIC_REGISTRY_URL,
-    FONTS_HEAD,
     _conv_cast_label,
     _conv_debater_casts,
     _initials,
     _sidebar,
     _topbar,
     consent_script,
+    head_assets,
     source_bar,
 )
 from web.security import _is_public_readonly
@@ -70,11 +69,8 @@ _HOMEPAGE_TEMPLATE = """<!doctype html>
 <meta property="og:title" content="Roundtable" />
 <meta property="og:description" content="Claude Code, Codex and other terminal agents debate, host podcasts and build things together — live in your browser." />
 <meta name="theme-color" content="#060606" />
-{theme_boot}
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-{fonts_head}
-<style>{HOME_CSS}</style>
-<style>{light_css}</style>
+{head}
 </head><body class="home">
 
 {source_bar}
@@ -673,7 +669,7 @@ def _render_homepage_featured(featured: list[dict[str, Any]], total: int = 0) ->
             '<span class="feat-av mono">'
             + (
                 f'<img src="{html.escape(avatar_url(slug), quote=True)}" alt="" loading="lazy" '
-                "onerror=\"this.style.display='none'\">"
+                'data-on-error="hide">'
                 if slug else ""
             )
             + f"{html.escape(_initials(name))}</span>"
@@ -861,7 +857,7 @@ def _render_homepage_personas() -> str:
             '<div class="cast-head">'
             '<span class="cast-av">'
             f'<img src="{html.escape(avatar_url(p.slug), quote=True)}" alt="" loading="lazy" '
-            "onerror=\"this.style.display='none'\">"
+            'data-on-error="hide">'
             f'{html.escape(initials)}</span>'
             f'<h3>{html.escape(p.name)}</h3></div>'
             '<p class="clamp2">'
@@ -884,7 +880,7 @@ def _render_homepage(stats: dict[str, int], latest: list[dict[str, Any]]) -> str
     the homepage's full-bleed sections would fight the constrained ``<main>``
     container the rest of the app uses. Its chrome IS shared: the same
     ``source_bar()``, ``_topbar()``, ``_sidebar()`` and ``FONTS_HEAD``, and a
-    stylesheet that composes the same ``DESIGN_TOKENS`` + ``TOPBAR_CSS``. The
+    stylesheet set that starts with the same tokens.css + topbar.css. The
     Conversations table lives at /conversations and uses the shared shell.
     """
     convs_total = stats["conversations"]
@@ -989,10 +985,7 @@ def _render_homepage(stats: dict[str, int], latest: list[dict[str, Any]]) -> str
         )
 
     return _HOMEPAGE_TEMPLATE.format(
-        HOME_CSS=HOME_CSS,
-        theme_boot=THEME_BOOT_JS,
-        light_css=LIGHT_CSS,
-        fonts_head=FONTS_HEAD,
+        head=head_assets(base="home"),
         topbar=_topbar(),
         source_bar=source_bar(),
         consent_script=consent_script(),

@@ -1,0 +1,107 @@
+/* Styling for the conversation-page Cast panel + the per-message persona label. */
+  /* hljs ships its own background (#0d1117). Strip it so the css/base.css
+     <pre> wrapper (#09090b + zinc-800/60 border) shows through. */
+  .msg-body pre code.hljs { background: transparent; padding: 0; }
+  /* The shared reader panel: Topic, Cast and Conversation all use this box +
+     its uppercase label, so the three read as one consistent stack. */
+  .cv-box { margin: 0 0 1.25rem; padding: 1rem 1.15rem; border: 1px solid var(--border, #27272a);
+            border-radius: 10px; background: rgba(255,255,255,0.015); }
+  .cv-box-label { margin: 0 0 0.7rem; font-size: 13px; font-weight: 600; text-transform: uppercase;
+                  letter-spacing: 0.08em; color: var(--muted, #a1a1aa); }
+  /* ---- Conversation header --------------------------------------------
+     Topic, then its facts on one line, then the Cast full-width beneath.
+     One column the whole way down — the transcript, the cast and the topic
+     all share the reader's width, so nothing reads as a sidebar. */
+  .cv-h1 { margin: 0; font-size: 27px; line-height: 1.22; font-weight: 650;
+           letter-spacing: -0.02em; color: var(--cv-paper, #e7eaee); }
+  .cv-facts { display: flex; align-items: center; flex-wrap: wrap;
+              gap: 4px 9px; margin-top: 14px; }
+  .cv-type { font: 600 10px/1 'JetBrains Mono', ui-monospace, monospace;
+             letter-spacing: 0.12em; text-transform: uppercase; color: #10b981;
+             background: rgba(16,185,129,0.10); border: 1px solid rgba(16,185,129,0.28);
+             border-radius: 999px; padding: 4px 9px; }
+  .cv-factline { font: 400 12px/1.7 'JetBrains Mono', ui-monospace, monospace;
+                 color: var(--cv-ash, #909099); }
+  .cv-factsep { color: #3f4147; }
+  /* Run configuration — read rarely, so it collapses. Sits at the end of the
+     facts line; the panel it opens breaks to its own row (flex-basis:100%). */
+  .cv-details { margin-left: 4px; }
+  .cv-details[open] { flex-basis: 100%; margin-left: 0; }
+  .cv-details > summary { display: inline-flex; align-items: center; gap: 5px;
+      cursor: pointer; list-style: none; font-size: 12px; color: var(--cv-ash);
+      text-decoration: underline; text-underline-offset: 3px; min-height: 24px; }
+  .cv-details > summary::-webkit-details-marker { display: none; }
+  .cv-details > summary:hover { color: var(--cv-bone, #c8ccd1); }
+  .cv-dlist { margin: 11px 0 0; padding: 11px 13px; border: 1px solid var(--cv-line, #27272a);
+              border-radius: 9px; background: rgba(255,255,255,0.02);
+              display: flex; flex-direction: column; gap: 7px; }
+  .cv-drow { display: flex; gap: 12px; align-items: baseline;
+             font: 400 11.5px/1.5 'JetBrains Mono', ui-monospace, monospace; }
+  .cv-drow dt { flex: 0 0 88px; color: var(--cv-ash); }
+  .cv-drow dd { margin: 0; color: var(--cv-bone, #c8ccd1); overflow-wrap: anywhere; }
+
+  /* ---- Cast panel (full width, under the topic) ------------------------ */
+  .cv-cast { border: 1px solid var(--cv-line, #27272a); border-radius: 12px;
+             padding: 12px 14px; background: rgba(255,255,255,0.02);
+             margin: 22px 0 1.25rem; }
+  .cv-cast-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px;
+                  padding: 0 6px; }
+  .cv-cast-label { margin: 0; font: 600 10px/1 'JetBrains Mono', ui-monospace, monospace;
+                   letter-spacing: 0.14em; text-transform: uppercase; color: var(--cv-ash); }
+  .cv-cast-hint { font-size: 11px; color: var(--cv-ash); }
+  .cast-list { list-style: none; margin: 0; padding: 0; }
+  .cast-item + .cast-item { border-top: 1px solid rgba(255,255,255,0.05); }
+  .cast-item summary, .cast-missing { cursor: pointer; padding: 10px 6px; display: flex;
+                       align-items: center; gap: 11px; list-style: none; border-radius: 8px; }
+  .cast-item summary::-webkit-details-marker { display: none; }
+  .cast-item summary:hover { background: rgba(255,255,255,0.04); }
+  .cast-item details[open] summary { background: rgba(255,255,255,0.03); }
+  .cast-item details[open] .cast-chev { transform: rotate(90deg); }
+  .cast-missing { cursor: default; }
+  .cast-avatar { flex: 0 0 28px; width: 28px; height: 28px; border-radius: 8px;
+                 display: inline-grid; place-items: center;
+                 font: 700 10px/1 'JetBrains Mono', ui-monospace, monospace;
+                 color: #06110f;
+                 background: linear-gradient(135deg, var(--cv-ink), var(--cv-ink-2));
+                 box-shadow: inset 0 0 0 1px rgba(255,255,255,0.18); }
+  /* The persona is the subject of the row. Which CLI played it is a footnote,
+     so it rides in the right-hand tail with the count rather than sitting in a
+     loud chip before the name. min-width:0 lets a long name ellipsis instead
+     of shoving the tail off the row. */
+  .cast-name { font-size: 14px; font-weight: 600; color: #e9e9ec; min-width: 0;
+               white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cast-tail { margin-left: auto; display: flex; align-items: center; gap: 14px;
+               flex: 0 0 auto; }
+  .cast-cli { font: 400 11px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--cv-ash);
+              white-space: nowrap; }
+  /* Marks a Cast row that fell back to the CLI's built-in AI-Models card
+     because the conversation recorded no persona for that agent. */
+  .cast-model { font: 600 9px/1 'JetBrains Mono', ui-monospace, monospace;
+                text-transform: uppercase; letter-spacing: 0.06em; color: #a1a1aa;
+                border: 1px solid var(--cv-line, #27272a); border-radius: 999px;
+                padding: 2px 6px; white-space: nowrap; }
+  /* Seat label — which chair this agent sat in (Host / Guest / Moderator /
+     Debater). The lead seat gets the accent so the person running the room
+     reads at a glance. */
+  .cast-role { font: 600 9px/1 'JetBrains Mono', ui-monospace, monospace;
+               text-transform: uppercase; letter-spacing: 0.08em; color: #8b8f96;
+               white-space: nowrap; }
+  .cast-role.is-lead { color: #10b981; }
+  .cast-count { font: 400 11px/1 'JetBrains Mono', ui-monospace, monospace;
+                color: var(--cv-ash); flex: 0 0 auto; min-width: 46px; text-align: right; }
+  .cast-chev { flex: 0 0 auto; display: inline-flex; color: #3f4147;
+               transition: transform .15s ease; }
+  .cast-chev svg { width: 13px; height: 13px; }
+  /* Persona cards run ~5KB. Full width they read fine, but an open card would
+     still push the transcript most of a screen down, so cap it and let it
+     scroll — the row stays where you clicked it. */
+  .cast-card { padding: 6px 10px 12px; margin-top: 2px;
+               border-top: 1px solid var(--cv-line, #27272a);
+               font-size: 13px; line-height: 1.65; color: var(--muted, #a1a1aa);
+               max-height: 380px; overflow-y: auto; overscroll-behavior: contain; }
+  .cast-card :is(.md-h1, .md-h2, .md-h3) { font-size: 13px; margin: 12px 0 4px;
+               color: #d4d4d8; }
+  .cast-card p, .cast-card li { margin: 6px 0; }
+  .cast-card > :first-child { margin-top: 0; }
+  .who-cli { font-family: ui-monospace, monospace; font-size: 11px; color: var(--muted, #a1a1aa);
+             font-weight: 400; opacity: 0.8; }

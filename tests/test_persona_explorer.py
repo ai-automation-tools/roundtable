@@ -111,7 +111,7 @@ def test_cover_uses_media_url_and_falls_back_to_avatar() -> None:
     covers = page.count("/covers/")
     assert covers == 3
     # Every cover carries its own avatar fallback, so a missing cover is never broken.
-    assert page.count("this.onerror=null;this.src='/avatars/") == covers
+    assert page.count('data-fallback="/avatars/') == covers
     from web.render.persona_explorer import DEFAULT_PERSONA_MEDIA_URL, media_url
     assert media_url() == DEFAULT_PERSONA_MEDIA_URL
 

@@ -1,0 +1,24 @@
+.nt-shell { max-width: var(--w-form); }
+.nt-input {
+  /* A topic name or a webhook URL in a 1030px-wide box reads as a mistake.
+     Cap it independently of the shell — the shell got wider for the radio
+     grid and the ticklists, not for these. */
+  width: 100%; max-width: 560px; box-sizing: border-box; margin-top: 6px;
+  background: rgba(24, 24, 27, 0.6); border: 1px solid var(--border-strong);
+  border-radius: 8px; padding: 10px 12px; color: var(--text);
+  font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 13px;
+}
+.nt-input:focus { outline: none; border-color: var(--accent); }
+.nt-svcs { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+.nt-svc .su-main { grid-template-columns: 20px minmax(0, 1fr); }
+.nt-svc input[type=radio] { width: 16px; height: 16px; accent-color: var(--accent); }
+.nt-ev .su-main { grid-template-columns: 20px minmax(0, 1fr); align-items: start; }
+.nt-ev input[type=checkbox] { margin-top: 3px; }
+.nt-evsub { line-height: 1.55; }
+.nt-server { margin-top: 14px; }
+.nt-toggle { display: flex; align-items: center; gap: 10px; cursor: pointer;
+             font-size: 14px; font-weight: 600; color: var(--text); }
+.nt-toggle input { width: 16px; height: 16px; accent-color: var(--accent); }
+.nt-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+              margin-top: 18px; }
+.nt-actions .orch-submit { margin-top: 0; }

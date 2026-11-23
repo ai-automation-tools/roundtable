@@ -21,7 +21,7 @@ Matching rules:
 
 Glyphs are stroke-only paths in a 24x24 box (Feather/Lucide idiom); the mark
 renderer scales and centres them on the tile, and stroke colour/width come from
-``.cv-mark-glyph`` in ``web.assets``.
+``.cv-mark-glyph`` in ``web/static/css/conversations.css``.
 """
 
 from __future__ import annotations

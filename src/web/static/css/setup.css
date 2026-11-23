@@ -1,0 +1,83 @@
+/* Inherits --w-form from .orch-shell; kept as a hook for the ticklist rules. */
+.su-shell { max-width: var(--w-form); }
+.su-rows { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.su-row {
+  border: 1px solid var(--border); border-radius: 8px;
+  background: rgba(24, 24, 27, 0.4);
+  padding: 12px 14px;
+}
+.su-row:has(input:checked) {
+  border-color: rgba(16, 185, 129, 0.38);
+  background: rgba(16, 185, 129, 0.05);
+}
+.su-main {
+  display: grid; grid-template-columns: 20px minmax(0, 1fr) auto;
+  align-items: center; gap: 12px; cursor: pointer;
+}
+.su-main input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); }
+.su-names { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.su-name { font-size: 14px; font-weight: 600; color: var(--text); }
+.su-dep {
+  font-size: 11px; font-weight: 400; font-style: normal;
+  color: var(--muted-2); text-transform: uppercase; letter-spacing: 0.1em;
+  margin-left: 6px;
+}
+.su-sub { font-size: 12px; color: var(--muted-2); }
+.su-sub code, .su-detail code, .su-plan code {
+  font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px;
+}
+.su-pills { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.su-pill {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px; line-height: 1.7; white-space: nowrap;
+  border-radius: 999px; padding: 0 9px;
+  border: 1px solid var(--border-strong); color: var(--muted-2);
+}
+.su-pill.ok { color: var(--good); border-color: rgba(16, 185, 129, 0.35);
+              background: rgba(16, 185, 129, 0.08); }
+.su-pill.warn { color: #fbbf24; border-color: rgba(245, 158, 11, 0.35);
+                background: rgba(245, 158, 11, 0.08); }
+.su-pill.off { color: var(--muted-2); }
+.su-detail { margin: 10px 0 0; font-size: 12px; color: var(--muted); line-height: 1.55; }
+.su-links { margin: 8px 0 0; font-size: 12px; }
+.su-links a, .su-detail a { color: var(--accent); }
+
+.su-plan {
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 14px 16px; background: rgba(24, 24, 27, 0.4);
+  font-size: 13px; color: var(--muted);
+}
+.su-plan-lead { margin: 0 0 10px; color: var(--text); }
+.su-plan-none { margin: 0; color: #fbbf24; }
+.su-plan-list { list-style: none; margin: 0; padding: 0;
+                display: flex; flex-direction: column; gap: 8px; }
+.su-plan-list li { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.su-plan-k {
+  flex: none; min-width: 128px;
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.09em;
+  color: var(--muted-2);
+}
+.su-seatline { display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
+.su-seatline code {
+  background: rgba(255, 255, 255, 0.05); border-radius: 5px; padding: 2px 7px;
+  color: var(--text);
+}
+.su-vs { color: var(--muted-2); font-size: 11px; text-transform: uppercase; }
+.su-plan-note { margin: 12px 0 0; font-size: 12.5px; color: var(--muted-2); line-height: 1.6; }
+.su-seats {
+  margin-top: 14px; padding-top: 12px;
+  border-top: 1px dashed var(--border-strong);
+}
+.su-seats p { margin: 0 0 10px; font-size: 12.5px; line-height: 1.6; }
+.su-seats-msg { margin-left: 10px; font-size: 12px; color: var(--muted-2); }
+.su-seats-msg.ok { color: var(--good); }
+.su-seats-msg.fail { color: var(--bad); }
+.su-foot { margin-top: 10px; }
+.su-foot a { color: var(--accent); }
+@media (max-width: 600px) {
+  /* Three columns squeezed the CLI name to 2px beside the nowrap pills and
+     pushed the row past the screen; the pills drop under the name instead. */
+  .su-main { grid-template-columns: 20px minmax(0, 1fr); }
+  .su-pills { grid-column: 2; justify-content: flex-start; }
+  .su-detail { overflow-wrap: anywhere; }  /* preflight messages carry full paths */
+}

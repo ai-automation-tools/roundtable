@@ -21,7 +21,7 @@ from urllib.parse import quote, urlencode
 from orchestrator import personas as personas_registry
 from orchestrator.personas import Persona
 
-from web.assets import EXPLORER_CSS
+from web.assets import stylesheets
 from web.avatars import avatar_url, raster_avatar
 from web.render.common import CARD_HEADING_LEVEL, _registry_layout, render_markdown
 from web.security import _is_public_readonly
@@ -58,8 +58,7 @@ def _cover_img(p: Persona, cls: str) -> str:
     return (
         f'<span class="{cls}"><img src="{_e(cover_url(p.slug))}" alt="" '
         f'loading="lazy" decoding="async" '
-        f"onerror=\"this.onerror=null;this.src='{av}';"
-        f"this.parentNode.classList.add('is-avatar')\"></span>"
+        f'data-fallback="{av}" data-fallback-class="is-avatar"></span>'
     )
 
 
@@ -149,8 +148,9 @@ def render_explorer(params: dict[str, str]) -> str:
         cat_sel += "</optgroup>"
     sort_sel = "".join(opt(k, label, sort) for k, label in _SORTS)
 
-    # Selects re-submit on change; the button covers no-JS and the search box.
-    autosubmit = ' onchange="this.form.submit()"'
+    # Selects re-submit on change (js/boot.js); the button covers no-JS and the
+    # search box.
+    autosubmit = " data-autosubmit"
     controls = (
         '<form class="px-controls" method="get" action="/personas" role="search">'
         '<label class="px-search"><span class="sr-only">Search personas</span>'
@@ -172,12 +172,16 @@ def render_explorer(params: dict[str, str]) -> str:
         for t, n in counts.most_common(_TAG_CLOUD_MAX)
     )
     active = ""
+    # A search is a full page load: focus landed on <body> and the count was
+    # never announced (audit RT-42). data-focus-on-load moves focus to it
+    # (js/shell.js); the title says it too.
     if q or group or cat or tag:
         bits = [f"<strong>{len(shown)}</strong> of {len(everyone)}"]
         if tag:
             bits.append(f'tag <a class="px-tag on" href="{_e(_href(state, tag=""))}" '
                         f'title="Remove tag filter">{html.escape(tag)} &times;</a>')
-        active = (f'<p class="px-count" role="status" tabindex="-1" id="px-count">'
+        active = (f'<p class="px-count" role="status" tabindex="-1" id="px-count" '
+                  'data-focus-on-load>'
                   f'{" · ".join(bits)} &middot; '
                   '<a href="/personas">clear filters</a></p>')
     else:
@@ -211,13 +215,8 @@ def render_explorer(params: dict[str, str]) -> str:
         '</div>'
     )
     filtered = bool(q or group or cat or tag)
-    if filtered:
-        # A search is a full page load: focus landed on <body> and the count
-        # was never announced (audit RT-42). Move focus to it; the title says it too.
-        body += ("<script>document.getElementById('px-count')"
-                 "?.focus({preventScroll:true});</script>")
     title = f"{len(shown)} of {len(everyone)} — Browse" if filtered else "Browse"
-    return _registry_layout(title, "", body, head_extras=EXPLORER_CSS)
+    return _registry_layout(title, "", body, head_extras=stylesheets("explorer"))
 
 
 def find_persona(slug: str, group: str = "") -> Persona | None:
@@ -294,4 +293,4 @@ def render_persona_detail(p: Persona) -> str:
         '</div>'
     )
     return _registry_layout(p.name, f"/ <strong>{html.escape(p.name)}</strong>", body,
-                            head_extras=EXPLORER_CSS)
+                            head_extras=stylesheets("explorer"))
