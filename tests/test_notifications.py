@@ -148,6 +148,7 @@ def test_seeding_fires_the_started_event():
             max_turns=2,
             mode="turns",
         )
+        assert delivery.wait_idle(10)         # fired on a background thread
         assert _Capture.received, "seeding did not fire the started event"
         body = json.loads(_Capture.received[-1]["body"])
         assert body["event"] == "started", body
@@ -184,6 +185,7 @@ def test_a_broken_sink_cannot_fail_a_seed():
             mode="turns",
         )
         assert res.conversation_id > 0
+        assert delivery.wait_idle(10)
     finally:
         _reset_config()
 

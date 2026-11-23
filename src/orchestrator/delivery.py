@@ -33,6 +33,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import threading
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
@@ -611,6 +612,58 @@ def deliver(cid: int, event: str, db_path: str | None = None,
     except Exception as exc:  # noqa: BLE001 - a sink must never break a turn
         _log(f"#{cid} {event}: ERROR {type(exc).__name__}: {exc}")
         return [f"ERROR: {exc}"]
+
+
+def reached(line: str) -> bool:
+    """True when one of ``deliver()``'s lines reports a sink that worked.
+
+    Every failure is spelled ``ERROR`` right after the sink name (or alone,
+    for a failure before any sink ran), so a dead webhook's line is not a
+    notification anybody received."""
+    return not line.startswith("ERROR") and not line.partition(": ")[2].startswith("ERROR")
+
+
+# Fan-outs started by deliver_later() and not finished yet.
+_PENDING: set[threading.Thread] = set()
+_PENDING_LOCK = threading.Lock()
+
+
+def deliver_later(cid: int, events: tuple[str, ...] | list[str],
+                  db_path: str | None = None) -> threading.Thread:
+    """Run ``deliver()`` for each event, in order, on a background thread.
+
+    For callers on an event loop (the MCP server's ``send_message``, the web
+    UI's Stop and ``/api/orchestrate``): a webhook can take its whole timeout
+    and a command sink up to two minutes, and running either inline froze
+    every other request and stream of that process (audit RT-14). The events
+    share one thread so a run's ``result`` lands before its ``complete``.
+
+    The thread is NOT a daemon: a short-lived process (``start_conversation.py``)
+    finishes the delivery before it exits instead of dropping it.
+    """
+    def run() -> None:
+        try:
+            for event in events:
+                deliver(cid, event, db_path)   # looked up per call: tests swap it
+        finally:
+            with _PENDING_LOCK:
+                _PENDING.discard(threading.current_thread())
+
+    t = threading.Thread(target=run, name=f"deliver-{cid}", daemon=False)
+    with _PENDING_LOCK:
+        _PENDING.add(t)
+    t.start()
+    return t
+
+
+def wait_idle(timeout: float = 30.0) -> bool:
+    """Block until every ``deliver_later()`` fan-out has finished (tests, and
+    anything that must not exit mid-delivery). False if one is still running."""
+    with _PENDING_LOCK:
+        threads = list(_PENDING)
+    for t in threads:
+        t.join(timeout)
+    return not any(t.is_alive() for t in threads)
 
 
 def send_test(sink: dict[str, Any], event: str = "complete") -> str:

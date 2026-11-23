@@ -264,8 +264,10 @@ def stop_conversation(cid: int) -> dict[str, Any] | None:
     # Committed. Fan out to any configured delivery sink — a no-op unless
     # config/delivery.json turns one on. Outside the `with` for the same reason
     # the MCP server keeps it outside its own: a sink can be an HTTP POST or a
-    # subprocess, neither of which belongs inside a write transaction.
-    delivery.deliver(cid, "complete", DB_PATH)
+    # subprocess, neither of which belongs inside a write transaction. And on a
+    # background thread: this runs inside an async route, and a slow sink would
+    # stall every request and SSE stream of the web UI (audit RT-14).
+    delivery.deliver_later(cid, ["complete"], DB_PATH)
     return {
         "already_complete": False,
         "status": "complete",

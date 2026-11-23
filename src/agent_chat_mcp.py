@@ -945,7 +945,7 @@ async def send_message(params: SendMessageInput) -> str:
 
     if capped is not None:
         if closed:
-            delivery.deliver(cid, "complete", DB_PATH)
+            delivery.deliver_later(cid, ["complete"], DB_PATH)
         return capped
 
     # Fan the export bundle out to any configured sink — a no-op unless
@@ -958,10 +958,13 @@ async def send_message(params: SendMessageInput) -> str:
     # make it fire twice. Every natural ending (cap reached, done, blocked) is
     # evaluated here, right after the insert that caused it; get_my_turn()'s
     # maybe_complete() is only a backstop and never delivers.
-    if params.signal == SIGNAL_RESULT:
-        delivery.deliver(cid, "result", DB_PATH)
-    if closed:
-        delivery.deliver(cid, "complete", DB_PATH)
+    #
+    # On a background thread: a sink may take its whole timeout, and this
+    # coroutine shares the server's event loop (audit RT-14).
+    events = (["result"] if params.signal == SIGNAL_RESULT else []) + (
+        ["complete"] if closed else [])
+    if events:
+        delivery.deliver_later(cid, events, DB_PATH)
 
     # Mirror get_my_turn() output so the caller can act without another round trip.
     return await get_my_turn(GetMyTurnInput())
