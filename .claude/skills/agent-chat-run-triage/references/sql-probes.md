@@ -20,7 +20,9 @@ The most common "the UI shows nothing" cause, and it is not a bug.
 ```powershell
 $env:AGENT_CHAT_DB                       # the override, if set
 Get-Content .mcp.json                    # what --db-path each seat was registered with
-Get-ChildItem agents/CLIs/*/**/*.json | Select-String 'db-path'
+# Seat folders live outside the repo since 2026-11-23 (RT-01); this prints where:
+.\.venv\Scripts\python.exe -c "import sys; sys.path.insert(0,'src'); from orchestrator import seats; print(seats.seat_root())"
+Get-ChildItem <that folder> -Recurse -Filter *.json | Select-String 'db-path'
 ```
 
 The MCP server refuses a relative `AGENT_CHAT_DB`, and one whose parent folder is missing (a stale
