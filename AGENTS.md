@@ -126,6 +126,6 @@ Full rules: [`docs-git-deploy.md`](docs/maintainers/docs-git-deploy.md).
 | [`docs/app/`](docs/app/README.md) | Per-feature reference, including the export contract. |
 | [`docs/mcp-server.md`](docs/mcp-server.md) | Every MCP tool, env var and the install line. |
 
-**Two skill trees:** [`skills/`](skills/) is read by the participating CLIs at runtime; [`.claude/skills/`](.claude/skills/) by Claude Code working on this repo. `agent-chat-conv-types`, `agent-chat-delivery` and `agent-chat-run-triage` are installed copies owned by [`ai-automation-tools/agent-skills`](https://github.com/ai-automation-tools/agent-skills) — edit them there.
+**Two skill trees:** [`skills/`](skills/) is read by the participating CLIs at runtime; [`.claude/skills/`](.claude/skills/) by Claude Code working on this repo. All seven maintainer skills there are owned by this repo, including `agent-chat-conv-types`, `agent-chat-delivery` and `agent-chat-run-triage` (copies from `agent-skills` until 2026-11-27) — edit them here.
 
 For ambiguous tasks, ask one clarifying question rather than guess — the codebase is small enough that a wrong assumption costs a six-file edit.

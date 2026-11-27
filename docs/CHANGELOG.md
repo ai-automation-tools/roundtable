@@ -4,7 +4,15 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changelog/2026-09.md) · [August 2026](changelog/2026-08.md) · [July 2026](changelog/2026-07.md) · [June 2026](changelog/2026-06.md) · [May 2026](changelog/2026-05.md) — the [archive](changelog/README.md) holds one file per month.
 
-## 2026-11-23 (latest)
+## 2026-11-27 (latest)
+
+### Changed — the three agent-skills copies are owned here
+
+- `agent-chat-conv-types`, `agent-chat-delivery` and `agent-chat-run-triage` in `.claude/skills/` are this repo's own skills now, like the other four. `agent-skills` stops keeping project skills (org skills landscape audit, decision D1), so their `.installed-from-agent-skills` markers are gone and `AGENTS.md`, `CLAUDE.md` and `docs/maintainers/README.md` say to edit them here.
+- `agent-chat-run-triage` picks up agent-skills #135, which this repo's copy was missing: a seat's MCP config is found in its seat folder outside the repo (`seats.seat_root()`, RT-01), not under `agents/CLIs/`.
+
+## 2026-11-23
+
 
 ### Changed — seat folders live outside the repo
 
