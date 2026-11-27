@@ -212,8 +212,40 @@ def _target_of(sink: dict[str, Any] | None, service: str) -> tuple[str, str]:
     return url, ""
 
 
+def _mask(target: str) -> str:
+    """What the browser is shown instead of a stored topic, token or webhook URL.
+
+    The target IS the credential: whoever knows an ntfy topic reads your
+    notifications, and a Discord/Slack webhook URL lets anyone post to the
+    channel. A URL keeps its scheme and host so the form still says where it
+    points; the last four characters show only when that leaves 8+ hidden.
+    A ``*`` can't appear in a topic or token (``_TOKEN_RE``), so a masked value
+    is never mistaken for a real one."""
+    if not target:
+        return ""
+    tail = target[-4:] if len(target) >= 12 else ""
+    parts = urlsplit(target)
+    if parts.scheme and parts.hostname:
+        host = parts.netloc.rpartition("@")[2]   # never the userinfo
+        return f"{parts.scheme}://{host}/…/****{tail}"
+    return f"****{tail}"
+
+
+def _unmask(service: str, target: str) -> str:
+    """The stored target when the form sent back its masked value unchanged.
+
+    Only for the same service: a masked value pasted under another radio is the
+    operator's input, and fails that service's validation as such."""
+    sink = _find_sink(_read_config())
+    if not sink or _service_of(sink) != service:
+        return target
+    stored, _server = _target_of(sink, service)
+    return stored if stored and target == _mask(stored) else target
+
+
 def _state(cfg: dict[str, Any]) -> dict[str, Any]:
-    """Everything the page needs to render itself."""
+    """Everything the page needs to render itself. The target goes out masked
+    (`_mask`); save and test swap an unchanged mask back (`_unmask`)."""
     sink = _find_sink(cfg)
     service = _service_of(sink)
     target, server = _target_of(sink, service)
@@ -230,7 +262,8 @@ def _state(cfg: dict[str, Any]) -> dict[str, Any]:
         "enabled": bool(sink and sink.get("enabled")),
         "delivery_enabled": bool(cfg.get("enabled")),
         "service": service,
-        "target": target,
+        "target": _mask(target),
+        "has_target": bool(target),
         "server": server,
         "events": list(sink.get("events") or ["complete", "stalled"]) if sink
                   else ["complete", "stalled"],
@@ -254,7 +287,7 @@ def _parse(payload: Any) -> tuple[str, str, str, list[str], bool]:
     service = str(payload.get("service") or "").strip()
     if service not in SERVICES:
         raise ValueError(f"'service' must be one of: {', '.join(sorted(SERVICES))}")
-    target = str(payload.get("target") or "").strip()
+    target = _unmask(service, str(payload.get("target") or "").strip())
     if not target:
         raise ValueError(f"{SERVICES[service]['target_label']} is required")
     server = str(payload.get("server") or "").strip()

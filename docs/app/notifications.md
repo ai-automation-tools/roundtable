@@ -35,7 +35,7 @@ form.
 | Control | What it does |
 |:---|:---|
 | **Service** | ntfy · Gotify · Discord · Slack · raw webhook. One at a time. |
-| **Topic / URL** | The one thing that differs per service. The label and the hint change with the radio. |
+| **Topic / URL** | The one thing that differs per service. The label and the hint change with the radio. Once saved it comes back **masked** (`https://hooks.slack.com/…/****abcd`, `****chat`): the topic or URL is the credential, so neither the page nor `GET /api/notifications` (which adds `has_target`) carries it. Leave the mask as it is and *Save* / *Send test* use the stored value; type over it to change it. |
 | **Server** | Only shown for the two you can self-host (ntfy, Gotify). |
 | **Tell me when…** | The four events, ticked independently. `complete` + `stalled` are the default pair. |
 | **Send me these notifications** | Keeps the settings, stops the sending. |

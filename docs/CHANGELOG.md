@@ -4,7 +4,15 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changelog/2026-09.md) · [August 2026](changelog/2026-08.md) · [July 2026](changelog/2026-07.md) · [June 2026](changelog/2026-06.md) · [May 2026](changelog/2026-05.md) — the [archive](changelog/README.md) holds one file per month.
 
-## 2026-11-23 (latest)
+## 2026-11-26 (latest)
+
+### Fixed — the notification settings no longer hand the saved webhook back to the browser
+
+- `GET /api/notifications`, the save response and Settings → Notifications show the saved topic, token or webhook URL masked (`https://hooks.slack.com/…/****abcd`, `****chat`) plus a `has_target` flag. Before, the full URL or ntfy topic, which is the credential, sat in the page and the API response.
+- Saving or testing the form with the mask left as it is uses the stored value, so editing only the events doesn't wipe the target. Typing a new value replaces it.
+- New cases in `tests/test_notifications.py`.
+
+## 2026-11-23
 
 ### Changed — seat folders live outside the repo
 
