@@ -1,5 +1,5 @@
 ---
-name: agent-chat-conv-types
+name: roundtable-conv-types
 description: >-
   Add or change a conversation format in the Roundtable repo — a new conv_type (debate / podcast /
   collaborate / yours), a sub-type preset, a seat role, an extra role like the skeptic, or a type

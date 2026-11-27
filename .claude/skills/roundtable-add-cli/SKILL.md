@@ -1,5 +1,5 @@
 ---
-name: agent-chat-add-cli
+name: roundtable-add-cli
 description: Add support for a new CLI agent (Claude Code / Codex / OpenCode style) to Roundtable from a pasted repo URL. Use when the operator says "add support for this CLI", "add a new CLI", "onboard <tool> as an agent", or pastes a coding-agent repo/docs URL and asks whether it can join the arena. Researches the candidate for MCP support, then either reports it CANNOT be added (with the specific reason) or performs the full cross-cutting change — canonical list, the code mirrors, spawn registry, per-CLI config folder, and every doc/site surface — as an ordered checklist so nothing is half-updated.
 ---
 

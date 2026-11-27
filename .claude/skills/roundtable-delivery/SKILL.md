@@ -1,5 +1,5 @@
 ---
-name: agent-chat-delivery
+name: roundtable-delivery
 description: >-
   Work on Roundtable's push half — delivery sinks (folder / webhook / command), the Notifications
   settings tab, the opt-in list, and the stall watchdog. Covers config/delivery.json's shape, the

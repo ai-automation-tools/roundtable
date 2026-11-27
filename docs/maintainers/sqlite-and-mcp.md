@@ -5,7 +5,7 @@
 ## SQLite layer
 
 > [!TIP]
-> The `agent-chat-schema` skill carries this checklist plus current table shapes; it auto-loads when you touch a schema file.
+> The `roundtable-schema` skill carries this checklist plus current table shapes; it auto-loads when you touch a schema file.
 
 The DB is the **contract** between processes, and it is declared **once**, in `src/schema.py` (stdlib only, since 2026-11-22): `SCHEMA` (all five tables + indexes), `MIGRATIONS` (`(table, column, ddl)` triples), the synced column lists `CONV_COLUMNS` / `MSG_COLUMNS` / `PERSONA_COLUMNS` (read by both `/api/ingest` and `scripts/db_sync.py`), and the `ARENA_*` / `DRAFT_*` status values. Every process boots a file through `schema.ensure_schema(conn)`, which is idempotent and tolerates two processes migrating at once. **Never declare DDL anywhere else** — `tests/test_conv_types.py` fails on a `CREATE TABLE` outside `schema.py`, and pins the column lists and every `INSERT`'s column names against the real tables.
 

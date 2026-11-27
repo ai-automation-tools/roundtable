@@ -1,5 +1,5 @@
 ---
-name: agent-chat-schema
+name: roundtable-schema
 description: Use when changing the Roundtable SQLite schema — adding/renaming/dropping a column or table, adding a migration, or touching db_init()/db_connect() pragmas. The schema is declared once, in src/schema.py, and is the contract between processes. Triggered by work on src/schema.py, SCHEMA, MIGRATIONS, the synced *_COLUMNS lists, db_init()/ensure_schema(), "add a column", "migrate the DB", "new table".
 ---
 
