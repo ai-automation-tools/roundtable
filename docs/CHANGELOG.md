@@ -4,6 +4,12 @@ All notable changes to this repository. Format loosely follows [Keep a Changelog
 
 Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changelog/2026-09.md) · [August 2026](changelog/2026-08.md) · [July 2026](changelog/2026-07.md) · [June 2026](changelog/2026-06.md) · [May 2026](changelog/2026-05.md) — the [archive](changelog/README.md) holds one file per month.
 
+## Unreleased
+
+### Added — a roadmap item from the monthly refresh
+
+- *Survey GitHub Copilot CLI as a seat* joins the 🟠 Medium list: a docs-only write-up of whether `copilot` can sit in a room with only the `roundtable` tool. It's a GA, MCP-capable CLI the candidate list never named, and its November releases (1.0.110 on 2026-11-12, 1.0.116 on 2026-11-25) changed how it loads MCP servers in `-p` mode and from workspace files.
+
 ## 2026-11-27 (latest)
 
 ### Changed — maintainer skills carry the repo name
