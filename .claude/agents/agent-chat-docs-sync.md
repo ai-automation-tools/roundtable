@@ -65,11 +65,11 @@ because agent CLIs read these at runtime:
   them, all sites move together.
 - No secrets. `.mcp.json` uses `${ENV_VAR}` substitution — flag any inlined key.
 
-**Known CLAUDE.md drift** (don't "fix" code to match these; flag the doc):
-`CLAUDE.md` points schema updates at `start_conversation.py` /
+**Known AGENTS.md drift** (don't "fix" code to match these; flag the doc):
+`AGENTS.md` points schema updates at `start_conversation.py` /
 `inspect_conversations.py`, which hold no schema; its `personas.root_exists()`
 local-only gate no longer matches the DB-backed implementation; and
-`web/db.py:_connect()` omits the `isolation_level=None` CLAUDE.md mandates.
+`web/db.py:_connect()` omits the `isolation_level=None` AGENTS.md mandates.
 
 ## Output
 

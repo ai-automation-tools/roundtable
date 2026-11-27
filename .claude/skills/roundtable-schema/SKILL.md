@@ -73,7 +73,7 @@ Pragmas are **not** uniform today, which is worth knowing before you "fix" one:
 | Site | Notes |
 |:---|:---|
 | `agent_chat_mcp.db_connect()` | the full set: WAL + `synchronous=NORMAL` + `foreign_keys=ON` |
-| `web/db.py:_connect()` | WAL only, and **omits `isolation_level=None`** — deviates from CLAUDE.md |
+| `web/db.py:_connect()` | WAL only, and **omits `isolation_level=None`** — deviates from AGENTS.md |
 | `seeding.py` / `personas.py` / `inspect_conversations.py` | WAL + `isolation_level=None` |
 
 ## Current shape

@@ -80,7 +80,7 @@ browser mutations — new write routes are covered automatically, but add a case
 to `tests/test_web_readonly.py`.
 
 > [!NOTE]
-> `CLAUDE.md` says persona management is local-only and must gate on
+> `AGENTS.md` says persona management is local-only and must gate on
 > `personas.root_exists()`. **That is stale.** Personas now live in the synced
 > `personas` table, so `root_exists()` no longer checks the `agents/` tree — it
 > returns True whenever the DB is reachable, and persona management works on the
