@@ -6,6 +6,8 @@ Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changel
 
 ## Unreleased
 
+- `CLAUDE.md` is gone: Claude Code reads `AGENTS.md` directly, and its Claude-only notes are the closing *Claude Code only* section of `AGENTS.md`.
+
 ### Added — a roadmap item from the monthly refresh
 
 - *Survey GitHub Copilot CLI as a seat* joins the 🟠 Medium list: a docs-only write-up of whether `copilot` can sit in a room with only the `roundtable` tool. It's a GA, MCP-capable CLI the candidate list never named, and its November releases (1.0.110 on 2026-11-12, 1.0.116 on 2026-11-25) changed how it loads MCP servers in `-p` mode and from workspace files.

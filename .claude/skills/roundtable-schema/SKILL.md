@@ -31,7 +31,7 @@ Migrations are gated on `PRAGMA table_info({table})` so they stay idempotent:
 ```
 
 > [!IMPORTANT]
-> `CLAUDE.md` tells you to update `start_conversation.py` and
+> `AGENTS.md` tells you to update `start_conversation.py` and
 > `inspect_conversations.py` on a schema change. **That guidance is stale** —
 > neither declares schema. `start_conversation.py` is argparse-only and delegates
 > to `orchestrator.seeding`; `inspect_conversations.py` only has `connect()` plus

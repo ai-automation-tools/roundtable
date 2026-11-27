@@ -1,8 +1,7 @@
 # Roundtable — agent instructions
 
 Project-specific instructions for every coding agent working on this repo (Codex, opencode, Antigravity and
-others read this file; Claude Code reads it through `CLAUDE.md`, which imports it and adds the Claude-only
-notes). These override generic guidance.
+others read this file, Claude Code included; Claude-only notes are under [*Claude Code only*](#claude-code-only) at the end). These override generic guidance.
 
 ---
 
@@ -129,3 +128,15 @@ Full rules: [`docs-git-deploy.md`](docs/maintainers/docs-git-deploy.md).
 **Two skill trees:** [`skills/`](skills/) is read by the participating CLIs at runtime; [`.claude/skills/`](.claude/skills/) by Claude Code working on this repo. All seven maintainer skills there are owned by this repo, including `roundtable-conv-types`, `roundtable-delivery` and `roundtable-run-triage` (copies from `agent-skills` until 2026-11-27) — edit them here.
 
 For ambiguous tasks, ask one clarifying question rather than guess — the codebase is small enough that a wrong assumption costs a six-file edit.
+
+## Claude Code only
+
+- **Your tooling lives in `.claude/`.** Maintainer skills `roundtable-schema`, `roundtable-export-contract`,
+  `roundtable-web-ui`, `roundtable-add-cli`, `roundtable-conv-types`, `roundtable-delivery` and
+  `roundtable-run-triage` auto-load when you touch their files. All seven are owned by this repo: edit
+  them in `.claude/skills/`. Also `.claude/agents/agent-chat-docs-sync` (audit a diff for doc
+  drift) and the commands `/smoke-test`, `/deploy-fly` and `/close-roadmap-item`.
+- **Don't confuse `.claude/skills/` with `skills/`.** The second is read by the participating CLI agents at
+  runtime, not by you while you work on the repo.
+- **Seat 1 for Claude Code keeps no project `.mcp.json`.** It registers `roundtable` at user scope; a project
+  `.mcp.json` makes Claude Code prompt for approval on every launch and stalls a spawned agent.

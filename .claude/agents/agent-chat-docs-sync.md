@@ -50,7 +50,7 @@ because agent CLIs read these at runtime:
 - `docs/app/export-format.md` — the export format is a contract with three
   external consumers; any change to `orchestrator/export.py` output needs this
   doc and the consumers updated together.
-- `CLAUDE.md` repo-layout tree — update when adding a top-level concern or a new
+- `AGENTS.md` repo-layout tree — update when adding a top-level concern or a new
   module. When files move under `docs/` or `agents/`, also check the README's
   layout tree + docs index and any relative `../` links inside the moved files.
 - New project docs go under `docs/`; don't invent new top-level docs.
