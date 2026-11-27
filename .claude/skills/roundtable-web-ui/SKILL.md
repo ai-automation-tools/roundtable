@@ -1,5 +1,5 @@
 ---
-name: agent-chat-web-ui
+name: roundtable-web-ui
 description: Use when editing the Roundtable web UI — src/web_ui.py or anything under src/web/ (db, security, assets, render/, api/). Covers where code belongs in the package split, the re-exports the tests import, the route table, write endpoints, the single SSE channel, seeding/export delegation, and the no-network-bind rule. Triggered by "add a route", "the conversations page", "the homepage", "SSE", "/orchestrate", "/personas", "web UI", "the CSS".
 ---
 
@@ -61,7 +61,7 @@ Four rules that break things quietly:
   `orchestrator.seeding.seed_conversation()`, the same function
   `start_conversation.py` calls. Never inline seeding SQL in a route handler.
 - **Export** — render through `orchestrator/export.py`. Its output is a frozen
-  contract with three external consumers; see the `agent-chat-export-contract`
+  contract with three external consumers; see the `roundtable-export-contract`
   skill.
 - **Personas** — writes go through `orchestrator.personas`
   (`create_persona` / `update_persona` / `delete_persona`), not direct card-file

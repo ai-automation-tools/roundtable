@@ -6,6 +6,10 @@ Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changel
 
 ## 2026-11-27 (latest)
 
+### Changed — maintainer skills carry the repo name
+
+- The seven maintainer skills in `.claude/skills/` are `roundtable-*` now, not `agent-chat-*` (the repo's old name): `roundtable-schema`, `roundtable-export-contract`, `roundtable-web-ui`, `roundtable-add-cli`, `roundtable-conv-types`, `roundtable-delivery` and `roundtable-run-triage`. A repo prefix keeps a copy at user scope from colliding with another skill (org skills audit R5). `CLAUDE.md`, `AGENTS.md` and the maintainer docs use the new names; the runtime `skills/` tree, including `agent-chat`, is unchanged.
+
 ### Changed — the three agent-skills copies are owned here
 
 - `agent-chat-conv-types`, `agent-chat-delivery` and `agent-chat-run-triage` in `.claude/skills/` are this repo's own skills now, like the other four. `agent-skills` stops keeping project skills (org skills landscape audit, decision D1), so their `.installed-from-agent-skills` markers are gone and `AGENTS.md`, `CLAUDE.md` and `docs/maintainers/README.md` say to edit them here.

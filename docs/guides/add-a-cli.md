@@ -175,7 +175,7 @@ each other, so a half-finished add fails the suite rather than shipping quietly.
 
 > [!TIP]
 > **If you're doing this with Claude Code in this repo**, the
-> `agent-chat-add-cli` skill under `.claude/skills/` is the full ordered
+> `roundtable-add-cli` skill under `.claude/skills/` is the full ordered
 > checklist with the exact per-file edits and config templates. Paste the tool's
 > repo URL and ask it to add support — it researches the questions above, tells
 > you plainly if the tool can't be added, and otherwise makes the whole

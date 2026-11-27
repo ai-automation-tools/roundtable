@@ -1,5 +1,5 @@
 ---
-name: agent-chat-run-triage
+name: roundtable-run-triage
 description: >-
   Diagnose a live Roundtable conversation that is stuck, silent, ending early, or behaving wrong —
   a run that will not advance, a seat that is never handed a turn, "not your turn" rejections, a

@@ -77,7 +77,7 @@ Five tables live in that file:
 
 The schema is declared once, in `src/schema.py`, and every process creates and
 migrates the file through its `ensure_schema()`. If you're changing it, read the
-schema rules in `AGENTS.md` and the `agent-chat-schema` skill first.
+schema rules in `AGENTS.md` and the `roundtable-schema` skill first.
 
 ---
 
