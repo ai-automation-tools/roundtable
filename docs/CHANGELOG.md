@@ -6,6 +6,10 @@ Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changel
 
 ## Unreleased
 
+### Changed — roadmap sweep, 2026-11-28
+
+- *Roadmap*: added the standard `## 🚦 Public release` checklist above `## After public release`, every line ticked from what the repo shows (CI as a required check, `SECURITY.md`, `LICENSE`, live URL). Noted the weekly off-disk backup copy (#321) on RT-12 and the partial skill rename (#330, #331) on *Rename the `agent-chat` skill family*; both items stay open.
+
 - `CLAUDE.md` is gone: Claude Code reads `AGENTS.md` directly, and its Claude-only notes are the closing *Claude Code only* section of `AGENTS.md`.
 
 ### Added — a roadmap item from the monthly refresh
