@@ -414,7 +414,10 @@ def test_round_trip_through_the_state_reader():
         })
         state = api._state(delivery.load_config())
         assert state["service"] == "ntfy", state
-        assert state["target"] == "my-topic", state
+        # Masked on the way out; _parse swaps the unchanged mask back in.
+        assert state["target"] == "****" and state["has_target"] is True, state
+        assert api._parse({"service": "ntfy", "target": state["target"],
+                           "events": ["complete"]})[1] == "my-topic"
         assert state["server"] == "https://ntfy.example", state
         assert state["events"] == ["complete", "stalled", "started"], state
         assert state["enabled"] is True and state["delivery_enabled"] is True, state
@@ -434,9 +437,69 @@ def test_state_recognises_a_hand_written_sink_without_a_service_tag():
     try:
         state = api._state(delivery.load_config())
         assert state["service"] == "ntfy", state
-        assert state["target"] == "hand-written", state
+        assert api._parse({"service": "ntfy", "target": state["target"],
+                           "events": ["complete"]})[1] == "hand-written"
     finally:
         _reset_config()
+
+
+def test_the_stored_target_never_reaches_the_browser():
+    """A webhook URL or ntfy topic IS the credential. GET /api/notifications,
+    the save response and the rendered page show a mask; saving or testing
+    the form unchanged keeps (and uses) the stored value."""
+    from starlette.applications import Starlette
+    from starlette.routing import Route
+    from starlette.testclient import TestClient
+
+    from web.render.notifications import _render_notifications
+
+    srv, base = _serve()
+    hook_url = f"{base}/webhook/SECRET-token-abcd"
+    _write_config({"enabled": True, "sinks": [
+        api._build_sink("webhook", hook_url, "", ["complete"], True)]})
+    client = TestClient(Starlette(routes=[
+        Route("/n", api.api_notifications, methods=["GET"]),
+        Route("/n", api.api_notifications_save, methods=["POST"]),
+        Route("/t", api.api_notifications_test, methods=["POST"]),
+    ]))
+    try:
+        got = client.get("/n")
+        assert "SECRET" not in got.text, got.text
+        state = got.json()
+        assert state["has_target"] is True, state
+        assert state["target"] == f"http://127.0.0.1:{srv.server_port}/…/****abcd", state
+        html = _render_notifications(api._state(delivery.load_config()))
+        assert "SECRET" not in html, "the page seeds its form with the real URL"
+
+        unchanged = {"service": "webhook", "target": state["target"],
+                     "events": ["started", "complete"]}
+        _Capture.received.clear()
+        r = client.post("/t", json=unchanged)
+        assert r.status_code == 200, r.text
+        assert _Capture.received[-1]["path"] == "/webhook/SECRET-token-abcd"
+
+        r = client.post("/n", json=unchanged)
+        assert r.status_code == 200 and "SECRET" not in r.text, r.text
+        sink = api._find_sink(delivery.load_config())
+        assert sink["url"] == hook_url, sink
+        assert sink["events"] == ["started", "complete"], sink
+
+        # A real edit still wins, and a masked value under another radio is
+        # input, not a key to the stored one.
+        r = client.post("/n", json={**unchanged, "target": f"{base}/other"})
+        assert api._find_sink(delivery.load_config())["url"] == f"{base}/other"
+        assert api._unmask("discord", api._mask(f"{base}/other")) != f"{base}/other"
+    finally:
+        srv.shutdown()
+        _reset_config()
+
+
+def test_mask_shapes():
+    assert api._mask("") == ""
+    assert api._mask("short") == "****"
+    assert api._mask("my-agent-chat") == "****chat"
+    assert (api._mask("https://user:pw@hooks.slack.com/services/T0/B0/xyzw1234")
+            == "https://hooks.slack.com/…/****1234")
 
 
 def test_every_service_builds_a_usable_sink():

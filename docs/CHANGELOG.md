@@ -12,6 +12,12 @@ Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changel
 
 - *Survey GitHub Copilot CLI as a seat* joins the 🟠 Medium list: a docs-only write-up of whether `copilot` can sit in a room with only the `roundtable` tool. It's a GA, MCP-capable CLI the candidate list never named, and its November releases (1.0.110 on 2026-11-12, 1.0.116 on 2026-11-25) changed how it loads MCP servers in `-p` mode and from workspace files.
 
+### Fixed — the notification settings no longer hand the saved webhook back to the browser
+
+- `GET /api/notifications`, the save response and Settings → Notifications show the saved topic, token or webhook URL masked (`https://hooks.slack.com/…/****abcd`, `****chat`) plus a `has_target` flag. Before, the full URL or ntfy topic, which is the credential, sat in the page and the API response.
+- Saving or testing the form with the mask left as it is uses the stored value, so editing only the events doesn't wipe the target. Typing a new value replaces it.
+- New cases in `tests/test_notifications.py`.
+
 ## 2026-11-27 (latest)
 
 ### Changed — maintainer skills carry the repo name
