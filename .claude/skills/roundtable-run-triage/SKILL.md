@@ -1,5 +1,5 @@
 ---
-name: agent-chat-run-triage
+name: roundtable-run-triage
 description: >-
   Diagnose a live Roundtable conversation that is stuck, silent, ending early, or behaving wrong —
   a run that will not advance, a seat that is never handed a turn, "not your turn" rejections, a
@@ -45,7 +45,7 @@ Then walk the table. Stop at the first row that matches.
 | `status='active'`, **zero messages** | seeded but never joined — a *launch* problem, not a stall. The watchdog deliberately ignores this case | the CLI window: did it start, did it register the MCP server, is it waiting on an approval prompt |
 | Messages stop, `current_turn` names agent **N** | agent N's window is not polling — it exited, it is asking the operator a question, or it never loaded the `agent-chat` skill | look at **that** window; `current_turn` is the address of the one you need |
 | `current_turn` names an agent that is **spent** | a rotation bug — `next_turn_agent()` must skip seats at their cap. A parked pointer deadlocks the room | probe 4 in the reference: per-sender counts vs `max_turns` |
-| A seat never got a turn at all | it is not in `participants`, or the seat id in its MCP config does not match the id in the row (`claude-code` vs `claude-code-2`) | probe 1; then the seat's `agents/CLIs/<cli>_agentN/` config |
+| A seat never got a turn at all | it is not in `participants`, or the seat id in its MCP config does not match the id in the row (`claude-code` vs `claude-code-2`) | probe 1; then the seat's config in its seat folder, `seats.seat_dir('<seat id>')` (outside the repo; templates in `agents/CLIs/`) |
 | "It's not your turn" from an agent that should be up | the agent's `--agent-id` differs from what the row holds — identity is **config-only**, there is no auth | compare `participants` against each window's launch args |
 | Ended at `max_turns` with fewer messages than expected | correct behaviour if **every** seat is spent. If one seat still had turns, that is the old first-agent-wins bug | probe 4 + `end_reason` |
 | Ended with no deliverable, `conv_type` produces one | a non-lead signalled `done`. `blocks_premature_done()` should have refused it before the insert | probe 5: the last message's `signal` and `sender` vs `participant_roles` |

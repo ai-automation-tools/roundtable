@@ -100,7 +100,7 @@ Thumbs.db
 # re-ignore it at any depth, the way the old blanket `.claude/` rule did.
 **/*/.claude/
 
-# AGENTS.md and CLAUDE.md ARE tracked — the project instruction files; a clone needs them.
+# AGENTS.md IS tracked — the project instruction files; a clone needs them.
 # (core.ignorecase=true here, so claude.md and CLAUDE.md are the same file; both
 # patterns had to go.)
 .mcp.json

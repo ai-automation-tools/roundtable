@@ -47,13 +47,9 @@ These were sections of `AGENTS.md` until 2026-11-22, moved here verbatim (audit 
 | [`docs/mcp-server.md`](../mcp-server.md) | The MCP server at a glance: entry file, launcher, transport, every tool, env vars, install line. Update it when a tool is added or renamed. |
 | `docs/Local/` | **Operator-only, gitignored:** the Fly deploy, the sidecar sync, logon autostart. |
 
-**Two skill trees — don't confuse them.** [`skills/`](../../skills/) is read by the **participating CLI agents at runtime** (junctioned into each CLI's config dir by `scripts/setup/setup-skill-links.ps1`): `agent-chat` = the participation loop · `debate-mode` · `podcast-mode` · `collaborate-mode` · `battleground` · `start-debate`. [`.claude/skills/`](../../.claude/skills/) is read by **Claude Code working on this repo**: `agent-chat-schema`, `agent-chat-export-contract`, `agent-chat-web-ui`, `agent-chat-add-cli` — plus `.claude/agents/agent-chat-docs-sync` (audits a diff for doc drift) and `.claude/commands/` (`/smoke-test`, `/deploy-fly`, `/close-roadmap-item`).
+**Two skill trees — don't confuse them.** [`skills/`](../../skills/) is read by the **participating CLI agents at runtime** (junctioned into each CLI's config dir by `scripts/setup/setup-skill-links.ps1`): `agent-chat` = the participation loop · `debate-mode` · `podcast-mode` · `collaborate-mode` · `battleground` · `start-debate`. [`.claude/skills/`](../../.claude/skills/) is read by **Claude Code working on this repo**: `roundtable-schema`, `roundtable-export-contract`, `roundtable-web-ui`, `roundtable-add-cli`, `roundtable-conv-types`, `roundtable-delivery`, `roundtable-run-triage` — plus `.claude/agents/agent-chat-docs-sync` (audits a diff for doc drift) and `.claude/commands/` (`/smoke-test`, `/deploy-fly`, `/close-roadmap-item`).
 
-**Three of the maintainer skills are maintained elsewhere.** `agent-chat-conv-types` (conversation structure — types, presets, seat roles, deliverables), `agent-chat-delivery` (sinks, notifications, the watchdog) and `agent-chat-run-triage` (a live run that is stuck or misbehaving) are **installed copies**, owned by [`ai-automation-tools/agent-skills`](https://github.com/ai-automation-tools/agent-skills) under `skills/projects/roundtable/`. Edit them there and republish — a hand-edit here is silently overwritten on the next install:
-
-```powershell
-pwsh <agent-skills-clone>/scripts/install-skills.ps1 -Project roundtable -Destination <this-clone>/.claude/skills
-```
+**Three more maintainer skills, owned here too since 2026-11-27.** `roundtable-conv-types` (conversation structure — types, presets, seat roles, deliverables), `roundtable-delivery` (sinks, notifications, the watchdog) and `roundtable-run-triage` (a live run that is stuck or misbehaving) sit in `.claude/skills/` with the other four. Until 2026-11-27 they were installed copies from `ai-automation-tools/agent-skills`; that repo no longer keeps project skills, so edit them here.
 
 For ambiguous tasks, ask one clarifying question rather than guess — the codebase is small enough that a wrong assumption costs a six-file edit.
 
