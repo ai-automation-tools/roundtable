@@ -13,6 +13,27 @@ Earlier months: [October 2026](changelog/2026-10.md) · [September 2026](changel
 - New cases in `tests/test_notifications.py`.
 
 ## 2026-11-23
+## Unreleased
+
+- `CLAUDE.md` is gone: Claude Code reads `AGENTS.md` directly, and its Claude-only notes are the closing *Claude Code only* section of `AGENTS.md`.
+
+### Added — a roadmap item from the monthly refresh
+
+- *Survey GitHub Copilot CLI as a seat* joins the 🟠 Medium list: a docs-only write-up of whether `copilot` can sit in a room with only the `roundtable` tool. It's a GA, MCP-capable CLI the candidate list never named, and its November releases (1.0.110 on 2026-11-12, 1.0.116 on 2026-11-25) changed how it loads MCP servers in `-p` mode and from workspace files.
+
+## 2026-11-27 (latest)
+
+### Changed — maintainer skills carry the repo name
+
+- The seven maintainer skills in `.claude/skills/` are `roundtable-*` now, not `agent-chat-*` (the repo's old name): `roundtable-schema`, `roundtable-export-contract`, `roundtable-web-ui`, `roundtable-add-cli`, `roundtable-conv-types`, `roundtable-delivery` and `roundtable-run-triage`. A repo prefix keeps a copy at user scope from colliding with another skill (org skills audit R5). `CLAUDE.md`, `AGENTS.md` and the maintainer docs use the new names; the runtime `skills/` tree, including `agent-chat`, is unchanged.
+
+### Changed — the three agent-skills copies are owned here
+
+- `agent-chat-conv-types`, `agent-chat-delivery` and `agent-chat-run-triage` in `.claude/skills/` are this repo's own skills now, like the other four. `agent-skills` stops keeping project skills (org skills landscape audit, decision D1), so their `.installed-from-agent-skills` markers are gone and `AGENTS.md`, `CLAUDE.md` and `docs/maintainers/README.md` say to edit them here.
+- `agent-chat-run-triage` picks up agent-skills #135, which this repo's copy was missing: a seat's MCP config is found in its seat folder outside the repo (`seats.seat_root()`, RT-01), not under `agents/CLIs/`.
+
+## 2026-11-23
+
 
 ### Changed — seat folders live outside the repo
 

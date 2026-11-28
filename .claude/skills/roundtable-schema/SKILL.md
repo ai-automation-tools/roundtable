@@ -1,5 +1,5 @@
 ---
-name: agent-chat-schema
+name: roundtable-schema
 description: Use when changing the Roundtable SQLite schema — adding/renaming/dropping a column or table, adding a migration, or touching db_init()/db_connect() pragmas. The schema is declared once, in src/schema.py, and is the contract between processes. Triggered by work on src/schema.py, SCHEMA, MIGRATIONS, the synced *_COLUMNS lists, db_init()/ensure_schema(), "add a column", "migrate the DB", "new table".
 ---
 
@@ -31,7 +31,7 @@ Migrations are gated on `PRAGMA table_info({table})` so they stay idempotent:
 ```
 
 > [!IMPORTANT]
-> `CLAUDE.md` tells you to update `start_conversation.py` and
+> `AGENTS.md` tells you to update `start_conversation.py` and
 > `inspect_conversations.py` on a schema change. **That guidance is stale** —
 > neither declares schema. `start_conversation.py` is argparse-only and delegates
 > to `orchestrator.seeding`; `inspect_conversations.py` only has `connect()` plus
@@ -73,7 +73,7 @@ Pragmas are **not** uniform today, which is worth knowing before you "fix" one:
 | Site | Notes |
 |:---|:---|
 | `agent_chat_mcp.db_connect()` | the full set: WAL + `synchronous=NORMAL` + `foreign_keys=ON` |
-| `web/db.py:_connect()` | WAL only, and **omits `isolation_level=None`** — deviates from CLAUDE.md |
+| `web/db.py:_connect()` | WAL only, and **omits `isolation_level=None`** — deviates from AGENTS.md |
 | `seeding.py` / `personas.py` / `inspect_conversations.py` | WAL + `isolation_level=None` |
 
 ## Current shape

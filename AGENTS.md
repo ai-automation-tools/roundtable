@@ -1,8 +1,7 @@
 # Roundtable — agent instructions
 
 Project-specific instructions for every coding agent working on this repo (Codex, opencode, Antigravity and
-others read this file; Claude Code reads it through `CLAUDE.md`, which imports it and adds the Claude-only
-notes). These override generic guidance.
+others read this file, Claude Code included; Claude-only notes are under [*Claude Code only*](#claude-code-only) at the end). These override generic guidance.
 
 ---
 
@@ -88,7 +87,7 @@ When you add a new top-level concern, update this map (here in `AGENTS.md`), `do
 Each line is the part most often broken; [`docs/maintainers/`](docs/maintainers/README.md) holds the detail.
 
 - **Database + MCP server** → [`sqlite-and-mcp.md`](docs/maintainers/sqlite-and-mcp.md). DDL lives **only** in `src/schema.py` (a test fails on `CREATE TABLE` elsewhere); a column change needs a `MIGRATIONS` row, the `*_COLUMNS` list if it syncs, every reader, and a CHANGELOG note. A conversation leaves `active` only through `schema.complete_conversation()`; check-then-write runs in `schema.write_txn()`. One rule picks the DB file: `schema.resolve_db_path()`. Tools resolve the conversation through `my_conversation()`; turn payloads carry a history delta; the per-agent cap ends a run when **every** seat is spent.
-- **Web UI** → [`web-ui.md`](docs/maintainers/web-ui.md) and the `agent-chat-web-ui` skill. Starlette only; `web_ui.py` is the entrypoint and holds the route table. Handlers are plain `def` (read a body with `web.api.request_json`). Bind `127.0.0.1` only — never `0.0.0.0`; remote access is `tailscale serve` + basic auth. Every local write needs the write secret; every `Host` is allowlisted (tests use `base_url="http://127.0.0.1:8765"`). One `h1` per page. No inline `<script>`, `<style>` or `on*=` handler: pages carry a nonce CSP, and CSS/JS live in `src/web/static/`. `/orchestrate` seeds through `seeding.seed_conversation()` and picks **tools**, never seat ids. Export output is a frozen contract (`docs/app/export-format.md`).
+- **Web UI** → [`web-ui.md`](docs/maintainers/web-ui.md) and the `roundtable-web-ui` skill. Starlette only; `web_ui.py` is the entrypoint and holds the route table. Handlers are plain `def` (read a body with `web.api.request_json`). Bind `127.0.0.1` only — never `0.0.0.0`; remote access is `tailscale serve` + basic auth. Every local write needs the write secret; every `Host` is allowlisted (tests use `base_url="http://127.0.0.1:8765"`). One `h1` per page. No inline `<script>`, `<style>` or `on*=` handler: pages carry a nonce CSP, and CSS/JS live in `src/web/static/`. `/orchestrate` seeds through `seeding.seed_conversation()` and picks **tools**, never seat ids. Export output is a frozen contract (`docs/app/export-format.md`).
 - **AgentBattleground** → [`battleground.md`](docs/maintainers/battleground.md). It drafts, it **never posts**; nothing may reach a page without a human action. Every extension API call goes through `ext`. The arena tables never sync. Nothing under `extension/` runs in a browser test — say so when reporting.
 - **Delivery + watchdog** → [`delivery.md`](docs/maintainers/delivery.md). Off unless `config/delivery.json` exists; `deliver()` never raises; every way a run ends calls it, outside the write transaction, only when `complete_conversation()` returned True (`deliver_later()` on an event loop). The watchdog is read-only and never touches an agent.
 - **Conversation types, presets, personas** → [`conv-types-and-personas.md`](docs/maintainers/conv-types-and-personas.md). A `conv_type` only when the seats differ; a flavour is a preset. A deliverable is `signal='result'`, last one wins. Random casting goes through `list_debater_personas()`.
@@ -126,6 +125,18 @@ Full rules: [`docs-git-deploy.md`](docs/maintainers/docs-git-deploy.md).
 | [`docs/app/`](docs/app/README.md) | Per-feature reference, including the export contract. |
 | [`docs/mcp-server.md`](docs/mcp-server.md) | Every MCP tool, env var and the install line. |
 
-**Two skill trees:** [`skills/`](skills/) is read by the participating CLIs at runtime; [`.claude/skills/`](.claude/skills/) by Claude Code working on this repo. `agent-chat-conv-types`, `agent-chat-delivery` and `agent-chat-run-triage` are installed copies owned by [`ai-automation-tools/agent-skills`](https://github.com/ai-automation-tools/agent-skills) — edit them there.
+**Two skill trees:** [`skills/`](skills/) is read by the participating CLIs at runtime; [`.claude/skills/`](.claude/skills/) by Claude Code working on this repo. All seven maintainer skills there are owned by this repo, including `roundtable-conv-types`, `roundtable-delivery` and `roundtable-run-triage` (copies from `agent-skills` until 2026-11-27) — edit them here.
 
 For ambiguous tasks, ask one clarifying question rather than guess — the codebase is small enough that a wrong assumption costs a six-file edit.
+
+## Claude Code only
+
+- **Your tooling lives in `.claude/`.** Maintainer skills `roundtable-schema`, `roundtable-export-contract`,
+  `roundtable-web-ui`, `roundtable-add-cli`, `roundtable-conv-types`, `roundtable-delivery` and
+  `roundtable-run-triage` auto-load when you touch their files. All seven are owned by this repo: edit
+  them in `.claude/skills/`. Also `.claude/agents/agent-chat-docs-sync` (audit a diff for doc
+  drift) and the commands `/smoke-test`, `/deploy-fly` and `/close-roadmap-item`.
+- **Don't confuse `.claude/skills/` with `skills/`.** The second is read by the participating CLI agents at
+  runtime, not by you while you work on the repo.
+- **Seat 1 for Claude Code keeps no project `.mcp.json`.** It registers `roundtable` at user scope; a project
+  `.mcp.json` makes Claude Code prompt for approval on every launch and stalls a spawned agent.

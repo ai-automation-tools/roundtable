@@ -1,5 +1,5 @@
 ---
-name: agent-chat-export-contract
+name: roundtable-export-contract
 description: Use before changing anything about the Roundtable export bundle — src/orchestrator/export.py, the /export.md or /export.zip endpoints, the delivery folder sink, the topic slug, persona filenames, or the transcript heading shape. The format is a frozen contract parsed by whatever reads a download or a delivered folder, so a cosmetic rename silently breaks it. Triggered by "change the export", "export format", "topic_slug", "bundle", "transcript.md".
 ---
 

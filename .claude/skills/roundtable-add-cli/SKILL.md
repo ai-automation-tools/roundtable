@@ -1,5 +1,5 @@
 ---
-name: agent-chat-add-cli
+name: roundtable-add-cli
 description: Add support for a new CLI agent (Claude Code / Codex / OpenCode style) to Roundtable from a pasted repo URL. Use when the operator says "add support for this CLI", "add a new CLI", "onboard <tool> as an agent", or pastes a coding-agent repo/docs URL and asks whether it can join the arena. Researches the candidate for MCP support, then either reports it CANNOT be added (with the specific reason) or performs the full cross-cutting change — canonical list, the code mirrors, spawn registry, per-CLI config folder, and every doc/site surface — as an ordered checklist so nothing is half-updated.
 ---
 
@@ -70,7 +70,7 @@ Do these in order. **Reference every list by its symbol name, not by line number
 10. `.gitignore` → add a `!`-unignore exception if the config lives in an otherwise-ignored dotfolder (follow the existing antigravity/opencode pattern).
 
 **Docs:**
-11. `README.md` (the CLI-registration table + the supported-CLIs badge), `docs/cli-mcp-config/README.md` (the three CLI tables), a **new** `docs/cli-mcp-config/per-cli/<id>.md`, `CLAUDE.md` (intro paragraph + the repo-tree `agents/CLIs/` annotation + this skill list if relevant), `docs/guides/start-new-chat.md` (per-CLI config bullet), `docs/CHANGELOG.md` (new entry — copy the OpenCode entry as a template), `docs/ROADMAP.md` (close any matching item Open→Done with today's date).
+11. `README.md` (the CLI-registration table + the supported-CLIs badge), `docs/cli-mcp-config/README.md` (the three CLI tables), a **new** `docs/cli-mcp-config/per-cli/<id>.md`, `AGENTS.md` (intro paragraph + the repo-tree `agents/CLIs/` annotation + this skill list if relevant), `docs/guides/start-new-chat.md` (per-CLI config bullet), `docs/CHANGELOG.md` (new entry — copy the OpenCode entry as a template), `docs/ROADMAP.md` (close any matching item Open→Done with today's date).
 
 ## Step 5 — Verify
 
