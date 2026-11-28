@@ -166,7 +166,7 @@ Roundtable supports four. It needs **one** — a seat is a config folder, not a 
 
 ### The personas
 
-Personas are rows in the database, not files, so adding one takes no code change and no restart. A fresh clone starts with the reserved **`AI-Models`** group — one card per supported CLI, created on first boot — and the repo ships **76 seed cards** under [`agents/Debate-Agents/`](agents/Debate-Agents/), which the web UI imports on first start when the registry has nothing to cast:
+Personas are rows in the database, not files, so adding one takes no code change and no restart. A fresh clone starts with the reserved **`AI-Models`** group — one card per supported CLI, created on first boot — and the repo ships **78 seed cards** under [`agents/Debate-Agents/`](agents/Debate-Agents/), which the web UI imports on first start when the registry has nothing to cast:
 
 | Group | Who's in it |
 |:---|:---|
