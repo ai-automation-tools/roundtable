@@ -454,9 +454,9 @@ def test_the_stored_target_never_reaches_the_browser():
     from web.render.notifications import _render_notifications
 
     srv, base = _serve()
-    secret = f"{base}/webhook/SECRET-token-abcd"
+    hook_url = f"{base}/webhook/SECRET-token-abcd"
     _write_config({"enabled": True, "sinks": [
-        api._build_sink("webhook", secret, "", ["complete"], True)]})
+        api._build_sink("webhook", hook_url, "", ["complete"], True)]})
     client = TestClient(Starlette(routes=[
         Route("/n", api.api_notifications, methods=["GET"]),
         Route("/n", api.api_notifications_save, methods=["POST"]),
@@ -481,7 +481,7 @@ def test_the_stored_target_never_reaches_the_browser():
         r = client.post("/n", json=unchanged)
         assert r.status_code == 200 and "SECRET" not in r.text, r.text
         sink = api._find_sink(delivery.load_config())
-        assert sink["url"] == secret, sink
+        assert sink["url"] == hook_url, sink
         assert sink["events"] == ["started", "complete"], sink
 
         # A real edit still wins, and a masked value under another radio is
